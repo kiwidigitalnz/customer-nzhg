@@ -61,7 +61,7 @@ const PodioSetupPage = () => {
       return;
     }
 
-    // Redirect to Podio OAuth authorization
+    // Use exact origin for redirect URI
     const redirectUri = encodeURIComponent(`${window.location.origin}/podio-callback`);
     const authUrl = `https://podio.com/oauth/authorize?client_id=${storedClientId}&redirect_uri=${redirectUri}&scope=global`;
     
@@ -91,7 +91,7 @@ const PodioSetupPage = () => {
     }
 
     try {
-      // Exchange code for access token
+      // Use exact origin for redirect URI
       const redirectUri = `${window.location.origin}/podio-callback`;
       const tokenUrl = 'https://podio.com/oauth/token';
       
@@ -209,14 +209,16 @@ const PodioSetupPage = () => {
                   <div className="bg-blue-50 p-3 rounded-md text-sm mb-4">
                     <p className="font-medium text-blue-800">Manual Authorization Steps:</p>
                     <ol className="list-decimal list-inside mt-1 space-y-1 text-blue-700">
-                      <li>Open this link: <a 
-                        href={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(currentDomain + '/podio-callback')}&scope=global`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="underline font-medium"
-                      >
-                        Podio Authorization Page
-                      </a></li>
+                      <li>Open this URL in a new tab: 
+                        <div className="mt-1 mb-2">
+                          <Input 
+                            readOnly
+                            value={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(currentDomain + '/podio-callback')}&scope=global`}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                            className="text-xs font-mono p-2 bg-blue-100"
+                          />
+                        </div>
+                      </li>
                       <li>After authorizing, you'll be redirected to a page that might show an error</li>
                       <li>Copy the <strong>code</strong> parameter from the URL in your browser address bar</li>
                       <li>The URL will look like: {currentDomain}/podio-callback?code=<strong>abc123...</strong></li>

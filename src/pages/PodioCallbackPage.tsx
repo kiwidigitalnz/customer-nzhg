@@ -9,23 +9,27 @@ import MainLayout from '../components/MainLayout';
 const PodioCallbackPage = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing Podio authorization...');
+  const [authCode, setAuthCode] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Get the authorization code from the URL
+    const urlParams = new URLSearchParams(location.search);
+    const code = urlParams.get('code');
+    
+    if (!code) {
+      setStatus('error');
+      setMessage('No authorization code received from Podio');
+      return;
+    }
+
+    // Display the code for manual copying
+    setAuthCode(code);
+
     const processAuth = async () => {
       try {
-        // Get the authorization code from the URL
-        const urlParams = new URLSearchParams(location.search);
-        const code = urlParams.get('code');
-        
-        if (!code) {
-          setStatus('error');
-          setMessage('No authorization code received from Podio');
-          return;
-        }
-
         // Get stored credentials
         const clientId = localStorage.getItem('podio_client_id');
         const clientSecret = localStorage.getItem('podio_client_secret');
@@ -37,8 +41,7 @@ const PodioCallbackPage = () => {
         }
 
         // Exchange code for access token
-        // NOTE: For production, this should be done server-side
-        // This is a simplified version for demonstration
+        // Use window.location.origin for exact domain matching
         const redirectUri = `${window.location.origin}/podio-callback`;
         const tokenUrl = 'https://podio.com/oauth/token';
         
@@ -109,6 +112,16 @@ const PodioCallbackPage = () => {
               'bg-red-50 text-red-700'
             }`}>
               <p>{message}</p>
+              
+              {authCode && status === 'error' && (
+                <div className="mt-4">
+                  <p className="font-medium">If automatic processing failed, you can use this code manually:</p>
+                  <div className="bg-white p-2 rounded border mt-2 font-mono text-sm overflow-x-auto">
+                    {authCode}
+                  </div>
+                  <p className="mt-2 text-sm">Copy this code and use it in the Manual Code tab on the Podio Setup page.</p>
+                </div>
+              )}
             </div>
             <div className="flex justify-center">
               <Button onClick={() => navigate('/podio-setup')}>
