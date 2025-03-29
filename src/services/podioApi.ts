@@ -1,4 +1,3 @@
-
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -259,7 +258,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
     const accessToken = localStorage.getItem('podio_access_token');
     console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
     
-    // Fix: Use the correct filter format for text fields (simple string value instead of from/to object)
+    // Use the correct filter format for text fields (simple string value)
     const filters = {
       filters: {
         [CONTACT_FIELD_IDS.username]: credentials.username
@@ -305,24 +304,6 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
     // Check if we found any matches
     if (!searchResponse.items || searchResponse.items.length === 0) {
       console.log('No contact found with username:', credentials.username);
-      
-      // Let's try to list all contacts to see what's available
-      try {
-        const allItems = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/`);
-        console.log('All contacts count:', allItems.items?.length || 0);
-        if (allItems.items && allItems.items.length > 0) {
-          // Log fields of first item to understand structure
-          console.log('Sample contact fields:', allItems.items[0].fields.map((f: any) => ({
-            external_id: f.external_id,
-            label: f.label,
-            type: f.type,
-            hasValues: !!f.values?.length
-          })));
-        }
-      } catch (listError) {
-        console.error('Failed to list all contacts:', listError);
-      }
-      
       return null;
     }
     
@@ -394,13 +375,15 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     }
     
     // Filter packing specs by contact ID
-    const endpoint = `app/${PODIO_PACKING_SPEC_APP_ID}/filter/`;
+    const endpoint = `item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`;
     
     const filters = {
       filters: {
         [PACKING_SPEC_FIELD_IDS.customer]: contactId
       }
     };
+    
+    console.log('Filtering packing specs with:', JSON.stringify(filters, null, 2));
     
     const response = await callPodioApi(endpoint, {
       method: 'POST',
@@ -411,6 +394,8 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       console.log('No packing specs found for this contact');
       return [];
     }
+    
+    console.log(`Found ${response.items.length} packing specs for contact ID ${contactId}`);
     
     // Transform Podio items into our PackingSpec format
     const packingSpecs: PackingSpec[] = response.items.map((item: any) => {
@@ -433,6 +418,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
           jarMaterial: getFieldValueByExternalId(fields, 'jar-material') || '',
           lidSize: getFieldValueByExternalId(fields, 'lid-size') || '',
           lidColour: getFieldValueByExternalId(fields, 'lid-colour') || '',
+          customerId: getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer), // Store customer ID for security checks
           specialRequirements: getFieldValueByExternalId(fields, 'customer-requrements') || '',
         }
       };
@@ -462,6 +448,25 @@ const getFieldValueByExternalId = (fields: any[], externalId: string): string | 
   }
   
   return field.values[0].value;
+};
+
+// Helper function to get ID value from a reference field
+const getFieldIdValue = (fields: any[], fieldId: number): number | null => {
+  const field = fields.find(f => f.field_id === fieldId);
+  if (!field || !field.values || field.values.length === 0) {
+    return null;
+  }
+  
+  // Reference fields have an "item" or "value" property with "item_id"
+  if (field.values[0].item && field.values[0].item.item_id) {
+    return field.values[0].item.item_id;
+  }
+  
+  if (field.values[0].value && field.values[0].value.item_id) {
+    return field.values[0].value.item_id;
+  }
+  
+  return null;
 };
 
 // Map Podio approval status to our app's status format
@@ -547,6 +552,10 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
     const item = response;
     const fields = item.fields;
     
+    // Get the customer ID for security checks
+    const customerId = getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer);
+    console.log(`Packing spec ${specId} belongs to customer ID:`, customerId);
+    
     // Map to our application's format
     const packingSpec: PackingSpec = {
       id: item.item_id,
@@ -555,6 +564,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
       status: mapPodioStatusToAppStatus(getFieldValueByExternalId(fields, 'customer-approval-status')),
       createdAt: item.created_on,
       details: {
+        customerId: customerId, // Store customer ID for security checks
         product: getFieldValueByExternalId(fields, 'product-name') || '',
         productCode: getFieldValueByExternalId(fields, 'product-code') || '',
         umfMgo: getFieldValueByExternalId(fields, 'umf-mgo') || '',
@@ -616,6 +626,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
     if (mockSpec) {
       mockSpec.details = {
         ...mockSpec.details,
+        customerId: 1, // Default to test customer ID for mock data
         jarShape: 'Round',
         palletType: 'Standard',
         cartonsPerLayer: '12',
