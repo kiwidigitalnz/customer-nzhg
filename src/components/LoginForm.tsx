@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,10 +28,17 @@ const LoginForm = () => {
 
     const success = await login(username, password);
     
-    if (!success && !error) {
+    if (success) {
+      toast({
+        title: 'Login successful',
+        description: 'Welcome back',
+        variant: 'default',
+      });
+      navigate('/dashboard');
+    } else {
       toast({
         title: 'Login failed',
-        description: 'Please check your credentials and try again',
+        description: error || 'Please check your credentials and try again',
         variant: 'destructive',
       });
     }
