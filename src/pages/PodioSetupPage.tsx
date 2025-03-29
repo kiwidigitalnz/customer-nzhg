@@ -61,10 +61,19 @@ const PodioSetupPage = () => {
       return;
     }
 
-    // Use exact origin for redirect URI
-    const redirectUri = encodeURIComponent(`${window.location.origin}/podio-callback`);
-    const authUrl = `https://podio.com/oauth/authorize?client_id=${storedClientId}&redirect_uri=${redirectUri}&scope=global`;
+    // Generate a random state parameter for security
+    const state = Math.random().toString(36).substring(7);
+    localStorage.setItem('podio_auth_state', state);
+
+    // Build the authorization URL with correct parameters
+    const params = new URLSearchParams({
+      client_id: storedClientId,
+      redirect_uri: `${window.location.origin}/podio-callback`,
+      response_type: 'code',
+      state: state
+    });
     
+    const authUrl = `https://podio.com/oauth/authorize?${params.toString()}`;
     window.location.href = authUrl;
   };
 

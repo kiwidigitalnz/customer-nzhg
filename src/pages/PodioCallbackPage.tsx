@@ -15,9 +15,10 @@ const PodioCallbackPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get the authorization code from the URL
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
+    const incomingState = urlParams.get('state');
+    const savedState = localStorage.getItem('podio_auth_state');
     
     if (!code) {
       setStatus('error');
@@ -25,12 +26,18 @@ const PodioCallbackPage = () => {
       return;
     }
 
-    // Display the code for manual copying
-    setAuthCode(code);
+    // Verify state parameter to prevent CSRF attacks
+    if (incomingState !== savedState) {
+      setStatus('error');
+      setMessage('Invalid state parameter - authorization request may have been tampered with');
+      return;
+    }
 
+    // Clear the stored state
+    localStorage.removeItem('podio_auth_state');
+    
     const processAuth = async () => {
       try {
-        // Get stored credentials
         const clientId = localStorage.getItem('podio_client_id');
         const clientSecret = localStorage.getItem('podio_client_secret');
         
@@ -40,10 +47,16 @@ const PodioCallbackPage = () => {
           return;
         }
 
-        // Exchange code for access token
-        // Use window.location.origin for exact domain matching
+        // Exchange code for access token with exact redirect URI
         const redirectUri = `${window.location.origin}/podio-callback`;
         const tokenUrl = 'https://podio.com/oauth/token';
+        
+        console.log('Exchanging code with params:', {
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          code,
+          redirect_uri: redirectUri
+        });
         
         const response = await fetch(tokenUrl, {
           method: 'POST',
@@ -66,7 +79,7 @@ const PodioCallbackPage = () => {
 
         const tokenData = await response.json();
         
-        // Store tokens locally (for development only)
+        // Store tokens
         localStorage.setItem('podio_access_token', tokenData.access_token);
         localStorage.setItem('podio_refresh_token', tokenData.refresh_token);
         localStorage.setItem('podio_token_expiry', (Date.now() + tokenData.expires_in * 1000).toString());
@@ -85,7 +98,7 @@ const PodioCallbackPage = () => {
         
         toast({
           title: "Error",
-          description: "Failed to connect to Podio API",
+          description: "Failed to connect to Podio API. Please check the console for more details.",
           variant: "destructive",
         });
       }
