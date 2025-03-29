@@ -8,9 +8,9 @@ const PODIO_PACKING_SPEC_APP_ID = 29797638;
 const CONTACT_FIELD_IDS = {
   username: "customer-portal-username",
   password: "customer-portal-password",
-  contactItemId: "piid", // Contact item ID
+  contactItemId: "item-id",
   logoUrl: "logo-url",
-  title: "title" // Business name
+  title: "title"
 };
 
 // Podio Packing Spec Field IDs
@@ -18,7 +18,7 @@ const PACKING_SPEC_FIELD_IDS = {
   packingSpecId: 265909594,
   approvalStatus: 265959138,
   productName: 265909621,
-  customer: 265909622, // Reference to contact app
+  customer: 265909622,
   productCode: 265909623,
   versionNumber: 265909624,
   updatedBy: 265959736,
@@ -92,7 +92,7 @@ export interface PackingSpec {
     batchSize?: string;
     packagingType?: string;
     specialRequirements?: string;
-    [key: string]: any; // Allow additional fields
+    [key: string]: any;
   };
 }
 
@@ -242,63 +242,70 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
       return null;
     }
     
-    // Search for contact with matching username
-    const viewId = 'all'; // Using 'all' to search all items
-    const endpoint = `app/${PODIO_CONTACTS_APP_ID}/filter/${viewId}`;
+    // Use the filtered API to find contacts with the given username
+    const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
     
     const filters = {
       filters: {
-        [CONTACT_FIELD_IDS.username]: credentials.username
+        [CONTACT_FIELD_IDS.username]: {
+          "from": credentials.username,
+          "to": credentials.username
+        }
       }
     };
+
+    console.log('Searching contacts with filters:', JSON.stringify(filters, null, 2));
     
     const searchResponse = await callPodioApi(endpoint, {
       method: 'POST',
       body: JSON.stringify(filters),
     });
     
+    console.log('Search response:', searchResponse);
+    
     if (!searchResponse.items || searchResponse.items.length === 0) {
-      console.log('No contact found with this username');
+      console.log('No contact found with username:', credentials.username);
       return null;
     }
     
     // Get the first contact that matches
     const contactItem = searchResponse.items[0];
     
+    // Log the fields to help debug
+    console.log('Contact fields:', contactItem.fields);
+    
     // Extract fields from the response
-    const contactFields = contactItem.fields;
-    const passwordField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.password);
+    const usernameField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.username);
+    const passwordField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.password);
+    const titleField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.title);
+    const logoField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.logoUrl);
+    
+    console.log('Found fields:', {
+      username: usernameField?.values?.[0]?.value,
+      hasPassword: !!passwordField,
+      title: titleField?.values?.[0]?.value,
+      logo: logoField?.values?.[0]?.value
+    });
     
     if (!passwordField || passwordField.values[0].value !== credentials.password) {
-      console.log('Password does not match');
+      console.log('Password does not match or password field not found');
       return null;
     }
     
-    // Extract contact details
-    const titleField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.title);
-    const logoField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.logoUrl);
-    
     const contact: ContactData = {
       id: contactItem.item_id,
-      name: titleField ? titleField.values[0].value : 'Unknown Company',
-      email: '', // Email might be in a different field or structure
+      name: titleField?.values?.[0]?.value || 'Unknown Company',
+      email: '', // Email might be in a different field if needed
       username: credentials.username,
-      logoUrl: logoField ? logoField.values[0].value : undefined
+      logoUrl: logoField?.values?.[0]?.value
     };
     
+    console.log('Successfully authenticated contact:', contact);
     return contact;
     
   } catch (error) {
     console.error('Authentication error:', error);
-    
-    // For development fallback, check mock data
-    console.log('Falling back to mock data for authentication');
-    const contact = MOCK_CONTACTS.find(c => 
-      c.username === credentials.username && 
-      credentials.password === 'password' // In the mock, any password 'password' works
-    );
-    
-    return contact || null;
+    return null;
   }
 };
 
