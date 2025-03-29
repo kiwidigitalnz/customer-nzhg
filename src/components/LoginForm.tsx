@@ -5,16 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { isPodioConfigured } from '../services/podioApi';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { Info, AlertCircle } from 'lucide-react';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [debugMode, setDebugMode] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const LoginForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginAttempted(true);
     
     if (!podioConfigured) {
       toast({
@@ -103,6 +105,7 @@ const LoginForm = () => {
           
           {error && (
             <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
               <AlertTitle>Login Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -118,32 +121,53 @@ const LoginForm = () => {
             </Alert>
           )}
           
+          {podioConfigured && loginAttempted && !error && !loading && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Connection Status</AlertTitle>
+              <AlertDescription>
+                Podio is configured, but login attempt failed. Check console for details.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Button type="submit" className="w-full" disabled={loading || !podioConfigured}>
             {loading ? 'Logging in...' : 'Login'}
           </Button>
           
-          {/* Debug mode toggle - only in development */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div className="mt-4 text-center">
-              <button 
-                type="button" 
-                onClick={toggleDebugMode}
-                className="text-xs text-muted-foreground underline"
-              >
-                {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
-              </button>
-              
-              {debugMode && (
-                <div className="mt-2 p-2 bg-muted text-left rounded text-xs">
-                  <p>Podio configured: {podioConfigured ? 'Yes' : 'No'}</p>
-                  <p>Username: {username}</p>
-                  <p>Password: {password ? '********' : '(empty)'}</p>
-                  <p>Login state: {loading ? 'Loading' : error ? 'Error' : 'Ready'}</p>
-                  {error && <p>Error: {error}</p>}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Debug mode toggle - always visible for troubleshooting */}
+          <div className="mt-4 text-center">
+            <button 
+              type="button" 
+              onClick={toggleDebugMode}
+              className="text-xs text-muted-foreground underline"
+            >
+              {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
+            </button>
+            
+            {debugMode && (
+              <div className="mt-2 p-2 bg-muted text-left rounded text-xs">
+                <p>Podio configured: {podioConfigured ? 'Yes' : 'No'}</p>
+                <p>Username: {username}</p>
+                <p>Password: {password ? '********' : '(empty)'}</p>
+                <p>Login state: {loading ? 'Loading' : error ? 'Error' : 'Ready'}</p>
+                {error && <p>Error: {error}</p>}
+                <p className="mt-2 font-semibold">Field IDs used:</p>
+                <p>Username field: customer-portal-username</p>
+                <p>Password field: customer-portal-password</p>
+                <p>Title field: title</p>
+                <p className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/podio-setup')}
+                    className="text-blue-500 underline"
+                  >
+                    Go to Podio Setup
+                  </button>
+                </p>
+              </div>
+            )}
+          </div>
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">

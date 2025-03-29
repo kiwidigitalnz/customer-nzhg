@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -258,7 +259,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
     const accessToken = localStorage.getItem('podio_access_token');
     console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
     
-    // Try a different filter format for text fields
+    // Fix: Use the correct filter format for text fields (simple string value instead of from/to object)
     const filters = {
       filters: {
         [CONTACT_FIELD_IDS.username]: credentials.username
@@ -276,7 +277,27 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
       });
     } catch (error) {
       console.error('Error during contact search:', error);
-      return null;
+      
+      // Try alternative filter format as fallback
+      try {
+        console.log('Trying alternative filter format...');
+        const alternativeFilters = {
+          filters: {
+            [CONTACT_FIELD_IDS.username]: {
+              "equals": credentials.username
+            }
+          }
+        };
+        console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
+        
+        searchResponse = await callPodioApi(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(alternativeFilters),
+        });
+      } catch (secondError) {
+        console.error('Alternative filter also failed:', secondError);
+        return null;
+      }
     }
     
     console.log('Search response items count:', searchResponse.items?.length || 0);
