@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MainLayout from '../components/MainLayout';
+import { useNavigate } from 'react-router-dom';
 
 const PodioSetupPage = () => {
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [manualCode, setManualCode] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSaveCredentials = () => {
     if (!clientId || !clientSecret) {
@@ -48,6 +52,76 @@ const PodioSetupPage = () => {
     const authUrl = `https://podio.com/oauth/authorize?client_id=${storedClientId}&redirect_uri=${redirectUri}&scope=global`;
     
     window.location.href = authUrl;
+  };
+
+  const handleManualCodeSubmit = async () => {
+    if (!manualCode) {
+      toast({
+        title: "Error",
+        description: "Please enter the authorization code",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const clientId = localStorage.getItem('podio_client_id');
+    const clientSecret = localStorage.getItem('podio_client_secret');
+
+    if (!clientId || !clientSecret) {
+      toast({
+        title: "Error",
+        description: "Please save Client ID and Secret first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Exchange code for access token
+      const redirectUri = `${window.location.origin}/podio-callback`;
+      const tokenUrl = 'https://podio.com/oauth/token';
+      
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: manualCode,
+          redirect_uri: redirectUri,
+        }).toString(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error_description || 'Failed to exchange code for token');
+      }
+
+      const tokenData = await response.json();
+      
+      // Store tokens locally (for development only)
+      localStorage.setItem('podio_access_token', tokenData.access_token);
+      localStorage.setItem('podio_refresh_token', tokenData.refresh_token);
+      localStorage.setItem('podio_token_expiry', (Date.now() + tokenData.expires_in * 1000).toString());
+      
+      toast({
+        title: "Success",
+        description: "Connected to Podio API successfully",
+      });
+
+      // Navigate to dashboard or where appropriate
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error exchanging code:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to connect to Podio API",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -95,13 +169,51 @@ const PodioSetupPage = () => {
                 <li>Paste them in the fields above and save</li>
               </ol>
             </div>
+            
+            <Tabs defaultValue="automatic" className="mt-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="automatic">Automatic</TabsTrigger>
+                <TabsTrigger value="manual">Manual Code</TabsTrigger>
+              </TabsList>
+              <TabsContent value="automatic" className="py-4">
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Click the button below to initiate the automatic OAuth flow with Podio.
+                </p>
+                <Button onClick={handleAuthorizePodio} className="w-full">
+                  Authorize with Podio
+                </Button>
+              </TabsContent>
+              <TabsContent value="manual" className="py-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="manual-code" className="text-sm font-medium">
+                      Authorization Code
+                    </label>
+                    <Input
+                      id="manual-code"
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      placeholder="Enter the authorization code from Podio"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    1. Go to <a href={`https://podio.com/oauth/authorize?client_id=${localStorage.getItem('podio_client_id') || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(`${window.location.origin}/podio-callback`)}&scope=global`} target="_blank" rel="noopener noreferrer" className="underline">
+                      Podio Authorization Page
+                    </a><br />
+                    2. Authorize the application<br />
+                    3. Copy the 'code' parameter from the resulting URL<br />
+                    4. Paste the code in the field above
+                  </p>
+                  <Button onClick={handleManualCodeSubmit} className="w-full">
+                    Submit Code
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button variant="outline" onClick={handleSaveCredentials}>
               Save Credentials
-            </Button>
-            <Button onClick={handleAuthorizePodio}>
-              Authorize with Podio
             </Button>
           </CardFooter>
         </Card>
