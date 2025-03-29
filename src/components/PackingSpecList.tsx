@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { updatePackingSpecStatus } from '../services/podioApi';
-import { Check, X, AlertCircle, Calendar, Package, Info } from 'lucide-react';
+import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface PackingSpec {
   id: number;
@@ -52,6 +53,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
   const [comments, setComments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   if (specs.length === 0) {
     return (
@@ -118,6 +120,10 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     }
   };
 
+  const handleViewDetails = (spec: PackingSpec) => {
+    navigate(`/packing-spec/${spec.id}`);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {specs.map(spec => (
@@ -152,16 +158,24 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
               </div>
             </div>
           </CardContent>
-          <CardFooter>
-            {spec.status === 'pending' && !readOnly ? (
+          <CardFooter className="flex gap-2">
+            <Button 
+              variant="outline"
+              className="w-full"
+              onClick={() => handleViewDetails(spec)}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" /> View Details
+            </Button>
+            
+            {spec.status === 'pending' && !readOnly && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     className="w-full"
                     onClick={() => setSelectedSpec(spec)}
                   >
-                    View Details
+                    Review
                   </Button>
                 </DialogTrigger>
                 {selectedSpec && (
@@ -177,7 +191,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <h4 className="font-medium">Product Details</h4>
+                        <h4 className="font-medium">Quick Review</h4>
                         <div className="text-sm rounded-md bg-muted p-4 space-y-2">
                           <div><span className="font-medium">Product:</span> {selectedSpec.details.product}</div>
                           
@@ -254,93 +268,6 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                             <Check className="mr-2 h-4 w-4" /> Approve
                           </>
                         )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                )}
-              </Dialog>
-            ) : (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => setSelectedSpec(spec)}
-                  >
-                    View Details
-                  </Button>
-                </DialogTrigger>
-                {selectedSpec && (
-                  <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                      <DialogTitle>{selectedSpec.title}</DialogTitle>
-                      <DialogDescription>
-                        {selectedSpec.details.productCode && `Product Code: ${selectedSpec.details.productCode}`}
-                        {selectedSpec.description && (
-                          <div className="mt-2">{selectedSpec.description}</div>
-                        )}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Status:</span>
-                        {getStatusBadge(selectedSpec.status)}
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Product Details</h4>
-                        <div className="text-sm rounded-md bg-muted p-4 space-y-2">
-                          <div><span className="font-medium">Product:</span> {selectedSpec.details.product}</div>
-                          
-                          {selectedSpec.details.honeyType && (
-                            <div><span className="font-medium">Honey Type:</span> {selectedSpec.details.honeyType}</div>
-                          )}
-                          
-                          {selectedSpec.details.umfMgo && (
-                            <div><span className="font-medium">UMF/MGO:</span> {selectedSpec.details.umfMgo}</div>
-                          )}
-                          
-                          <Separator className="my-2" />
-                          
-                          <h5 className="font-medium">Packaging</h5>
-                          
-                          {selectedSpec.details.jarSize && (
-                            <div><span className="font-medium">Jar Size:</span> {selectedSpec.details.jarSize}</div>
-                          )}
-                          
-                          {selectedSpec.details.jarColour && (
-                            <div><span className="font-medium">Jar Color:</span> {selectedSpec.details.jarColour}</div>
-                          )}
-                          
-                          {selectedSpec.details.jarMaterial && (
-                            <div><span className="font-medium">Jar Material:</span> {selectedSpec.details.jarMaterial}</div>
-                          )}
-                          
-                          {selectedSpec.details.lidSize && (
-                            <div><span className="font-medium">Lid Size:</span> {selectedSpec.details.lidSize}</div>
-                          )}
-                          
-                          {selectedSpec.details.lidColour && (
-                            <div><span className="font-medium">Lid Color:</span> {selectedSpec.details.lidColour}</div>
-                          )}
-                          
-                          {selectedSpec.details.specialRequirements && (
-                            <>
-                              <Separator className="my-2" />
-                              <div>
-                                <span className="font-medium">Special Requirements:</span>
-                                <p className="mt-1">{selectedSpec.details.specialRequirements}</p>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedSpec(null)}
-                      >
-                        Close
                       </Button>
                     </DialogFooter>
                   </DialogContent>

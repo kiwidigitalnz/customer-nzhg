@@ -1,4 +1,3 @@
-
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -441,4 +440,130 @@ export const updatePackingSpecStatus = async (
 // Function to check if Podio API is configured
 export const isPodioConfigured = (): boolean => {
   return hasValidPodioTokens();
+};
+
+// Get packing spec details for a specific spec ID
+export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
+  try {
+    console.log('Fetching details for packing spec ID:', specId);
+    
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
+    }
+    
+    // Get the item from Podio
+    const endpoint = `item/${specId}`;
+    
+    const response = await callPodioApi(endpoint);
+    
+    if (!response) {
+      console.log('No packing spec found with this ID');
+      return null;
+    }
+    
+    // Transform Podio item into our PackingSpec format
+    const item = response;
+    const fields = item.fields;
+    
+    // Map to our application's format
+    const packingSpec: PackingSpec = {
+      id: item.item_id,
+      title: getFieldValueByExternalId(fields, 'product-name') || 'Untitled Spec',
+      description: getFieldValueByExternalId(fields, 'customer-requrements') || '',
+      status: mapPodioStatusToAppStatus(getFieldValueByExternalId(fields, 'customer-approval-status')),
+      createdAt: item.created_on,
+      details: {
+        product: getFieldValueByExternalId(fields, 'product-name') || '',
+        productCode: getFieldValueByExternalId(fields, 'product-code') || '',
+        umfMgo: getFieldValueByExternalId(fields, 'umf-mgo') || '',
+        honeyType: getFieldValueByExternalId(fields, 'honey-type') || '',
+        jarSize: getFieldValueByExternalId(fields, 'jar-size') || '',
+        jarColour: getFieldValueByExternalId(fields, 'jar-colour') || '',
+        jarMaterial: getFieldValueByExternalId(fields, 'jar-material') || '',
+        jarShape: getFieldValueByExternalId(fields, 'jar-shape') || '',
+        lidSize: getFieldValueByExternalId(fields, 'lid-size') || '',
+        lidColour: getFieldValueByExternalId(fields, 'lid-colour') || '',
+        onTheGoPackaging: getFieldValueByExternalId(fields, 'on-the-go-packaging') || '',
+        pouchSize: getFieldValueByExternalId(fields, 'pouch-size') || '',
+        sealInstructions: getFieldValueByExternalId(fields, 'seal-instructions') || '',
+        customerRequirements: getFieldValueByExternalId(fields, 'customer-requrements') || '',
+        countryOfEligibility: getFieldValueByExternalId(fields, 'country-of-eligibility') || '',
+        otherMarkets: getFieldValueByExternalId(fields, 'other-markets') || '',
+        testingRequirements: getFieldValueByExternalId(fields, 'testing-requirments') || '',
+        regulatoryRequirements: getFieldValueByExternalId(fields, 'reglatory-requirements') || '',
+        shipperSize: getFieldValueByExternalId(fields, 'shipper-size') || '',
+        customisedCartonType: getFieldValueByExternalId(fields, 'customised-carton-type') || '',
+        labelCode: getFieldValueByExternalId(fields, 'label-code') || '',
+        labelSpecification: getFieldValueByExternalId(fields, 'label-soecification') || '',
+        printingInfoLocated: getFieldValueByExternalId(fields, 'printing-information-located') || '',
+        printingColour: getFieldValueByExternalId(fields, 'printing-colour') || '',
+        printingInfoRequired: getFieldValueByExternalId(fields, 'printing-information-required') || '',
+        requiredBestBeforeDate: getFieldValueByExternalId(fields, 'required-best-before-date') || '',
+        dateFormatting: getFieldValueByExternalId(fields, 'formate-of-dates') || '',
+        shipperStickerCount: getFieldValueByExternalId(fields, 'number-of-shipper-stickers-on-carton') || '',
+        palletType: getFieldValueByExternalId(fields, 'pallet-type') || '',
+        cartonsPerLayer: getFieldValueByExternalId(fields, 'cartons-per-layer') || '',
+        numberOfLayers: getFieldValueByExternalId(fields, 'number-of-layers') || '',
+        palletSpecs: getFieldValueByExternalId(fields, 'pallet') || '',
+        palletDocuments: getFieldValueByExternalId(fields, 'pallet-documents') || '',
+        customerRequestedChanges: getFieldValueByExternalId(fields, 'customer-requested-changes') || '',
+        approvedByName: getFieldValueByExternalId(fields, 'approved-by-2') || '',
+        versionNumber: getFieldValueByExternalId(fields, 'version-number') || '',
+        // Dates need special handling since they are objects
+        dateReviewed: getDateFieldValue(fields, 'date-reviewed'),
+        approvalDate: getDateFieldValue(fields, 'approval-date'),
+        // We don't handle images yet, but we could add this later
+        // label: getFieldValueByExternalId(fields, 'label'),
+        // signature: getFieldValueByExternalId(fields, 'signature'),
+        // shipperSticker: getFieldValueByExternalId(fields, 'shipper-sticker'),
+      }
+    };
+    
+    return packingSpec;
+  } catch (error) {
+    console.error('Error fetching packing spec details:', error);
+    
+    // For development, return mock data as fallback
+    console.log('Falling back to mock data for packing spec details');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    
+    // Find mock spec by ID
+    const mockSpec = MOCK_SPECS.find(spec => spec.id === specId);
+    
+    // Add more detailed fields to the mock data
+    if (mockSpec) {
+      mockSpec.details = {
+        ...mockSpec.details,
+        jarShape: 'Round',
+        palletType: 'Standard',
+        cartonsPerLayer: '12',
+        numberOfLayers: '5',
+        dateReviewed: '2023-10-20',
+        approvalDate: mockSpec.status === 'approved' ? '2023-10-22' : '',
+        approvedByName: mockSpec.status === 'approved' ? 'John Smith' : '',
+        versionNumber: '1.2',
+        countryOfEligibility: 'New Zealand, Australia',
+        regulatoryRequirements: 'MPI Compliance',
+        labelCode: 'NZHG-2023-001',
+        labelSpecification: 'Standard Label with UMF Logo'
+      };
+    }
+    
+    return mockSpec || null;
+  }
+};
+
+// Helper function to extract date values from Podio date fields
+const getDateFieldValue = (fields: any[], externalId: string): string | null => {
+  const field = fields.find(f => f.external_id === externalId);
+  if (!field || !field.values || field.values.length === 0) {
+    return null;
+  }
+  
+  // Date fields in Podio have start and sometimes end properties
+  if (field.values[0].start) {
+    return field.values[0].start;
+  }
+  
+  return null;
 };

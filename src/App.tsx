@@ -11,6 +11,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import PodioSetupPage from "./pages/PodioSetupPage";
 import PodioCallbackPage from "./pages/PodioCallbackPage";
+import PackingSpecDetailsPage from "./pages/PackingSpecDetailsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/packing-spec/:id" element={<PackingSpecDetailsPage />} />
             <Route path="/podio-setup" element={<PodioSetupPage />} />
             <Route path="/podio-callback" element={<PodioCallbackPage />} />
             <Route path="*" element={<NotFound />} />
