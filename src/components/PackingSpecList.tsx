@@ -1,4 +1,3 @@
-
 import { 
   Card, 
   CardContent, 
@@ -24,6 +23,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
+interface CommentItem {
+  id: number;
+  text: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 interface PackingSpec {
   id: number;
   title: string;
@@ -45,6 +51,7 @@ interface PackingSpec {
     specialRequirements?: string;
     [key: string]: any; // Allow additional fields
   };
+  comments?: CommentItem[]; // Add the comments property
 }
 
 interface PackingSpecListProps {
