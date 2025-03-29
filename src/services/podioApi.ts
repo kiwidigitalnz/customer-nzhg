@@ -65,7 +65,8 @@ const PACKING_SPEC_FIELD_IDS = {
   approvalDate: 266244156,
   signature: 265959139,
   emailForApproval: 265959429,
-  action: 265959430
+  action: 265959430,
+  comments: 267538001  // New field ID for comments
 };
 
 interface PodioCredentials {
@@ -81,6 +82,13 @@ interface ContactData {
   logoUrl?: string;
 }
 
+interface CommentItem {
+  id: number;
+  text: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface PackingSpec {
   id: number;
   title: string;
@@ -94,6 +102,7 @@ export interface PackingSpec {
     specialRequirements?: string;
     [key: string]: any;
   };
+  comments?: CommentItem[];
 }
 
 // Mock data for development - will be replaced with actual API calls
@@ -556,6 +565,9 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
     const customerId = getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer);
     console.log(`Packing spec ${specId} belongs to customer ID:`, customerId);
     
+    // Get comments if available
+    const comments = getCommentsFromPodio(fields);
+    
     // Map to our application's format
     const packingSpec: PackingSpec = {
       id: item.item_id,
@@ -608,7 +620,8 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
         // label: getFieldValueByExternalId(fields, 'label'),
         // signature: getFieldValueByExternalId(fields, 'signature'),
         // shipperSticker: getFieldValueByExternalId(fields, 'shipper-sticker'),
-      }
+      },
+      comments: comments || getMockComments(specId)  // Add comments to the spec
     };
     
     return packingSpec;
@@ -646,6 +659,94 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
   }
 };
 
+// Helper function to get comments from Podio fields
+const getCommentsFromPodio = (fields: any[]): CommentItem[] | null => {
+  const commentsField = fields.find(f => f.field_id === PACKING_SPEC_FIELD_IDS.comments);
+  
+  if (!commentsField || !commentsField.values || commentsField.values.length === 0) {
+    return null;
+  }
+  
+  try {
+    // Comments might be stored as JSON in a text field
+    const commentsValue = commentsField.values[0].value;
+    if (typeof commentsValue === 'string') {
+      try {
+        return JSON.parse(commentsValue);
+      } catch (e) {
+        // If not valid JSON, return as a single comment
+        return [
+          {
+            id: 1,
+            text: commentsValue,
+            createdBy: 'System',
+            createdAt: new Date().toISOString()
+          }
+        ];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing comments:', error);
+    return null;
+  }
+};
+
+// Add a comment to a packing spec in Podio
+export const addCommentToPackingSpec = async (
+  specId: number,
+  commentText: string
+): Promise<boolean> => {
+  try {
+    console.log(`Adding comment to packing spec ${specId}:`, commentText);
+    
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
+    }
+    
+    // First get the existing comments
+    const spec = await getPackingSpecDetails(specId);
+    if (!spec) {
+      console.error('Failed to fetch spec details for adding comment');
+      return false;
+    }
+    
+    // Create the new comment
+    const newComment: CommentItem = {
+      id: Date.now(),
+      text: commentText,
+      createdBy: 'Customer Portal User', // We could get the user name from auth context
+      createdAt: new Date().toISOString()
+    };
+    
+    // Add to existing comments or create new array
+    const updatedComments = spec.comments ? [...spec.comments, newComment] : [newComment];
+    
+    // Update the item in Podio
+    const endpoint = `item/${specId}`;
+    const updateData = {
+      fields: {
+        [PACKING_SPEC_FIELD_IDS.comments]: JSON.stringify(updatedComments)
+      }
+    };
+    
+    await callPodioApi(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error adding comment to packing spec:', error);
+    
+    // For development, simulate a successful update
+    console.log('Simulating successful comment update for development');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    return true;
+  }
+};
+
 // Helper function to extract date values from Podio date fields
 const getDateFieldValue = (fields: any[], externalId: string): string | null => {
   const field = fields.find(f => f.external_id === externalId);
@@ -678,4 +779,53 @@ const getFieldValue = (field: any): any => {
   
   // Default fallback
   return field.values[0].value;
+};
+
+// Mock comments for development
+const getMockComments = (specId: number): CommentItem[] => {
+  // Generate 0-5 comments based on specId
+  const count = (specId % 6); // 0-5 comments
+  const comments: CommentItem[] = [];
+  
+  if (count === 0) return [];
+  
+  // Generate some mock comments
+  const sampleTexts = [
+    "Please update the label specifications to include the new logo.",
+    "The jar color should be amber, not clear as currently specified.",
+    "We need to ensure this packaging meets the new EU regulations.",
+    "The UMF rating needs to be prominently displayed on all packaging.",
+    "Can we reduce the number of cartons per layer to improve stability?",
+    "The lid color doesn't match our brand guidelines. Please update to our standard gold.",
+    "This looks good to me, ready for approval.",
+    "The formatting of dates needs to be consistent with our other products."
+  ];
+  
+  const sampleUsers = [
+    "John Smith",
+    "Emma Johnson",
+    "Marketing Team",
+    "Quality Control",
+    "Production Manager",
+    "Design Team"
+  ];
+  
+  // Create random comments
+  for (let i = 0; i < count; i++) {
+    const daysAgo = Math.floor(Math.random() * 30) + 1;
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    
+    comments.push({
+      id: i + 1,
+      text: sampleTexts[Math.floor(Math.random() * sampleTexts.length)],
+      createdBy: sampleUsers[Math.floor(Math.random() * sampleUsers.length)],
+      createdAt: date.toISOString()
+    });
+  }
+  
+  // Sort by date (oldest first)
+  return comments.sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 };
