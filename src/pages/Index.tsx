@@ -9,31 +9,30 @@ const Index = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Check if Podio is configured
+  // Check if Podio is configured - this is the first and most important check
   const podioConfigured = isPodioConfigured();
   
   useEffect(() => {
-    // Show a message if Podio is not configured
     if (!podioConfigured) {
       toast({
         title: "Podio Setup Required",
-        description: "Please configure Podio API settings to continue",
+        description: "Please configure Podio API settings before using this application",
         duration: 5000,
       });
     }
   }, [podioConfigured, toast]);
   
-  // If user is logged in, redirect to dashboard
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // If Podio is not configured, redirect to Podio setup
+  // If Podio is not configured, redirect to Podio setup as the highest priority
   if (!podioConfigured) {
     return <Navigate to="/podio-setup" replace />;
   }
   
-  // Otherwise, redirect to login
+  // Only if Podio is configured, check if user is logged in
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  // If Podio is configured but no user is logged in, redirect to login
   return <Navigate to="/login" replace />;
 };
 

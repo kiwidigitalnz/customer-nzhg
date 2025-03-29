@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { isPodioConfigured } from '../services/podioApi';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -15,8 +16,21 @@ const LoginForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Check if Podio is configured
+  const podioConfigured = isPodioConfigured();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!podioConfigured) {
+      toast({
+        title: 'Podio Not Configured',
+        description: 'Please set up Podio API credentials first',
+        variant: 'destructive',
+      });
+      navigate('/podio-setup');
+      return;
+    }
     
     if (!username || !password) {
       toast({
@@ -38,7 +52,7 @@ const LoginForm = () => {
     } else {
       toast({
         title: 'Login failed',
-        description: error || 'Please check your credentials and try again',
+        description: error || 'No matching contact found in Podio. Please check your credentials.',
         variant: 'destructive',
       });
     }
@@ -77,7 +91,12 @@ const LoginForm = () => {
             />
           </div>
           {error && <p className="text-destructive text-sm">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          {!podioConfigured && (
+            <p className="text-amber-600 text-sm">
+              Podio connection not configured. Please contact an administrator.
+            </p>
+          )}
+          <Button type="submit" className="w-full" disabled={loading || !podioConfigured}>
             {loading ? 'Logging in...' : 'Login'}
           </Button>
         </form>

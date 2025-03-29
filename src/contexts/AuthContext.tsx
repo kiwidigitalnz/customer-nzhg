@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser } from '../services/podioApi';
+import { authenticateUser, isPodioConfigured } from '../services/podioApi';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ContactData {
   id: number;
@@ -24,8 +25,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<ContactData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
+    // Only try to restore the session if Podio is configured
+    const podioConfigured = isPodioConfigured();
+    if (!podioConfigured) {
+      setLoading(false);
+      return;
+    }
+
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
     if (savedUser) {
@@ -42,6 +51,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
+    // Verify Podio is configured before attempting login
+    if (!isPodioConfigured()) {
+      setError('Podio API is not configured. Please set up Podio API first.');
+      setLoading(false);
+      toast({
+        title: 'Podio Not Configured',
+        description: 'Please set up Podio API credentials before logging in',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
     try {
       const userData = await authenticateUser({ username, password });
       
@@ -51,12 +72,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         return true;
       } else {
-        setError('Invalid username or password');
+        setError('No matching contact found with these credentials');
         setLoading(false);
         return false;
       }
     } catch (err) {
-      setError('An error occurred during login. Please try again.');
+      setError('An error occurred during login. Please verify Podio connection and try again.');
+      console.error('Login error:', err);
       setLoading(false);
       return false;
     }

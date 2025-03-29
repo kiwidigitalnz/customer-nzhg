@@ -1,14 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact } from '../services/podioApi';
+import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PackageCheck, LogOut, Loader2, Building } from 'lucide-react';
+import { PackageCheck, LogOut, Loader2, Building, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface PackingSpec {
   id: number;
@@ -30,12 +31,32 @@ const Dashboard = () => {
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const podioConfigured = isPodioConfigured();
 
   useEffect(() => {
+    // Redirect to Podio setup if not configured
+    if (!podioConfigured) {
+      toast({
+        title: 'Podio Not Configured',
+        description: 'Please set up Podio API credentials first',
+        variant: 'destructive',
+      });
+      navigate('/podio-setup');
+      return;
+    }
+
+    // Redirect to login if no user
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
     const fetchSpecs = async () => {
       if (user) {
         setLoading(true);
         try {
+          console.log(`Fetching specs for contact ID: ${user.id}`);
           const data = await getPackingSpecsForContact(user.id);
           setSpecs(data);
         } catch (error) {
@@ -52,7 +73,19 @@ const Dashboard = () => {
     };
 
     fetchSpecs();
-  }, [user, toast]);
+  }, [user, toast, navigate, podioConfigured]);
+
+  // If there's no user or Podio is not configured, show a loading state
+  if (!user || !podioConfigured) {
+    return (
+      <div className="flex justify-center items-center h-[80vh]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-lg text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const pendingSpecs = specs.filter(spec => spec.status === 'pending');
   const approvedSpecs = specs.filter(spec => spec.status === 'approved');
@@ -104,6 +137,22 @@ const Dashboard = () => {
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
+
+      {!specs.length && !loading && (
+        <Card className="mb-8 bg-amber-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-medium">No Packing Specifications Found</h3>
+                <p className="text-sm text-muted-foreground">
+                  There are currently no packing specifications linked to your account.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
