@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import MainLayout from '../components/MainLayout';
 
 const PodioCallbackPage = () => {
@@ -26,14 +27,17 @@ const PodioCallbackPage = () => {
       return;
     }
 
+    setAuthCode(code); // Store the code for manual entry option
+
     // Verify state parameter to prevent CSRF attacks
-    if (incomingState !== savedState) {
+    if (!incomingState || !savedState || incomingState !== savedState) {
+      console.error('State parameter mismatch:', { incomingState, savedState });
       setStatus('error');
       setMessage('Invalid state parameter - authorization request may have been tampered with');
       return;
     }
 
-    // Clear the stored state
+    // Clear the stored state after validation
     localStorage.removeItem('podio_auth_state');
     
     const processAuth = async () => {
@@ -119,12 +123,24 @@ const PodioCallbackPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={`p-4 rounded-md ${
-              status === 'loading' ? 'bg-blue-50 text-blue-700' :
-              status === 'success' ? 'bg-green-50 text-green-700' :
-              'bg-red-50 text-red-700'
-            }`}>
-              <p>{message}</p>
+            <Alert 
+              variant={
+                status === 'loading' ? 'default' :
+                status === 'success' ? 'default' :
+                'destructive'
+              }
+              className={`${
+                status === 'loading' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                status === 'success' ? 'bg-green-50 text-green-700 border-green-200' :
+                'bg-red-50 text-red-700 border-red-200'
+              }`}
+            >
+              <AlertTitle className="font-semibold">
+                {status === 'loading' ? 'Processing' :
+                 status === 'success' ? 'Success' :
+                 'Error'}
+              </AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
               
               {authCode && status === 'error' && (
                 <div className="mt-4">
@@ -135,7 +151,7 @@ const PodioCallbackPage = () => {
                   <p className="mt-2 text-sm">Copy this code and use it in the Manual Code tab on the Podio Setup page.</p>
                 </div>
               )}
-            </div>
+            </Alert>
             <div className="flex justify-center">
               <Button onClick={() => navigate('/podio-setup')}>
                 {status === 'success' ? 'Back to Setup' : 'Try Again'}

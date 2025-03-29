@@ -62,7 +62,8 @@ const PodioSetupPage = () => {
     }
 
     // Generate a random state parameter for security
-    const state = Math.random().toString(36).substring(7);
+    const state = Math.random().toString(36).substring(2, 15) + 
+                 Math.random().toString(36).substring(2, 15);
     localStorage.setItem('podio_auth_state', state);
 
     // Build the authorization URL with correct parameters
@@ -199,7 +200,7 @@ const PodioSetupPage = () => {
               <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>{currentDomain}</strong></p>
             </div>
             
-            <Tabs defaultValue="manual" className="mt-6">
+            <Tabs defaultValue="automatic" className="mt-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="automatic">Automatic</TabsTrigger>
                 <TabsTrigger value="manual">Manual Code</TabsTrigger>
@@ -222,7 +223,7 @@ const PodioSetupPage = () => {
                         <div className="mt-1 mb-2">
                           <Input 
                             readOnly
-                            value={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(currentDomain + '/podio-callback')}&scope=global`}
+                            value={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(currentDomain + '/podio-callback')}&response_type=code`}
                             onClick={(e) => (e.target as HTMLInputElement).select()}
                             className="text-xs font-mono p-2 bg-blue-100"
                           />
