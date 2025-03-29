@@ -5,7 +5,8 @@ import { getPackingSpecsForContact } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PackageCheck, LogOut, Loader2 } from 'lucide-react';
+import { PackageCheck, LogOut, Loader2, Building } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -17,9 +18,10 @@ interface PackingSpec {
   createdAt: string;
   details: {
     product: string;
-    batchSize: string;
-    packagingType: string;
+    batchSize?: string;
+    packagingType?: string;
     specialRequirements?: string;
+    [key: string]: any; // Allow additional fields
   };
 }
 
@@ -65,12 +67,38 @@ const Dashboard = () => {
     }
   };
 
+  // Function to get initials from company name for avatar fallback
+  const getCompanyInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Welcome, {user?.name}</h1>
-          <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16 border-2 border-primary/20">
+            {user?.logoUrl ? (
+              <AvatarImage 
+                src={user.logoUrl} 
+                alt={user?.name || 'Company Logo'} 
+                onError={(e) => {
+                  e.currentTarget.src = '';
+                }}
+              />
+            ) : null}
+            <AvatarFallback className="text-xl bg-primary/10 text-primary">
+              {user?.name ? getCompanyInitials(user.name) : <Building />}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-3xl font-bold">{user?.name}</h1>
+            <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
+          </div>
         </div>
         <Button variant="outline" onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" /> Logout

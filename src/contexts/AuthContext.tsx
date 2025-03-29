@@ -7,6 +7,7 @@ interface ContactData {
   name: string;
   email: string;
   username: string;
+  logoUrl?: string;
 }
 
 interface AuthContextType {

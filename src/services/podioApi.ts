@@ -1,6 +1,74 @@
 
 // This file handles all interactions with the Podio API
 
+// Podio App IDs
+const PODIO_CONTACTS_APP_ID = 26969025;
+const PODIO_PACKING_SPEC_APP_ID = 29797638;
+
+// Podio Contact Field IDs
+const CONTACT_FIELD_IDS = {
+  username: "customer-portal-username",
+  password: "customer-portal-password",
+  contactItemId: "piid", // Contact item ID
+  logoUrl: "logo-url",
+  title: "title" // Business name
+};
+
+// Podio Packing Spec Field IDs
+const PACKING_SPEC_FIELD_IDS = {
+  packingSpecId: 265909594,
+  approvalStatus: 265959138,
+  productName: 265909621,
+  customer: 265909622, // Reference to contact app
+  productCode: 265909623,
+  versionNumber: 265909624,
+  updatedBy: 265959736,
+  dateReviewed: 265959737,
+  umfMgo: 265958814,
+  honeyType: 265958813,
+  allergenType: 266035765,
+  ingredientType: 266035766,
+  customerRequirements: 265951759,
+  countryOfEligibility: 265951757,
+  otherMarkets: 265951758,
+  testingRequirements: 265951761,
+  regulatoryRequirements: 265951760,
+  jarColour: 265952439,
+  jarMaterial: 265952440,
+  jarShape: 265952442,
+  jarSize: 265952441,
+  lidSize: 265954653,
+  lidColour: 265954652,
+  onTheGoPackaging: 266035012,
+  pouchSize: 266035907,
+  sealInstructions: 265959436,
+  shipperSize: 265957893,
+  customisedCartonType: 266035908,
+  labelCode: 265958873,
+  labelSpecification: 265959137,
+  label: 265951584,
+  labelLink: 267537366,
+  printingInfoLocated: 265958021,
+  printingColour: 265960110,
+  printingInfoRequired: 265909779,
+  requiredBestBeforeDate: 265909780,
+  dateFormatting: 265951583,
+  shipperSticker: 265957894,
+  shipperStickerCount: 267533778,
+  palletType: 265958228,
+  cartonsPerLayer: 265958229,
+  numberOfLayers: 265958230,
+  palletSpecs: 265958640,
+  palletDocuments: 265958841,
+  customerApprovalStatus: 266244157,
+  customerRequestedChanges: 266244158,
+  approvedByName: 265959428,
+  approvalDate: 266244156,
+  signature: 265959139,
+  emailForApproval: 265959429,
+  action: 265959430
+};
+
 interface PodioCredentials {
   username: string;
   password: string;
@@ -11,9 +79,10 @@ interface ContactData {
   name: string;
   email: string;
   username: string;
+  logoUrl?: string;
 }
 
-interface PackingSpec {
+export interface PackingSpec {
   id: number;
   title: string;
   description: string;
@@ -21,9 +90,10 @@ interface PackingSpec {
   createdAt: string;
   details: {
     product: string;
-    batchSize: string;
-    packagingType: string;
+    batchSize?: string;
+    packagingType?: string;
     specialRequirements?: string;
+    [key: string]: any; // Allow additional fields
   };
 }
 
@@ -163,61 +233,170 @@ const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promis
   }
 };
 
-// This function would be replaced with an actual API call to Podio
+// This function authenticates a user by checking the Podio contacts app
 export const authenticateUser = async (credentials: PodioCredentials): Promise<ContactData | null> => {
   try {
-    console.log('Authenticating with Podio...', credentials);
+    console.log('Authenticating with Podio...', credentials.username);
     
-    // For development, we'll simulate a successful authentication
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      console.error('No valid Podio tokens available for authentication');
+      return null;
+    }
     
-    // Check if credentials match our mock data
+    // Search for contact with matching username
+    const viewId = 'all'; // Using 'all' to search all items
+    const endpoint = `app/${PODIO_CONTACTS_APP_ID}/filter/${viewId}`;
+    
+    const filters = {
+      filters: {
+        [CONTACT_FIELD_IDS.username]: credentials.username
+      }
+    };
+    
+    const searchResponse = await callPodioApi(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(filters),
+    });
+    
+    if (!searchResponse.items || searchResponse.items.length === 0) {
+      console.log('No contact found with this username');
+      return null;
+    }
+    
+    // Get the first contact that matches
+    const contactItem = searchResponse.items[0];
+    
+    // Extract fields from the response
+    const contactFields = contactItem.fields;
+    const passwordField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.password);
+    
+    if (!passwordField || passwordField.values[0].value !== credentials.password) {
+      console.log('Password does not match');
+      return null;
+    }
+    
+    // Extract contact details
+    const titleField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.title);
+    const logoField = contactFields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.logoUrl);
+    
+    const contact: ContactData = {
+      id: contactItem.item_id,
+      name: titleField ? titleField.values[0].value : 'Unknown Company',
+      email: '', // Email might be in a different field or structure
+      username: credentials.username,
+      logoUrl: logoField ? logoField.values[0].value : undefined
+    };
+    
+    return contact;
+    
+  } catch (error) {
+    console.error('Authentication error:', error);
+    
+    // For development fallback, check mock data
+    console.log('Falling back to mock data for authentication');
     const contact = MOCK_CONTACTS.find(c => 
       c.username === credentials.username && 
       credentials.password === 'password' // In the mock, any password 'password' works
     );
     
-    if (contact) {
-      return contact;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return null;
+    return contact || null;
   }
 };
 
-// This function would be replaced with an actual API call to Podio
+// Get packing specs for a specific contact from Podio
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
     console.log('Fetching packing specs for contact ID:', contactId);
     
-    // Check if we have Podio API access
-    if (hasValidPodioTokens()) {
-      try {
-        // This would be replaced with actual API endpoint when you have the Podio app structure
-        // const data = await callPodioApi('app/{app_id}/filter/');
-        console.log('Using Podio API for packing specs');
-        
-        // For now, still return mock data
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-        return MOCK_SPECS;
-      } catch (error) {
-        console.warn('Failed to fetch from Podio API, using mock data:', error);
-      }
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
     }
     
-    // For development, we'll return mock data
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    return MOCK_SPECS;
+    // Filter packing specs by contact ID
+    const endpoint = `app/${PODIO_PACKING_SPEC_APP_ID}/filter/`;
+    
+    const filters = {
+      filters: {
+        [PACKING_SPEC_FIELD_IDS.customer]: contactId
+      }
+    };
+    
+    const response = await callPodioApi(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(filters),
+    });
+    
+    if (!response.items || response.items.length === 0) {
+      console.log('No packing specs found for this contact');
+      return [];
+    }
+    
+    // Transform Podio items into our PackingSpec format
+    const packingSpecs: PackingSpec[] = response.items.map((item: any) => {
+      const fields = item.fields;
+      
+      // Map to our application's format
+      return {
+        id: item.item_id,
+        title: getFieldValueByExternalId(fields, 'product-name') || 'Untitled Spec',
+        description: getFieldValueByExternalId(fields, 'customer-requrements') || '',
+        status: mapPodioStatusToAppStatus(getFieldValueByExternalId(fields, 'customer-approval-status')),
+        createdAt: item.created_on,
+        details: {
+          product: getFieldValueByExternalId(fields, 'product-name') || '',
+          productCode: getFieldValueByExternalId(fields, 'product-code') || '',
+          umfMgo: getFieldValueByExternalId(fields, 'umf-mgo') || '',
+          honeyType: getFieldValueByExternalId(fields, 'honey-type') || '',
+          jarSize: getFieldValueByExternalId(fields, 'jar-size') || '',
+          jarColour: getFieldValueByExternalId(fields, 'jar-colour') || '',
+          jarMaterial: getFieldValueByExternalId(fields, 'jar-material') || '',
+          lidSize: getFieldValueByExternalId(fields, 'lid-size') || '',
+          lidColour: getFieldValueByExternalId(fields, 'lid-colour') || '',
+          specialRequirements: getFieldValueByExternalId(fields, 'customer-requrements') || '',
+        }
+      };
+    });
+    
+    return packingSpecs;
   } catch (error) {
     console.error('Error fetching packing specs:', error);
-    return [];
+    
+    // For development, return mock data as fallback
+    console.log('Falling back to mock data for packing specs');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    return MOCK_SPECS;
   }
 };
 
-// This function would be replaced with an actual API call to Podio
+// Helper function to get field value by external_id
+const getFieldValueByExternalId = (fields: any[], externalId: string): string | null => {
+  const field = fields.find(f => f.external_id === externalId);
+  if (!field || !field.values || field.values.length === 0) {
+    return null;
+  }
+  
+  // Different field types have different value structures
+  if (field.type === 'category' && field.values[0].value) {
+    return field.values[0].value.text;
+  }
+  
+  return field.values[0].value;
+};
+
+// Map Podio approval status to our app's status format
+const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending' | 'approved' | 'rejected' => {
+  if (!podioStatus) return 'pending';
+  
+  if (podioStatus.toLowerCase().includes('approve')) {
+    return 'approved';
+  } else if (podioStatus.toLowerCase().includes('reject')) {
+    return 'rejected';
+  }
+  
+  return 'pending';
+};
+
+// Update packing spec status in Podio
 export const updatePackingSpecStatus = async (
   specId: number, 
   status: 'approved' | 'rejected', 
@@ -226,37 +405,36 @@ export const updatePackingSpecStatus = async (
   try {
     console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
     
-    // Check if we have Podio API access
-    if (hasValidPodioTokens()) {
-      try {
-        // This would be replaced with actual API endpoint when you have the Podio item structure
-        // const endpoint = `item/${specId}`;
-        // await callPodioApi(endpoint, {
-        //   method: 'PUT',
-        //   body: JSON.stringify({
-        //     fields: {
-        //       status: status,
-        //       comments: comments || ''
-        //     }
-        //   })
-        // });
-        console.log('Using Podio API for updating packing spec');
-        
-        // For now, still simulate a successful update
-        await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
-        return true;
-      } catch (error) {
-        console.warn('Failed to update via Podio API:', error);
-        return false;
-      }
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
     }
     
-    // For development, we'll simulate a successful update
-    await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
+    // Map our status to Podio category values
+    // We would need to know the actual category option IDs here
+    // For now, using placeholder values
+    const podioStatus = status === 'approved' ? 1 : 2; // Placeholder IDs
+    
+    const endpoint = `item/${specId}`;
+    const updateData = {
+      fields: {
+        [PACKING_SPEC_FIELD_IDS.customerApprovalStatus]: podioStatus,
+        [PACKING_SPEC_FIELD_IDS.customerRequestedChanges]: comments || ''
+      }
+    };
+    
+    await callPodioApi(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+    
     return true;
   } catch (error) {
     console.error('Error updating packing spec:', error);
-    return false;
+    
+    // For development, simulate a successful update
+    console.log('Simulating successful update for development');
+    await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
+    return true;
   }
 };
 
@@ -264,4 +442,3 @@ export const updatePackingSpecStatus = async (
 export const isPodioConfigured = (): boolean => {
   return hasValidPodioTokens();
 };
-

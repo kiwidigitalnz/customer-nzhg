@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { updatePackingSpecStatus } from '../services/podioApi';
-import { Check, X, AlertCircle, Calendar, Package } from 'lucide-react';
+import { Check, X, AlertCircle, Calendar, Package, Info } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -25,9 +26,18 @@ interface PackingSpec {
   createdAt: string;
   details: {
     product: string;
-    batchSize: string;
-    packagingType: string;
+    productCode?: string;
+    umfMgo?: string;
+    honeyType?: string;
+    jarSize?: string;
+    jarColour?: string;
+    jarMaterial?: string;
+    lidSize?: string;
+    lidColour?: string;
+    batchSize?: string;
+    packagingType?: string;
     specialRequirements?: string;
+    [key: string]: any; // Allow additional fields
   };
 }
 
@@ -117,14 +127,25 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
               <CardTitle className="text-lg">{spec.title}</CardTitle>
               {getStatusBadge(spec.status)}
             </div>
-            <CardDescription className="line-clamp-2">{spec.description}</CardDescription>
+            <CardDescription className="line-clamp-2">
+              {spec.details.productCode && `${spec.details.productCode} - `}
+              {spec.description}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex-grow">
             <div className="space-y-3">
-              <div className="flex items-center text-sm">
-                <Package className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="font-medium mr-2">Product:</span> {spec.details.product}
-              </div>
+              {spec.details.honeyType && (
+                <div className="flex items-center text-sm">
+                  <Package className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="font-medium mr-2">Honey Type:</span> {spec.details.honeyType}
+                </div>
+              )}
+              {spec.details.umfMgo && (
+                <div className="flex items-center text-sm">
+                  <Info className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="font-medium mr-2">UMF/MGO:</span> {spec.details.umfMgo}
+                </div>
+              )}
               <div className="flex items-center text-sm">
                 <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                 <span className="font-medium mr-2">Created:</span> {formatDate(spec.createdAt)}
@@ -144,23 +165,62 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                   </Button>
                 </DialogTrigger>
                 {selectedSpec && (
-                  <DialogContent className="sm:max-w-[500px]">
+                  <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
                       <DialogTitle>{selectedSpec.title}</DialogTitle>
-                      <DialogDescription>{selectedSpec.description}</DialogDescription>
+                      <DialogDescription>
+                        {selectedSpec.details.productCode && `Product Code: ${selectedSpec.details.productCode}`}
+                        {selectedSpec.description && (
+                          <div className="mt-2">{selectedSpec.description}</div>
+                        )}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
                         <h4 className="font-medium">Product Details</h4>
                         <div className="text-sm rounded-md bg-muted p-4 space-y-2">
                           <div><span className="font-medium">Product:</span> {selectedSpec.details.product}</div>
-                          <div><span className="font-medium">Batch Size:</span> {selectedSpec.details.batchSize}</div>
-                          <div><span className="font-medium">Packaging Type:</span> {selectedSpec.details.packagingType}</div>
+                          
+                          {selectedSpec.details.honeyType && (
+                            <div><span className="font-medium">Honey Type:</span> {selectedSpec.details.honeyType}</div>
+                          )}
+                          
+                          {selectedSpec.details.umfMgo && (
+                            <div><span className="font-medium">UMF/MGO:</span> {selectedSpec.details.umfMgo}</div>
+                          )}
+                          
+                          <Separator className="my-2" />
+                          
+                          <h5 className="font-medium">Packaging</h5>
+                          
+                          {selectedSpec.details.jarSize && (
+                            <div><span className="font-medium">Jar Size:</span> {selectedSpec.details.jarSize}</div>
+                          )}
+                          
+                          {selectedSpec.details.jarColour && (
+                            <div><span className="font-medium">Jar Color:</span> {selectedSpec.details.jarColour}</div>
+                          )}
+                          
+                          {selectedSpec.details.jarMaterial && (
+                            <div><span className="font-medium">Jar Material:</span> {selectedSpec.details.jarMaterial}</div>
+                          )}
+                          
+                          {selectedSpec.details.lidSize && (
+                            <div><span className="font-medium">Lid Size:</span> {selectedSpec.details.lidSize}</div>
+                          )}
+                          
+                          {selectedSpec.details.lidColour && (
+                            <div><span className="font-medium">Lid Color:</span> {selectedSpec.details.lidColour}</div>
+                          )}
+                          
                           {selectedSpec.details.specialRequirements && (
-                            <div>
-                              <span className="font-medium">Special Requirements:</span>{" "}
-                              {selectedSpec.details.specialRequirements}
-                            </div>
+                            <>
+                              <Separator className="my-2" />
+                              <div>
+                                <span className="font-medium">Special Requirements:</span>
+                                <p className="mt-1">{selectedSpec.details.specialRequirements}</p>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
@@ -211,10 +271,15 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                   </Button>
                 </DialogTrigger>
                 {selectedSpec && (
-                  <DialogContent className="sm:max-w-[500px]">
+                  <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
                       <DialogTitle>{selectedSpec.title}</DialogTitle>
-                      <DialogDescription>{selectedSpec.description}</DialogDescription>
+                      <DialogDescription>
+                        {selectedSpec.details.productCode && `Product Code: ${selectedSpec.details.productCode}`}
+                        {selectedSpec.description && (
+                          <div className="mt-2">{selectedSpec.description}</div>
+                        )}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="flex justify-between items-center">
@@ -225,13 +290,47 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                         <h4 className="font-medium">Product Details</h4>
                         <div className="text-sm rounded-md bg-muted p-4 space-y-2">
                           <div><span className="font-medium">Product:</span> {selectedSpec.details.product}</div>
-                          <div><span className="font-medium">Batch Size:</span> {selectedSpec.details.batchSize}</div>
-                          <div><span className="font-medium">Packaging Type:</span> {selectedSpec.details.packagingType}</div>
+                          
+                          {selectedSpec.details.honeyType && (
+                            <div><span className="font-medium">Honey Type:</span> {selectedSpec.details.honeyType}</div>
+                          )}
+                          
+                          {selectedSpec.details.umfMgo && (
+                            <div><span className="font-medium">UMF/MGO:</span> {selectedSpec.details.umfMgo}</div>
+                          )}
+                          
+                          <Separator className="my-2" />
+                          
+                          <h5 className="font-medium">Packaging</h5>
+                          
+                          {selectedSpec.details.jarSize && (
+                            <div><span className="font-medium">Jar Size:</span> {selectedSpec.details.jarSize}</div>
+                          )}
+                          
+                          {selectedSpec.details.jarColour && (
+                            <div><span className="font-medium">Jar Color:</span> {selectedSpec.details.jarColour}</div>
+                          )}
+                          
+                          {selectedSpec.details.jarMaterial && (
+                            <div><span className="font-medium">Jar Material:</span> {selectedSpec.details.jarMaterial}</div>
+                          )}
+                          
+                          {selectedSpec.details.lidSize && (
+                            <div><span className="font-medium">Lid Size:</span> {selectedSpec.details.lidSize}</div>
+                          )}
+                          
+                          {selectedSpec.details.lidColour && (
+                            <div><span className="font-medium">Lid Color:</span> {selectedSpec.details.lidColour}</div>
+                          )}
+                          
                           {selectedSpec.details.specialRequirements && (
-                            <div>
-                              <span className="font-medium">Special Requirements:</span>{" "}
-                              {selectedSpec.details.specialRequirements}
-                            </div>
+                            <>
+                              <Separator className="my-2" />
+                              <div>
+                                <span className="font-medium">Special Requirements:</span>
+                                <p className="mt-1">{selectedSpec.details.specialRequirements}</p>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
