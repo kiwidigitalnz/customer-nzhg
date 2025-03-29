@@ -242,37 +242,80 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
       return null;
     }
     
-    // Use the filtered API to find contacts with the given username
+    // First, test to see if we can get the app details to verify our connection
+    try {
+      const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
+      console.log('Podio app details retrieved successfully:', appDetails.app_id);
+    } catch (error) {
+      console.error('Failed to retrieve app details:', error);
+      return null;
+    }
+
+    // Use a simpler approach to find items by field value
     const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
     
+    // Get token to check format
+    const accessToken = localStorage.getItem('podio_access_token');
+    console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
+    
+    // Try a different filter format for text fields
     const filters = {
       filters: {
-        [CONTACT_FIELD_IDS.username]: {
-          "from": credentials.username,
-          "to": credentials.username
-        }
+        [CONTACT_FIELD_IDS.username]: credentials.username
       }
     };
 
     console.log('Searching contacts with filters:', JSON.stringify(filters, null, 2));
     
-    const searchResponse = await callPodioApi(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(filters),
-    });
+    // Make the API call
+    let searchResponse;
+    try {
+      searchResponse = await callPodioApi(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(filters),
+      });
+    } catch (error) {
+      console.error('Error during contact search:', error);
+      return null;
+    }
     
-    console.log('Search response:', searchResponse);
+    console.log('Search response items count:', searchResponse.items?.length || 0);
     
+    // Check if we found any matches
     if (!searchResponse.items || searchResponse.items.length === 0) {
       console.log('No contact found with username:', credentials.username);
+      
+      // Let's try to list all contacts to see what's available
+      try {
+        const allItems = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/`);
+        console.log('All contacts count:', allItems.items?.length || 0);
+        if (allItems.items && allItems.items.length > 0) {
+          // Log fields of first item to understand structure
+          console.log('Sample contact fields:', allItems.items[0].fields.map((f: any) => ({
+            external_id: f.external_id,
+            label: f.label,
+            type: f.type,
+            hasValues: !!f.values?.length
+          })));
+        }
+      } catch (listError) {
+        console.error('Failed to list all contacts:', listError);
+      }
+      
       return null;
     }
     
     // Get the first contact that matches
     const contactItem = searchResponse.items[0];
+    console.log('Found contact item ID:', contactItem.item_id);
     
     // Log the fields to help debug
-    console.log('Contact fields:', contactItem.fields);
+    console.log('Contact fields:', contactItem.fields.map((f: any) => ({
+      external_id: f.external_id,
+      label: f.label, 
+      type: f.type,
+      hasValues: !!f.values?.length
+    })));
     
     // Extract fields from the response
     const usernameField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.username);
@@ -280,18 +323,29 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
     const titleField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.title);
     const logoField = contactItem.fields.find((field: any) => field.external_id === CONTACT_FIELD_IDS.logoUrl);
     
-    console.log('Found fields:', {
-      username: usernameField?.values?.[0]?.value,
-      hasPassword: !!passwordField,
-      title: titleField?.values?.[0]?.value,
-      logo: logoField?.values?.[0]?.value
-    });
+    console.log('Found username field:', !!usernameField, 'value:', usernameField?.values?.[0]?.value);
+    console.log('Found password field:', !!passwordField);
     
-    if (!passwordField || passwordField.values[0].value !== credentials.password) {
-      console.log('Password does not match or password field not found');
+    // Check if the password matches
+    if (!passwordField || !passwordField.values || !passwordField.values.length) {
+      console.log('Password field not found or empty');
       return null;
     }
     
+    // Compare the password
+    const savedPassword = passwordField.values[0].value;
+    console.log('Password comparison:', 
+      'input length:', credentials.password.length, 
+      'saved length:', savedPassword?.length || 0,
+      'match:', savedPassword === credentials.password
+    );
+    
+    if (savedPassword !== credentials.password) {
+      console.log('Password does not match');
+      return null;
+    }
+    
+    // Create the contact data object
     const contact: ContactData = {
       id: contactItem.item_id,
       name: titleField?.values?.[0]?.value || 'Unknown Company',
@@ -573,4 +627,23 @@ const getDateFieldValue = (fields: any[], externalId: string): string | null => 
   }
   
   return null;
+};
+
+// Helper to ensure we have consistent field access
+const getFieldValue = (field: any): any => {
+  if (!field || !field.values || field.values.length === 0) {
+    return null;
+  }
+  
+  // Different field types have different structures
+  if (field.type === 'text' || field.type === 'number') {
+    return field.values[0].value;
+  } else if (field.type === 'category') {
+    return field.values[0].value?.text;
+  } else if (field.type === 'date') {
+    return field.values[0].start;
+  }
+  
+  // Default fallback
+  return field.values[0].value;
 };

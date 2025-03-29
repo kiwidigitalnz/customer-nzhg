@@ -53,32 +53,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Verify Podio is configured before attempting login
     if (!isPodioConfigured()) {
-      setError('Podio API is not configured. Please set up Podio API first.');
+      const errorMsg = 'Podio API is not configured. Please set up Podio API first.';
+      setError(errorMsg);
       setLoading(false);
       toast({
         title: 'Podio Not Configured',
         description: 'Please set up Podio API credentials before logging in',
         variant: 'destructive',
       });
+      console.error(errorMsg);
       return false;
     }
     
     try {
+      console.log('Login attempt for:', username);
       const userData = await authenticateUser({ username, password });
       
       if (userData) {
+        console.log('Authentication successful, user data:', userData);
         setUser(userData);
         localStorage.setItem('nzhg_user', JSON.stringify(userData));
         setLoading(false);
         return true;
       } else {
-        setError('No matching contact found with these credentials');
+        const errorMsg = 'No matching contact found with these credentials in Podio';
+        setError(errorMsg);
         setLoading(false);
+        console.error(errorMsg);
         return false;
       }
     } catch (err) {
-      setError('An error occurred during login. Please verify Podio connection and try again.');
-      console.error('Login error:', err);
+      const errorMsg = err instanceof Error 
+        ? `Login error: ${err.message}` 
+        : 'An unknown error occurred during login';
+      
+      console.error(errorMsg, err);
+      setError(errorMsg);
       setLoading(false);
       return false;
     }

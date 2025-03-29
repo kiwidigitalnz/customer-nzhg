@@ -8,10 +8,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { isPodioConfigured } from '../services/podioApi';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -40,6 +43,8 @@ const LoginForm = () => {
       return;
     }
 
+    console.log(`Attempting login with username: ${username}`);
+    
     const success = await login(username, password);
     
     if (success) {
@@ -55,7 +60,12 @@ const LoginForm = () => {
         description: error || 'No matching contact found in Podio. Please check your credentials.',
         variant: 'destructive',
       });
+      console.error('Login failed. Error:', error);
     }
+  };
+
+  const toggleDebugMode = () => {
+    setDebugMode(!debugMode);
   };
 
   return (
@@ -90,15 +100,50 @@ const LoginForm = () => {
               disabled={loading}
             />
           </div>
-          {error && <p className="text-destructive text-sm">{error}</p>}
-          {!podioConfigured && (
-            <p className="text-amber-600 text-sm">
-              Podio connection not configured. Please contact an administrator.
-            </p>
+          
+          {error && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertTitle>Login Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
+          
+          {!podioConfigured && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Connection Issue</AlertTitle>
+              <AlertDescription>
+                Podio connection not configured. Please contact an administrator.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Button type="submit" className="w-full" disabled={loading || !podioConfigured}>
             {loading ? 'Logging in...' : 'Login'}
           </Button>
+          
+          {/* Debug mode toggle - only in development */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mt-4 text-center">
+              <button 
+                type="button" 
+                onClick={toggleDebugMode}
+                className="text-xs text-muted-foreground underline"
+              >
+                {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
+              </button>
+              
+              {debugMode && (
+                <div className="mt-2 p-2 bg-muted text-left rounded text-xs">
+                  <p>Podio configured: {podioConfigured ? 'Yes' : 'No'}</p>
+                  <p>Username: {username}</p>
+                  <p>Password: {password ? '********' : '(empty)'}</p>
+                  <p>Login state: {loading ? 'Loading' : error ? 'Error' : 'Ready'}</p>
+                  {error && <p>Error: {error}</p>}
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">
