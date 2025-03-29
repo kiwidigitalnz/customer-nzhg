@@ -78,18 +78,95 @@ const MOCK_SPECS: PackingSpec[] = [
   }
 ];
 
+// Helper function to check if we have valid Podio tokens
+const hasValidPodioTokens = (): boolean => {
+  const accessToken = localStorage.getItem('podio_access_token');
+  const tokenExpiry = localStorage.getItem('podio_token_expiry');
+  
+  if (!accessToken || !tokenExpiry) return false;
+  
+  // Check if token is expired
+  const expiryTime = parseInt(tokenExpiry, 10);
+  const now = Date.now();
+  
+  return expiryTime > now;
+};
+
+// Helper function to refresh the access token if needed
+const refreshPodioToken = async (): Promise<boolean> => {
+  const refreshToken = localStorage.getItem('podio_refresh_token');
+  const clientId = localStorage.getItem('podio_client_id');
+  const clientSecret = localStorage.getItem('podio_client_secret');
+  
+  if (!refreshToken || !clientId || !clientSecret) return false;
+  
+  try {
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+      }).toString(),
+    });
+    
+    if (!response.ok) return false;
+    
+    const data = await response.json();
+    
+    localStorage.setItem('podio_access_token', data.access_token);
+    localStorage.setItem('podio_refresh_token', data.refresh_token);
+    localStorage.setItem('podio_token_expiry', (Date.now() + data.expires_in * 1000).toString());
+    
+    return true;
+  } catch (error) {
+    console.error('Error refreshing Podio token:', error);
+    return false;
+  }
+};
+
+// Helper function to make authenticated API calls to Podio
+const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  // Check if we have a valid token, try to refresh if not
+  if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    throw new Error('Not authenticated with Podio');
+  }
+  
+  const accessToken = localStorage.getItem('podio_access_token');
+  
+  // Merge the authorization header with the provided options
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  try {
+    const response = await fetch(`https://api.podio.com/${endpoint}`, {
+      ...options,
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error_description || 'Podio API error');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Podio API call error:', error);
+    throw error;
+  }
+};
+
 // This function would be replaced with an actual API call to Podio
 export const authenticateUser = async (credentials: PodioCredentials): Promise<ContactData | null> => {
   try {
     console.log('Authenticating with Podio...', credentials);
-    
-    // This is where the actual API call would happen
-    // const response = await fetch('https://api.podio.com/authenticate', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(credentials)
-    // });
-    // const data = await response.json();
     
     // For development, we'll simulate a successful authentication
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
@@ -116,13 +193,23 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   try {
     console.log('Fetching packing specs for contact ID:', contactId);
     
-    // This is where the actual API call would happen
-    // const response = await fetch(`https://api.podio.com/contacts/${contactId}/packing-specs`);
-    // const data = await response.json();
+    // Check if we have Podio API access
+    if (hasValidPodioTokens()) {
+      try {
+        // This would be replaced with actual API endpoint when you have the Podio app structure
+        // const data = await callPodioApi('app/{app_id}/filter/');
+        console.log('Using Podio API for packing specs');
+        
+        // For now, still return mock data
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+        return MOCK_SPECS;
+      } catch (error) {
+        console.warn('Failed to fetch from Podio API, using mock data:', error);
+      }
+    }
     
     // For development, we'll return mock data
     await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    
     return MOCK_SPECS;
   } catch (error) {
     console.error('Error fetching packing specs:', error);
@@ -139,19 +226,42 @@ export const updatePackingSpecStatus = async (
   try {
     console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
     
-    // This is where the actual API call would happen
-    // const response = await fetch(`https://api.podio.com/packing-specs/${specId}/status`, {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ status, comments })
-    // });
+    // Check if we have Podio API access
+    if (hasValidPodioTokens()) {
+      try {
+        // This would be replaced with actual API endpoint when you have the Podio item structure
+        // const endpoint = `item/${specId}`;
+        // await callPodioApi(endpoint, {
+        //   method: 'PUT',
+        //   body: JSON.stringify({
+        //     fields: {
+        //       status: status,
+        //       comments: comments || ''
+        //     }
+        //   })
+        // });
+        console.log('Using Podio API for updating packing spec');
+        
+        // For now, still simulate a successful update
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
+        return true;
+      } catch (error) {
+        console.warn('Failed to update via Podio API:', error);
+        return false;
+      }
+    }
     
     // For development, we'll simulate a successful update
     await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
-    
     return true;
   } catch (error) {
     console.error('Error updating packing spec:', error);
     return false;
   }
 };
+
+// Function to check if Podio API is configured
+export const isPodioConfigured = (): boolean => {
+  return hasValidPodioTokens();
+};
+
