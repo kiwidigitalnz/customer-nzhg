@@ -1,10 +1,9 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { FileText, Pen, ExternalLink, Tag, Package, Printer, Sticker } from 'lucide-react';
+import { Tag, Printer, Sticker } from 'lucide-react';
 import { formatTextContent } from '@/utils/formatters';
 import ImageGallery from '../ImageGallery';
-import EnhancedImageViewer from '../EnhancedImageViewer';
 
 interface LabelingTabProps {
   details: Record<string, any>;
@@ -42,23 +41,11 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                       target="_blank" 
                       rel="noopener noreferrer"
                     >
-                      View Label Design <ExternalLink className="h-3 w-3 ml-1" />
+                      View Label Design
                     </a>
                   ) : (
                     <p className="text-muted-foreground italic">No link provided</p>
                   )}
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Size</h4>
-                  <p className="font-medium">{details.labelSize || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Materials</h4>
-                  <p className="font-medium">{details.labelMaterials || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Placement</h4>
-                  <p className="font-medium">{details.labelPlacement || "N/A"}</p>
                 </div>
               </div>
               
@@ -70,74 +57,14 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                     "N/A"}
                   </p>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Special Requirements</h4>
-                  <p className="font-medium">{details.labelSpecialRequirements || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Finishing Type</h4>
-                  <p className="font-medium">{details.labelFinishingType || "N/A"}</p>
-                </div>
               </div>
               
               <div className="md:col-span-2 mt-4">
                 <ImageGallery 
                   images={labelImages} 
-                  title="Product Label Images" 
-                  emptyMessage="No product label images available"
-                  placeholderText="Product label images would be displayed here when available"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Carton Label Information */}
-        <Card className="shadow-sm border-muted md:col-span-2">
-          <CardHeader className="pb-2 bg-muted/30">
-            <CardTitle className="text-lg flex items-center">
-              <Package className="mr-2 h-5 w-5 text-primary/80" />
-              Carton Label Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Code</h4>
-                  <p className="font-medium">{details.cartonLabelCode || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Size</h4>
-                  <p className="font-medium">{details.cartonLabelSize || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Placement</h4>
-                  <p className="font-medium">{details.cartonLabelPlacement || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Number of Shipper Stickers</h4>
-                  <p className="font-medium">{details.shipperStickerCount || "N/A"}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Requirements</h4>
-                  <p className="font-medium">{details.cartonLabelRequirements || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Notes</h4>
-                  <p className="font-medium">{details.cartonLabelNotes || "N/A"}</p>
-                </div>
-              </div>
-              
-              <div className="md:col-span-2 mt-4">
-                <ImageGallery 
-                  images={shipperStickerImages} 
-                  title="Carton/Shipper Label Images" 
-                  emptyMessage="No carton label images available"
-                  placeholderText="Carton/shipper label images would be displayed here when available"
+                  title="Label" 
+                  emptyMessage="No label images available"
+                  placeholderText="Label images would be displayed here when available"
                 />
               </div>
             </div>
@@ -156,16 +83,16 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Info Location</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Information Located</h4>
                   <p className="font-medium">{details.printingInfoLocated || "N/A"}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Color</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Colour</h4>
                   <p className="font-medium">{details.printingColour || "N/A"}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Method</h4>
-                  <p className="font-medium">{details.printingMethod || "N/A"}</p>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Information Required</h4>
+                  <p className="font-medium">{details.printingInfoRequired || "N/A"}</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -177,44 +104,35 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Date Formatting</h4>
                   <p className="font-medium">{details.dateFormatting || "N/A"}</p>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Date Placement</h4>
-                  <p className="font-medium">{details.datePlacement || "N/A"}</p>
-                </div>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        {/* Barcodes */}
+        {/* Shipper Sticker Information */}
         <Card className="shadow-sm border-muted md:col-span-2">
           <CardHeader className="pb-2 bg-muted/30">
             <CardTitle className="text-lg flex items-center">
               <Sticker className="mr-2 h-5 w-5 text-primary/80" />
-              Barcode Information
+              Shipper Sticker Information
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Barcode Type</h4>
-                  <p className="font-medium">{details.barcodeType || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Barcode Value</h4>
-                  <p className="font-medium">{details.barcodeValue || "N/A"}</p>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Number of Shipper Stickers on Carton</h4>
+                  <p className="font-medium">{details.shipperStickerCount || "N/A"}</p>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Barcode Placement</h4>
-                  <p className="font-medium">{details.barcodePlacement || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Barcode</h4>
-                  <p className="font-medium">{details.cartonBarcode || "N/A"}</p>
-                </div>
+              
+              <div className="md:col-span-2 mt-4">
+                <ImageGallery 
+                  images={shipperStickerImages} 
+                  title="Shipper Sticker" 
+                  emptyMessage="No shipper sticker images available"
+                  placeholderText="Shipper sticker images would be displayed here when available"
+                />
               </div>
             </div>
           </CardContent>
