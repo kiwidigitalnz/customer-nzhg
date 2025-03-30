@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -197,6 +196,18 @@ const PackingSpecDetails = () => {
       default:
         return typeof value === 'string' ? value : JSON.stringify(value);
     }
+  };
+
+  // Format version to have only 1 decimal place
+  const formatVersion = (version: string | undefined) => {
+    if (!version) return "N/A";
+    
+    // Check if version is a number with decimals
+    if (!isNaN(parseFloat(version))) {
+      return parseFloat(version).toFixed(1);
+    }
+    
+    return version;
   };
 
   // Approval and rejection handlers
@@ -435,7 +446,7 @@ const PackingSpecDetails = () => {
                     {spec.details.versionNumber && (
                       <span className="inline-flex items-center">
                         <Book className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> 
-                        Version: {spec.details.versionNumber}
+                        Version: {formatVersion(spec.details.versionNumber)}
                       </span>
                     )}
                     {spec.details.dateReviewed && (
@@ -1180,7 +1191,7 @@ const PackingSpecDetails = () => {
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
                     <User className="mr-1.5 h-4 w-4" />
-                    Customer
+                    Company Name
                   </h4>
                   <p className="text-sm font-medium">{spec.details.customer || "N/A"}</p>
                 </div>
@@ -1198,7 +1209,7 @@ const PackingSpecDetails = () => {
                     <Hash className="mr-1.5 h-4 w-4" />
                     Version Number
                   </h4>
-                  <p className="text-sm font-medium">{spec.details.versionNumber || "N/A"}</p>
+                  <p className="text-sm font-medium">{formatVersion(spec.details.versionNumber)}</p>
                 </div>
                 
                 <div>
@@ -1231,9 +1242,15 @@ const PackingSpecDetails = () => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Current Status</h4>
                   <StatusBadge status={spec.status} showIcon={true} />
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Created Date</h4>
-                  <p className="text-sm">{formatDate(spec.createdAt)}</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Created Date</h4>
+                    <p className="text-sm">{formatDate(spec.createdAt)}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Last Reviewed</h4>
+                    <p className="text-sm">{spec.details.dateReviewed ? formatDate(spec.details.dateReviewed) : "N/A"}</p>
+                  </div>
                 </div>
                 {spec.details.contactPerson && (
                   <div>
