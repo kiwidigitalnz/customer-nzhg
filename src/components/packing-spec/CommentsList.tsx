@@ -29,23 +29,44 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   
+  // Function to process comment text to handle embedded company names
+  const processCommentText = (text: string): { companyName: string | null, content: string } => {
+    // Look for pattern [CompanyName] at the beginning of comment
+    const companyMatch = text.match(/^\[(.*?)\]\s(.*)/);
+    
+    if (companyMatch && companyMatch.length >= 3) {
+      return {
+        companyName: companyMatch[1],
+        content: companyMatch[2]
+      };
+    }
+    
+    return { companyName: null, content: text };
+  };
+  
   return (
     <div className="space-y-4">
-      {sortedComments.map(comment => (
-        <div key={comment.id} className="bg-card rounded-md p-4 border">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center">
-              <User className="h-4 w-4 mr-2 text-muted-foreground" />
-              <p className="font-medium text-sm">{comment.createdBy}</p>
+      {sortedComments.map(comment => {
+        const { companyName, content } = processCommentText(comment.text);
+        
+        return (
+          <div key={comment.id} className="bg-card rounded-md p-4 border">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                <p className="font-medium text-sm">
+                  {companyName ? `${companyName} (${comment.createdBy})` : comment.createdBy}
+                </p>
+              </div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 mr-1" />
+                {formatDate(comment.createdAt)}
+              </div>
             </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <Clock className="h-3 w-3 mr-1" />
-              {formatDate(comment.createdAt)}
-            </div>
+            <p className="mt-2 whitespace-pre-line break-words">{content}</p>
           </div>
-          <p className="mt-2 whitespace-pre-line break-words">{comment.text}</p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

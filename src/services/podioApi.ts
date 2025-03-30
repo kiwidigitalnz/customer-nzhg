@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -701,9 +702,22 @@ const addCommentToPodio = async (
       throw new Error('Not authenticated with Podio API');
     }
     
+    // Get the authenticated user's company name from local storage
+    let companyName = localStorage.getItem('user_company') || '';
+    if (!companyName && userName) {
+      companyName = userName;
+    }
+    
+    // Prepare the comment text with company prefix
+    const commentWithCompany = companyName 
+      ? `[${companyName}] ${comment}` 
+      : comment;
+    
+    console.log(`Sending comment with company prefix: ${commentWithCompany}`);
+    
     // Prepare the comment data
     const commentData = {
-      value: comment,
+      value: commentWithCompany,
       external_id: `customer_comment_${Date.now()}`,
     };
     
@@ -932,6 +946,11 @@ const addCommentToPackingSpec = async (
 ): Promise<boolean> => {
   try {
     console.log(`Adding comment to packing spec ${specId}: ${comment}`);
+    
+    // Store the user's name in local storage for future comment prefixing
+    if (userName) {
+      localStorage.setItem('user_company', userName);
+    }
     
     const success = await addCommentToPodio(specId, comment, userName);
     
