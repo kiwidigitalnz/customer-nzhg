@@ -139,7 +139,7 @@ const MOCK_SPECS: PackingSpec[] = [
     title: 'Clover Honey 500g Squeeze Bottle',
     description: 'Clover Honey new packaging design',
     status: 'pending',
-0    createdAt: '2023-11-20',
+    createdAt: '2023-11-20',
     details: {
       product: 'Pure Clover Honey',
       batchSize: '2,500 units',
