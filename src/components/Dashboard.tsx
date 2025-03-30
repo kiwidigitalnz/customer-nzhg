@@ -10,12 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { SpecStatus } from './packing-spec/StatusBadge';
 
 interface PackingSpec {
   id: number;
   title: string;
   description: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: SpecStatus;
   createdAt: string;
   details: {
     product: string;
@@ -24,6 +25,12 @@ interface PackingSpec {
     specialRequirements?: string;
     [key: string]: any; // Allow additional fields
   };
+  comments?: Array<{
+    id: number;
+    text: string;
+    createdBy: string;
+    createdAt: string;
+  }>;
 }
 
 const Dashboard = () => {
@@ -58,7 +65,7 @@ const Dashboard = () => {
         try {
           console.log(`Fetching specs for contact ID: ${user.id}`);
           const data = await getPackingSpecsForContact(user.id);
-          setSpecs(data);
+          setSpecs(data as PackingSpec[]);
         } catch (error) {
           console.error('Error fetching specs:', error);
           toast({
@@ -87,15 +94,15 @@ const Dashboard = () => {
     );
   }
 
-  const pendingSpecs = specs.filter(spec => spec.status === 'pending');
-  const approvedSpecs = specs.filter(spec => spec.status === 'approved');
-  const rejectedSpecs = specs.filter(spec => spec.status === 'rejected');
+  const pendingSpecs = specs.filter(spec => spec.status === 'pending-approval');
+  const approvedSpecs = specs.filter(spec => spec.status === 'approved-by-customer');
+  const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = async () => {
     if (user) {
       setLoading(true);
       const data = await getPackingSpecsForContact(user.id);
-      setSpecs(data);
+      setSpecs(data as PackingSpec[]);
       setLoading(false);
     }
   };
@@ -182,12 +189,12 @@ const Dashboard = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Rejected</CardTitle>
-            <CardDescription>Specs you've rejected</CardDescription>
+            <CardTitle className="text-lg">Changes Requested</CardTitle>
+            <CardDescription>Specs with changes requested</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-red-600">
-              {rejectedSpecs.length}
+              {changesRequestedSpecs.length}
             </div>
           </CardContent>
         </Card>
@@ -197,7 +204,7 @@ const Dashboard = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="pending">Pending ({pendingSpecs.length})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({approvedSpecs.length})</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected ({rejectedSpecs.length})</TabsTrigger>
+          <TabsTrigger value="changes">Changes Requested ({changesRequestedSpecs.length})</TabsTrigger>
           <TabsTrigger value="all">All Specifications ({specs.length})</TabsTrigger>
         </TabsList>
         
@@ -228,14 +235,14 @@ const Dashboard = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="rejected">
+        <TabsContent value="changes">
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <PackingSpecList 
-              specs={rejectedSpecs} 
+              specs={changesRequestedSpecs} 
               onUpdate={refreshSpecs} 
               readOnly
             />

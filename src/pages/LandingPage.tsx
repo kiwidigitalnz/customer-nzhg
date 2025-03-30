@@ -8,7 +8,7 @@ import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart } from 'lucide-re
 const LandingPage = () => {
   return (
     <MainLayout>
-      {/* Hero Section - Redesigned with flowing curves and softer feel */}
+      {/* Hero Section - With honey packing image */}
       <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full blur-3xl"></div>
@@ -32,48 +32,24 @@ const LandingPage = () => {
               <p className="text-xl text-gray-600 max-w-2xl">
                 Your gateway to streamlined product approvals, specifications, and collaboration with our team through our intuitive customer portal.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <div className="pt-4">
                 <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Link to="/login" className="gap-2">
                     Sign In <ArrowRight className="h-5 w-5" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="border-blue-200 hover:bg-blue-50">
-                  <Link to="/login" className="gap-2">
-                    Learn More <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </Button>
               </div>
             </div>
             <div className="flex-1 relative">
-              <div className="relative z-10 bg-white rounded-2xl shadow-xl p-8 border border-gray-100 transform rotate-1 hover:rotate-0 transition-transform duration-300">
-                <div className="absolute -top-3 -left-3 bg-blue-500 text-white px-4 py-1 rounded-lg text-sm font-medium">
-                  Customer Portal
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
-                    <p className="text-gray-700">Real-time product specifications</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
-                    <p className="text-gray-700">Approve packaging and labeling</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
-                    <p className="text-gray-700">Access honey quality reports</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
-                    <p className="text-gray-700">View product images and documents</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
-                    <p className="text-gray-700">Secure and encrypted access</p>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute w-full h-full top-3 -left-3 bg-gradient-to-r from-blue-100 to-blue-50 rounded-2xl -z-10 transform -rotate-2"></div>
+              <img 
+                src="https://dl.dropbox.com/scl/fi/jzfwk0tz6y49mzqc8bpn2/honey-jar-packaging-transparent.png?rlkey=0h3nwxddpnx5n6b5k6wj4f20t"
+                alt="Honey Packaging"
+                className="max-w-full h-auto" 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = 'https://placehold.co/600x400/F0F8FF/0078D7?text=Honey+Packaging';
+                }}
+              />
             </div>
           </div>
         </div>
