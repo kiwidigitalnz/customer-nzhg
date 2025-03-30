@@ -87,7 +87,7 @@ export const addCommentToPodio = async (
 export const addCommentToPackingSpec = async (
   specId: number,
   comment: string,
-  userName: string
+  userName?: string
 ): Promise<boolean> => {
   try {
     console.log(`Adding comment to packing spec ${specId}: ${comment}`);
@@ -97,11 +97,11 @@ export const addCommentToPackingSpec = async (
     if (userInfo) {
       // We already have this information stored when the user logs in
       console.log('User info already stored in localStorage');
-    } else {
+    } else if (userName) {
       // If not stored yet for some reason, add basic info
       localStorage.setItem('user_info', JSON.stringify({
         username: userName,
-        name: 'Your Company' // Default fallback
+        name: userName // Use userName directly instead of a hardcoded value
       }));
     }
     

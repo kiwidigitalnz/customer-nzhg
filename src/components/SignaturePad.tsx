@@ -1,9 +1,9 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Undo2, Save, RefreshCw, Pen, Type } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { getUserSignature } from '@/services/userPreferences';
 
 interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
@@ -17,6 +17,28 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, defaultName = '', i
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
   const [typedName, setTypedName] = useState(defaultName);
   const [signatureMode, setSignatureMode] = useState<'draw' | 'type'>('draw');
+  
+  // Load saved signature if available and no initialData is provided
+  useEffect(() => {
+    if (!initialData) {
+      const savedSignature = getUserSignature();
+      if (savedSignature) {
+        // Load saved signature if available
+        if (savedSignature.name) {
+          setTypedName(savedSignature.name);
+        }
+        
+        if (savedSignature.dataUrl && canvasRef.current && ctx) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+            ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height);
+          };
+          img.src = savedSignature.dataUrl;
+        }
+      }
+    }
+  }, [ctx, initialData]);
 
   // Initialize canvas
   useEffect(() => {
