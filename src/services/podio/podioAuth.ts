@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -353,9 +352,12 @@ export const isPodioConfigured = (): boolean => {
     const hasEnvVars = !!import.meta.env.VITE_PODIO_CLIENT_ID && 
                        !!import.meta.env.VITE_PODIO_CLIENT_SECRET;
     
-    console.log('Production environment, checking Podio config:', 
-      hasEnvVars ? 'Environment variables found' : 'No environment variables', 
-      hasValidPodioTokens() ? 'Valid tokens found' : 'No valid tokens');
+    // Only log in development mode or when debug is enabled
+    if (import.meta.env.DEV) {
+      console.log('Production environment, checking Podio config:', 
+        hasEnvVars ? 'Environment variables found' : 'No environment variables', 
+        hasValidPodioTokens() ? 'Valid tokens found' : 'No valid tokens');
+    }
     
     // If we have built-in credentials or valid tokens, consider it configured
     return hasEnvVars || hasValidPodioTokens();

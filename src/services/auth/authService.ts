@@ -1,3 +1,4 @@
+
 import { refreshPodioToken, isPodioConfigured } from '../podioApi';
 import { toast } from '@/hooks/use-toast';
 
@@ -21,6 +22,10 @@ export interface AuthError {
   retry?: () => Promise<any>;
 }
 
+// Token check variables to reduce API calls
+let lastTokenCheck = 0;
+const TOKEN_CHECK_INTERVAL = 60 * 1000; // Check token every minute
+
 // Check if the token will expire soon (within 5 minutes)
 export const willTokenExpireSoon = (): boolean => {
   const tokenExpiry = localStorage.getItem('podio_token_expiry');
@@ -32,7 +37,7 @@ export const willTokenExpireSoon = (): boolean => {
   return expiryTime < nowPlus5Min;
 };
 
-// Enhanced token refresh with retry logic
+// Enhanced token refresh with retry logic and rate limiting
 let refreshInProgress = false;
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -42,12 +47,27 @@ export const ensureValidToken = async (): Promise<boolean> => {
     return refreshPromise;
   }
   
+  // Only check token every TOKEN_CHECK_INTERVAL to reduce unnecessary checks
+  const now = Date.now();
+  if (now - lastTokenCheck < TOKEN_CHECK_INTERVAL) {
+    // If we checked recently and token was valid, assume it's still valid
+    const tokenExpiry = localStorage.getItem('podio_token_expiry');
+    if (tokenExpiry && parseInt(tokenExpiry, 10) > now + 5 * 60 * 1000) {
+      return true;
+    }
+  }
+  
+  // Update last check time
+  lastTokenCheck = now;
+  
   // If token will expire soon, refresh it
   if (willTokenExpireSoon()) {
     refreshInProgress = true;
     refreshPromise = refreshPodioToken()
       .catch(error => {
-        console.error('Failed to refresh token:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to refresh token:', error);
+        }
         return false;
       })
       .finally(() => {
@@ -171,21 +191,30 @@ export const handleAuthError = (error: AuthError): void => {
   }
 };
 
+// API check variables to control check frequency
+let lastPodioCheck = 0;
+const PODIO_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes instead of every minute
+
 // Initialize auth monitoring (call this on app start)
 export const initAuthMonitoring = (): void => {
-  // Remove the production-specific ensureInitialPodioAuth call since we handle it in Index.tsx
-  
   // Set initial session expiry if not set
   if (!localStorage.getItem('nzhg_session_expiry') && localStorage.getItem('nzhg_user')) {
     extendSession();
   }
   
-  // Check token validity every minute
+  // Check token validity at a reduced frequency
   const interval = setInterval(async () => {
-    if (isPodioConfigured() && willTokenExpireSoon()) {
-      await ensureValidToken();
+    const now = Date.now();
+    
+    // Only check Podio connection every PODIO_CHECK_INTERVAL
+    if (now - lastPodioCheck >= PODIO_CHECK_INTERVAL) {
+      lastPodioCheck = now;
+      
+      if (isPodioConfigured() && willTokenExpireSoon()) {
+        await ensureValidToken();
+      }
     }
-  }, 60 * 1000);
+  }, TOKEN_CHECK_INTERVAL);
   
   // Handle session expiry across tabs
   window.addEventListener('storage', (event) => {
