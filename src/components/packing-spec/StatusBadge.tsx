@@ -2,7 +2,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 
-type SpecStatus = 'pending' | 'approved' | 'rejected';
+export type SpecStatus = 'pending' | 'approved' | 'rejected';
 
 interface StatusBadgeProps {
   status: SpecStatus;

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { formatDate } from '@/utils/formatters';
-import { MessageSquare, Clock } from 'lucide-react';
+import { MessageSquare, Clock, User } from 'lucide-react';
 
 interface Comment {
   id: number;
@@ -24,18 +24,26 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
     );
   }
   
+  // Sort comments by creation date (newest first)
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  
   return (
     <div className="space-y-4">
-      {comments.map(comment => (
+      {sortedComments.map(comment => (
         <div key={comment.id} className="bg-card rounded-md p-4 border">
           <div className="flex justify-between items-start">
-            <p className="font-medium text-sm">{comment.createdBy}</p>
+            <div className="flex items-center">
+              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+              <p className="font-medium text-sm">{comment.createdBy}</p>
+            </div>
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="h-3 w-3 mr-1" />
               {formatDate(comment.createdAt)}
             </div>
           </div>
-          <p className="mt-2">{comment.text}</p>
+          <p className="mt-2 whitespace-pre-line break-words">{comment.text}</p>
         </div>
       ))}
     </div>

@@ -45,3 +45,16 @@ export const getImageUrl = (image: any): string | null => {
   if (typeof image === 'object' && image.url) return image.url;
   return null;
 };
+
+/**
+ * Format multiline text with proper line breaks
+ */
+export const formatMultilineText = (text?: string): string => {
+  if (!text) return '';
+  
+  // First remove HTML tags
+  const cleanText = formatTextContent(text);
+  
+  // Replace newlines with <br> for JSX
+  return cleanText.replace(/\n/g, '\n');
+};

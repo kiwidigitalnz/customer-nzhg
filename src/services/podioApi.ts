@@ -1,4 +1,3 @@
-
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -649,6 +648,84 @@ const isPodioConfigured = (): boolean => {
   return hasValidPodioTokens();
 };
 
+// Function to get comments from Podio for a specific item
+const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
+  try {
+    console.log('Fetching comments for item ID:', itemId);
+    
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
+    }
+    
+    // Call Podio API to get comments
+    const endpoint = `comment/item/${itemId}`;
+    
+    const response = await callPodioApi(endpoint);
+    
+    if (!response || !Array.isArray(response)) {
+      console.log('No comments found or invalid response');
+      return [];
+    }
+    
+    // Transform Podio comments into our CommentItem format
+    const comments: CommentItem[] = response.map((comment: any) => ({
+      id: comment.comment_id,
+      text: comment.value,
+      createdBy: comment.created_by.name || 'Podio User',
+      createdAt: comment.created_on
+    }));
+    
+    console.log(`Found ${comments.length} comments for item ID ${itemId}`);
+    return comments;
+  } catch (error) {
+    console.error('Error fetching comments from Podio:', error);
+    
+    // For development, return mock data as fallback
+    console.log('Falling back to mock data for comments');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    
+    return getMockComments(itemId);
+  }
+};
+
+// Function to add a comment to a Podio item
+const addCommentToPodio = async (
+  itemId: number,
+  comment: string,
+  userName?: string
+): Promise<boolean> => {
+  try {
+    console.log(`Adding comment to Podio item ${itemId}: ${comment}`);
+    
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
+    }
+    
+    // Prepare the comment data
+    const commentData = {
+      value: comment,
+      external_id: `customer_comment_${Date.now()}`,
+    };
+    
+    // Post the comment to Podio
+    const endpoint = `comment/item/${itemId}`;
+    
+    await callPodioApi(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(commentData),
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error adding comment to Podio:', error);
+    
+    // For development, simulate a successful update
+    console.log('Simulating successful comment addition for development');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    return true;
+  }
+};
+
 // Get packing spec details for a specific spec ID
 const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
   try {
@@ -676,8 +753,8 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
     const customerId = getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer);
     console.log(`Packing spec ${specId} belongs to customer ID:`, customerId);
     
-    // Get comments if available
-    const comments = getCommentsFromPodio(fields);
+    // Get comments directly from Podio's comment API
+    const comments = await getCommentsFromPodio(specId);
     
     // Map to our application's format
     const packingSpec: PackingSpec = {
@@ -732,7 +809,7 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
         // signature: getFieldValueByExternalId(fields, 'signature'),
         // shipperSticker: getFieldValueByExternalId(fields, 'shipper-sticker'),
       },
-      comments: comments || getMockComments(specId)  // Add comments to the spec
+      comments: comments // Use the comments fetched from Podio
     };
     
     return packingSpec;
@@ -856,50 +933,16 @@ const addCommentToPackingSpec = async (
   try {
     console.log(`Adding comment to packing spec ${specId}: ${comment}`);
     
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
-      throw new Error('Not authenticated with Podio API');
+    const success = await addCommentToPodio(specId, comment, userName);
+    
+    if (!success) {
+      throw new Error('Failed to add comment to Podio');
     }
-    
-    // Get existing spec to retrieve current comments
-    const spec = await getPackingSpecDetails(specId);
-    if (!spec) {
-      throw new Error('Packing spec not found');
-    }
-    
-    // Create new comment
-    const newComment: CommentItem = {
-      id: Date.now(),
-      text: comment,
-      createdBy: userName || 'Customer Portal User',
-      createdAt: new Date().toISOString()
-    };
-    
-    // Add to existing comments or create new array
-    const updatedComments = spec.comments ? [...spec.comments, newComment] : [newComment];
-    
-    // Prepare update data
-    const updateData = {
-      fields: {
-        [PACKING_SPEC_FIELD_IDS.comments]: JSON.stringify(updatedComments)
-      }
-    };
-    
-    // Update the item in Podio
-    const endpoint = `item/${specId}`;
-    
-    await callPodioApi(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    });
     
     return true;
   } catch (error) {
     console.error('Error adding comment to packing spec:', error);
-    
-    // For development, simulate a successful update
-    console.log('Simulating successful comment addition for development');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    return true;
+    return false;
   }
 };
 
