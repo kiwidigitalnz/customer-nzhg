@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,11 +85,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'blob': {
+					'0%, 100%': {
+						transform: 'translate(0, 0) scale(1)'
+					},
+					'25%': {
+						transform: 'translate(20px, -30px) scale(1.05)'
+					},
+					'50%': {
+						transform: 'translate(-20px, 20px) scale(0.95)'
+					},
+					'75%': {
+						transform: 'translate(-30px, -20px) scale(1.05)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'blob': 'blob 15s infinite'
 			}
 		}
 	},

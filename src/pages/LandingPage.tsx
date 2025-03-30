@@ -8,10 +8,13 @@ import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart } from 'lucide-re
 const LandingPage = () => {
   return (
     <MainLayout>
-      {/* Hero Section */}
+      {/* Hero Section - Redesigned with flowing curves and softer feel */}
       <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="container mx-auto px-4 py-16 md:py-24 lg:py-32">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full blur-3xl"></div>
+          <div className="absolute top-60 -left-20 w-72 h-72 bg-blue-100 rounded-full blur-3xl"></div>
+        </div>
+        <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="flex-1 space-y-8">
               <img 
@@ -23,92 +26,98 @@ const LandingPage = () => {
                   e.currentTarget.src = 'https://placehold.co/320x120/F0F8FF/0078D7?text=NZ+Honey+Group';
                 }}
               />
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Customer Portal for Premium Honey Products
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 leading-tight">
+                Premium Honey <span className="text-blue-600">Customer Portal</span>
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl">
-                Streamline your product approvals, access specifications, and collaborate with our team through our secure customer portal.
+              <p className="text-xl text-gray-600 max-w-2xl">
+                Your gateway to streamlined product approvals, specifications, and collaboration with our team through our intuitive customer portal.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Link to="/login" className="gap-2">
-                    Sign In to Portal <ArrowRight className="h-5 w-5" />
+                    Sign In <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="border-blue-200 hover:bg-blue-50">
+                  <Link to="/login" className="gap-2">
+                    Learn More <ArrowRight className="h-5 w-5" />
                   </Link>
                 </Button>
               </div>
             </div>
             <div className="flex-1 relative">
-              <div className="relative z-10 bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-8 border border-gray-100">
-                <div className="absolute -top-3 -left-3 bg-blue-100 text-blue-800 px-4 py-1 rounded-lg text-sm font-medium">
-                  Customer Access
+              <div className="relative z-10 bg-white rounded-2xl shadow-xl p-8 border border-gray-100 transform rotate-1 hover:rotate-0 transition-transform duration-300">
+                <div className="absolute -top-3 -left-3 bg-blue-500 text-white px-4 py-1 rounded-lg text-sm font-medium">
+                  Customer Portal
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5" />
+                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
                     <p className="text-gray-700">Real-time product specifications</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5" />
+                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
                     <p className="text-gray-700">Approve packaging and labeling</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5" />
+                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
                     <p className="text-gray-700">Access honey quality reports</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5" />
+                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
                     <p className="text-gray-700">View product images and documents</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500 h-5 w-5" />
+                    <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0" />
                     <p className="text-gray-700">Secure and encrypted access</p>
                   </div>
                 </div>
               </div>
-              <div className="absolute top-10 -right-16 w-32 h-32 bg-blue-300 rounded-full opacity-20 blur-3xl"></div>
-              <div className="absolute -bottom-10 -left-16 w-40 h-40 bg-blue-500 rounded-full opacity-10 blur-3xl"></div>
+              <div className="absolute w-full h-full top-3 -left-3 bg-gradient-to-r from-blue-100 to-blue-50 rounded-2xl -z-10 transform -rotate-2"></div>
             </div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white"></div>
       </div>
 
-      {/* Features Section */}
-      <div className="bg-white py-16 md:py-24">
-        <div className="container mx-auto px-4">
+      {/* Features Section - More organic and flowing design */}
+      <div className="bg-white py-16 md:py-24 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/30 to-white"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Streamline Your Product Approvals</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Our customer portal provides everything you need to manage your honey products efficiently
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Streamlined Product Management</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Our portal brings together everything you need to manage your honey products with ease
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="bg-blue-50 p-8 rounded-xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-              <div className="bg-blue-100 p-3 rounded-lg w-fit mb-6">
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all hover:translate-y-[-5px] group">
+              <div className="bg-blue-100 p-3 rounded-full w-fit mb-6 group-hover:bg-blue-200 transition-colors">
                 <FileCheck className="h-6 w-6 text-blue-700" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">Product Specifications</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800">Product Specifications</h3>
+              <p className="text-gray-600">
                 Access and review all your product packing specifications in one secure location. Download detailed reports and stay informed.
               </p>
             </div>
             
-            <div className="bg-blue-50 p-8 rounded-xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-              <div className="bg-blue-100 p-3 rounded-lg w-fit mb-6">
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all hover:translate-y-[-5px] group">
+              <div className="bg-blue-100 p-3 rounded-full w-fit mb-6 group-hover:bg-blue-200 transition-colors">
                 <Beaker className="h-6 w-6 text-blue-700" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">Quality Approvals</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800">Quality Approvals</h3>
+              <p className="text-gray-600">
                 Approve honey specifications and packaging details with an intuitive interface. Provide feedback directly to our team.
               </p>
             </div>
             
-            <div className="bg-blue-50 p-8 rounded-xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-              <div className="bg-blue-100 p-3 rounded-lg w-fit mb-6">
+            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all hover:translate-y-[-5px] group">
+              <div className="bg-blue-100 p-3 rounded-full w-fit mb-6 group-hover:bg-blue-200 transition-colors">
                 <LineChart className="h-6 w-6 text-blue-700" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">Progress Tracking</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-semibold mb-3 text-gray-800">Progress Tracking</h3>
+              <p className="text-gray-600">
                 Monitor the status of your honey products throughout the approval process with real-time updates and notifications.
               </p>
             </div>
@@ -116,18 +125,30 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-blue-100 to-blue-50 py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Ready to Manage Your Products?</h2>
-          <p className="text-xl text-gray-700 max-w-2xl mx-auto mb-8">
-            Sign in to access your personalized customer portal and start managing your honey product approvals today.
-          </p>
-          <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
-            <Link to="/login" className="gap-2">
-              Access Customer Portal <ArrowRight className="h-5 w-5" />
-            </Link>
-          </Button>
+      {/* CTA Section - More modern design with subtle wave background */}
+      <div className="relative py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-blue-50 opacity-70"></div>
+        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-white to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"></div>
+        
+        {/* Decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply blur-3xl opacity-70 animate-blob"></div>
+          <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        </div>
+        
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <div className="bg-white/80 backdrop-blur-sm py-12 px-6 rounded-2xl shadow-sm border border-blue-100 max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">Ready to Manage Your Products?</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+              Sign in to access your personalized customer portal and start managing your honey product approvals today.
+            </p>
+            <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Link to="/login" className="gap-2">
+                Access Customer Portal <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </MainLayout>
