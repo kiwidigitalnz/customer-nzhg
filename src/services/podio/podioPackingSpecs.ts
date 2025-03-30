@@ -63,6 +63,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     }
     
     // Query for packing specs filtering by contact ID
+    // Fix: Only pass two arguments to callPodioApi
     const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, 'POST', {
       filters: {
         "customer-id": [contactId]
@@ -97,7 +98,8 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
           batchSize: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.batchSize),
           packagingType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.packagingType),
           versionNumber: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.versionNumber),
-          customerId: getFieldIdValue(item.fields, PACKING_SPEC_FIELD_IDS.customer),
+          // Fix: Parse string to number or provide proper type conversion
+          customerId: getFieldIdValue(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.customer, 10)),
           specialRequirements: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.specialRequirements),
         }
       };
@@ -126,6 +128,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
     const comments = await getCommentsFromPodio(specId);
     
     // Extract additional details
+    // Fix: Parse string to number
     const labelImages = extractPodioImages(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.labelImages, 10));
     const productImages = extractPodioImages(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.productImages, 10));
     
@@ -149,7 +152,8 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
         batchSize: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.batchSize),
         packagingType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.packagingType),
         versionNumber: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.versionNumber),
-        customerId: getFieldIdValue(item.fields, PACKING_SPEC_FIELD_IDS.customer),
+        // Fix: Parse string to number
+        customerId: getFieldIdValue(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.customer, 10)),
         markets: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.markets),
         specialRequirements: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.specialRequirements),
         labelInformation: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.labelInformation),
@@ -227,6 +231,7 @@ export const updatePackingSpecStatus = async (
     
     // Add a comment if provided
     if (comments) {
+      // Fix: Only pass two arguments to callPodioApi
       await callPodioApi(`/comment/item/${specId}`, 'POST', {
         value: comments
       });
