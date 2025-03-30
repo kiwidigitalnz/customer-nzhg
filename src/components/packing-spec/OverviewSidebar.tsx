@@ -92,7 +92,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
                 <User className="mr-1.5 h-3.5 w-3.5" />
                 Specification Updated By
               </h4>
-              <p className="text-sm font-medium">{details.specificationUpdatedBy || "N/A"}</p>
+              <p className="text-sm font-medium">{details.updatedBy || "N/A"}</p>
             </div>
           </div>
         </CardContent>
