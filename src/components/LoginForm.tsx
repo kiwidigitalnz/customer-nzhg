@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -26,16 +27,6 @@ const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginAttempted(true);
-    
-    if (!podioConfigured && isDevelopment) {
-      toast({
-        title: 'Podio Not Configured',
-        description: 'Please set up Podio API credentials first',
-        variant: 'destructive',
-      });
-      navigate('/podio-setup');
-      return;
-    }
     
     if (!username || !password) {
       toast({
@@ -130,7 +121,7 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={loading || (isDevelopment && !podioConfigured)}
+            disabled={loading}
           >
             {loading ? 'Logging in...' : 'Login'}
           </Button>

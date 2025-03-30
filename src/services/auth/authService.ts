@@ -231,4 +231,3 @@ export const initAuthMonitoring = (): void => {
   // We can expose the cleanup function as a property
   (initAuthMonitoring as any).cleanup = cleanup;
 };
-

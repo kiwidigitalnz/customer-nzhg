@@ -82,24 +82,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
+    // Check if Podio is configured
     const podioConfigured = isPodioConfigured();
     
-    if (!podioConfigured && process.env.NODE_ENV === 'production') {
-      // In production, show a user-friendly message
+    if (!podioConfigured) {
+      // Create appropriate error message based on environment
       const authError = createAuthError(
         AuthErrorType.CONFIGURATION,
-        'The system is currently undergoing maintenance.'
-      );
-      
-      handleAuthError(authError);
-      setError(authError.message);
-      setLoading(false);
-      return false;
-    } else if (!podioConfigured) {
-      // In development, show more technical message
-      const authError = createAuthError(
-        AuthErrorType.CONFIGURATION,
-        'Podio API is not configured. Please set up Podio API first.'
+        process.env.NODE_ENV === 'production'
+          ? 'The system is currently undergoing maintenance.'
+          : 'Podio API is not configured. Please set up Podio API first.'
       );
       
       handleAuthError(authError);
