@@ -1,4 +1,3 @@
-
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -674,12 +673,26 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
     const item = response;
     const fields = item.fields;
     
+    console.log('Raw Podio response for image fields:', 
+      fields.find((f: any) => f.field_id === PACKING_SPEC_FIELD_IDS.label),
+      fields.find((f: any) => f.field_id === PACKING_SPEC_FIELD_IDS.shipperSticker)
+    );
+    
     // Get the customer ID for security checks
     const customerId = getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer);
     console.log(`Packing spec ${specId} belongs to customer ID:`, customerId);
     
     // Get comments directly from Podio's comment API
     const comments = await getCommentsFromPodio(specId);
+    
+    // Extract images from Podio fields
+    const labelImages = extractPodioImages(fields, PACKING_SPEC_FIELD_IDS.label);
+    const shipperStickerImages = extractPodioImages(fields, PACKING_SPEC_FIELD_IDS.shipperSticker);
+    
+    console.log('Extracted image data:', {
+      labelImages: labelImages ? labelImages.length : 0,
+      shipperStickerImages: shipperStickerImages ? shipperStickerImages.length : 0
+    });
     
     // Map to our application's format
     const packingSpec: PackingSpec = {
@@ -726,13 +739,14 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
         customerRequestedChanges: getFieldValueByExternalId(fields, 'customer-requested-changes') || '',
         approvedByName: getFieldValueByExternalId(fields, 'approved-by-2') || '',
         versionNumber: getFieldValueByExternalId(fields, 'version-number') || '',
+        // Include the image fields
+        label: labelImages || [],
+        shipperSticker: shipperStickerImages || [],
+        // Link to label document (if any)
+        labelLink: getFieldValueByExternalId(fields, 'label-link') || '',
         // Dates need special handling since they are objects
         dateReviewed: getDateFieldValue(fields, 'date-reviewed'),
         approvalDate: getDateFieldValue(fields, 'approval-date'),
-        // We don't handle images yet, but we could add this later
-        // label: getFieldValueByExternalId(fields, 'label'),
-        // signature: getFieldValueByExternalId(fields, 'signature'),
-        // shipperSticker: getFieldValueByExternalId(fields, 'shipper-sticker'),
       },
       comments: comments // Use the comments fetched from Podio
     };
@@ -744,53 +758,38 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
   }
 };
 
-// Helper function to extract comments from Podio fields
-const parseCommentsFromPodioField = (fields: any[]): CommentItem[] | null => {
-  const commentsField = fields.find(f => f.field_id === PACKING_SPEC_FIELD_IDS.comments);
+// Add a new helper function to extract images from Podio fields
+const extractPodioImages = (fields: any[], fieldId: number): any[] | null => {
+  const field = fields.find(f => f.field_id === fieldId);
   
-  if (!commentsField || !commentsField.values || commentsField.values.length === 0) {
-    return null;
-  }
-  
-  try {
-    // Comments might be stored as JSON in a text field
-    const commentsValue = commentsField.values[0].value;
-    if (typeof commentsValue === 'string') {
-      try {
-        return JSON.parse(commentsValue);
-      } catch (e) {
-        // If not valid JSON, return as a single comment
-        return [
-          {
-            id: 1,
-            text: commentsValue,
-            createdBy: 'System',
-            createdAt: new Date().toISOString()
-          }
-        ];
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error('Error parsing comments:', error);
-    return null;
-  }
-};
-
-// Helper function to get date field value
-const getDateFieldValue = (fields: any[], externalId: string): string | null => {
-  const field = fields.find(f => f.external_id === externalId);
   if (!field || !field.values || field.values.length === 0) {
+    console.log(`No values found for field ID ${fieldId}`);
     return null;
   }
   
-  // Date fields have a "start" property with the date string
-  if (field.values[0].start) {
-    // Format the date as needed
-    return new Date(field.values[0].start).toISOString().split('T')[0];
+  console.log(`Extracting images from field ${fieldId}, found ${field.values.length} values`);
+  
+  const images = [];
+  
+  for (const value of field.values) {
+    // Check if it's a file type
+    if (value.file) {
+      console.log('Found file:', value.file);
+      images.push(value.file);
+    } 
+    // For direct value objects
+    else if (value.value) {
+      console.log('Found value object:', value.value);
+      images.push(value.value);
+    }
+    // For any other format, just add the value
+    else {
+      console.log('Found other format:', value);
+      images.push(value);
+    }
   }
   
-  return null;
+  return images.length > 0 ? images : null;
 };
 
 // Function to add a comment to a packing spec

@@ -51,6 +51,15 @@ export const getImageUrl = (image: any): string | null => {
   // Direct URL as string
   if (typeof image === 'string') return image;
   
+  // Handle arrays - extract first valid image
+  if (Array.isArray(image)) {
+    for (const item of image) {
+      const url = getImageUrl(item);
+      if (url) return url;
+    }
+    return null;
+  }
+  
   // Object with url property
   if (typeof image === 'object') {
     // Check for standard URL property
@@ -62,16 +71,37 @@ export const getImageUrl = (image: any): string | null => {
     // Check for embedded link property
     if (image.link) return image.link;
     
+    // Check for hosted_by and hosted_by_id (Podio format)
+    if (image.hosted_by === 'podio' && image.hosted_by_id) {
+      return `https://files.podio.com/${image.hosted_by_id}`;
+    }
+    
     // Check for file_id which might need to be constructed into a URL
     if (image.file_id) {
-      // Construct URL for Podio files - this might need to be adjusted based on your Podio setup
+      // Construct URL for Podio files
       return `https://files.podio.com/${image.file_id}`;
     }
     
     // Check if it's a Podio reference with ID
     if (image.id) {
       // For Podio embedded files
-      return `https://app.podio.com/file/${image.id}`;
+      return `https://files.podio.com/file/${image.id}`;
+    }
+    
+    // Check for values array with file data (common in Podio API responses)
+    if (image.values && Array.isArray(image.values) && image.values.length > 0) {
+      // Try to extract file info from values
+      for (const val of image.values) {
+        if (val.file) {
+          if (val.file.file_id) {
+            return `https://files.podio.com/${val.file.file_id}`;
+          }
+          
+          if (val.file.link) {
+            return val.file.link;
+          }
+        }
+      }
     }
   }
   

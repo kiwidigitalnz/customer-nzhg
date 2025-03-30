@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getImageUrl } from '@/utils/formatters';
 import { ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -21,10 +21,26 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
+  useEffect(() => {
+    console.log('ImageGallery received images:', images);
+    
+    // Debug log to see what's in each image object
+    if (images && images.length > 0) {
+      images.forEach((img, idx) => {
+        console.log(`Image ${idx} details:`, img);
+        console.log(`Image ${idx} URL:`, getImageUrl(img));
+      });
+    }
+  }, [images]);
+  
   // Filter out invalid images - only include those we can get a URL for
   const validImages = (images && Array.isArray(images)) 
     ? images.filter(img => getImageUrl(img))
     : [];
+  
+  useEffect(() => {
+    console.log(`Found ${validImages.length} valid images out of ${images?.length || 0} total`);
+  }, [validImages, images]);
   
   // If no valid images, show placeholder
   if (!validImages || validImages.length === 0) {

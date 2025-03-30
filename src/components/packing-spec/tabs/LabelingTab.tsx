@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tag, Printer, Sticker } from 'lucide-react';
-import { formatTextContent, getImageUrl } from '@/utils/formatters';
+import { formatTextContent } from '@/utils/formatters';
 import ImageGallery from '../ImageGallery';
 
 interface LabelingTabProps {
@@ -10,9 +10,16 @@ interface LabelingTabProps {
 }
 
 const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
-  // Extract label and shipper sticker images
+  // Extract label and shipper sticker images, handling both array and single item cases
   const labelImages = details.label ? (Array.isArray(details.label) ? details.label : [details.label]) : [];
   const shipperStickerImages = details.shipperSticker ? (Array.isArray(details.shipperSticker) ? details.shipperSticker : [details.shipperSticker]) : [];
+  
+  useEffect(() => {
+    console.log('LabelingTab loaded with images:', {
+      label: labelImages,
+      shipperSticker: shipperStickerImages
+    });
+  }, [labelImages, shipperStickerImages]);
   
   return (
     <div className="space-y-6 animate-in fade-in-50">
