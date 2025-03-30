@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { isPodioConfigured } from '../services/podioApi';
 import { useToast } from '@/components/ui/use-toast';
 import { useEffect } from 'react';
+import LandingPage from './LandingPage';
 
 const Index = () => {
   const { user } = useAuth();
@@ -32,8 +33,9 @@ const Index = () => {
     return <Navigate to="/dashboard" replace />;
   }
   
-  // If Podio is configured but no user is logged in, redirect to login
-  return <Navigate to="/login" replace />;
+  // If Podio is configured but no user is logged in, show the landing page
+  // instead of redirecting to login
+  return <LandingPage />;
 };
 
 export default Index;

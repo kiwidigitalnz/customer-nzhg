@@ -51,8 +51,8 @@ const PodioCallbackPage = () => {
           return;
         }
 
-        // Exchange code for access token with exact redirect URI
-        const redirectUri = `${window.location.origin}/podio-callback`;
+        // Exchange code for access token with new domain
+        const redirectUri = 'https://customer.nzhg.com/podio-callback';
         const tokenUrl = 'https://podio.com/oauth/token';
         
         console.log('Exchanging code with params:', {

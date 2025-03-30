@@ -25,8 +25,8 @@ const PodioSetupPage = () => {
     if (storedClientId) setClientId(storedClientId);
     if (storedClientSecret) setClientSecret(storedClientSecret);
     
-    // Get current domain for instructions
-    setCurrentDomain(window.location.origin);
+    // Use the new domain for authentication
+    setCurrentDomain('https://customer.nzhg.com');
   }, []);
 
   const handleSaveCredentials = () => {
@@ -66,10 +66,10 @@ const PodioSetupPage = () => {
                  Math.random().toString(36).substring(2, 15);
     localStorage.setItem('podio_auth_state', state);
 
-    // Build the authorization URL with correct parameters
+    // Build the authorization URL with the new domain
     const params = new URLSearchParams({
       client_id: storedClientId,
-      redirect_uri: `${window.location.origin}/podio-callback`,
+      redirect_uri: `https://customer.nzhg.com/podio-callback`,
       response_type: 'code',
       state: state
     });
@@ -101,8 +101,8 @@ const PodioSetupPage = () => {
     }
 
     try {
-      // Use exact origin for redirect URI
-      const redirectUri = `${window.location.origin}/podio-callback`;
+      // Use the new domain for redirect URI
+      const redirectUri = `https://customer.nzhg.com/podio-callback`;
       const tokenUrl = 'https://podio.com/oauth/token';
       
       // Log information for debugging
@@ -192,12 +192,12 @@ const PodioSetupPage = () => {
                 <li>Go to <a href="https://podio.com/settings/api" target="_blank" rel="noopener noreferrer" className="underline">Podio API Settings</a></li>
                 <li>Click "Generate API Key"</li>
                 <li>Enter your application name (e.g., "NZHG Customer Portal")</li>
-                <li>For domain, enter: <strong>{currentDomain}</strong></li>
+                <li>For domain, enter: <strong>https://customer.nzhg.com</strong></li>
                 <li>Copy the Client ID and Client Secret provided by Podio</li>
                 <li>Paste them in the fields above and save</li>
               </ol>
               <p className="mt-2 text-amber-800 font-medium">Important:</p>
-              <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>{currentDomain}</strong></p>
+              <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>https://customer.nzhg.com</strong></p>
             </div>
             
             <Tabs defaultValue="automatic" className="mt-6">
@@ -223,7 +223,7 @@ const PodioSetupPage = () => {
                         <div className="mt-1 mb-2">
                           <Input 
                             readOnly
-                            value={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent(currentDomain + '/podio-callback')}&response_type=code`}
+                            value={`https://podio.com/oauth/authorize?client_id=${clientId || '[CLIENT_ID]'}&redirect_uri=${encodeURIComponent('https://customer.nzhg.com/podio-callback')}&response_type=code`}
                             onClick={(e) => (e.target as HTMLInputElement).select()}
                             className="text-xs font-mono p-2 bg-blue-100"
                           />
@@ -231,7 +231,7 @@ const PodioSetupPage = () => {
                       </li>
                       <li>After authorizing, you'll be redirected to a page that might show an error</li>
                       <li>Copy the <strong>code</strong> parameter from the URL in your browser address bar</li>
-                      <li>The URL will look like: {currentDomain}/podio-callback?code=<strong>abc123...</strong></li>
+                      <li>The URL will look like: https://customer.nzhg.com/podio-callback?code=<strong>abc123...</strong></li>
                       <li>Paste only the code value below (not the full URL)</li>
                     </ol>
                   </div>
