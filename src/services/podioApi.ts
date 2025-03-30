@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -786,3 +787,87 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
     
     return packingSpec;
   } catch (error) {
+    console.error('Error fetching packing spec details:', error);
+    throw new Error('Failed to fetch packing specification details from Podio');
+  }
+};
+
+// Add a new helper function to extract images from Podio fields
+const extractPodioImages = (fields: any[], fieldId: number): any[] | null => {
+  const field = fields.find(f => f.field_id === fieldId);
+  
+  if (!field || !field.values || field.values.length === 0) {
+    console.log(`No values found for field ID ${fieldId}`);
+    return null;
+  }
+  
+  console.log(`Extracting images from field ${fieldId}, found ${field.values.length} values`);
+  
+  const images = [];
+  
+  for (const value of field.values) {
+    // Check if it's a file type
+    if (value.file) {
+      console.log('Found file:', value.file);
+      images.push(value.file);
+    } 
+    // For direct value objects
+    else if (value.value) {
+      console.log('Found value object:', value.value);
+      images.push(value.value);
+    }
+    // For any other format, just add the value
+    else {
+      console.log('Found other format:', value);
+      images.push(value);
+    }
+  }
+  
+  return images.length > 0 ? images : null;
+};
+
+// Function to add a comment to a packing spec
+const addCommentToPackingSpec = async (
+  specId: number,
+  comment: string,
+  userName: string
+): Promise<boolean> => {
+  try {
+    console.log(`Adding comment to packing spec ${specId}: ${comment}`);
+    
+    // Store user information in localStorage to identify comments made by the current user
+    const userInfo = localStorage.getItem('user_info');
+    if (userInfo) {
+      // We already have this information stored when the user logs in
+      console.log('User info already stored in localStorage');
+    } else {
+      // If not stored yet for some reason, add basic info
+      localStorage.setItem('user_info', JSON.stringify({
+        username: userName,
+        name: 'Your Company' // Default fallback
+      }));
+    }
+    
+    const success = await addCommentToPodio(specId, comment, userName);
+    
+    if (!success) {
+      throw new Error('Failed to add comment to Podio');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error adding comment to packing spec:', error);
+    throw new Error('Failed to add comment to packing specification');
+  }
+};
+
+// Export the functions we want to use in other parts of the application
+export {
+  authenticateUser,
+  getPackingSpecsForContact,
+  getPackingSpecDetails,
+  updatePackingSpecStatus,
+  isPodioConfigured,
+  addCommentToPackingSpec,
+  getCommentsFromPodio
+};
