@@ -121,7 +121,10 @@ export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending-
     return 'changes-requested';
   }
   
-  if (normalizedStatus === 'pending approval' || normalizedStatus === 'pending-approval') {
+  if (normalizedStatus === 'pending approval' || 
+      normalizedStatus === 'pending-approval' ||
+      normalizedStatus === 'pending customer approval' ||  // Added this mapping
+      normalizedStatus === 'pending-customer-approval') {  // Added this mapping
     return 'pending-approval';
   }
   

@@ -1,3 +1,4 @@
+
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -64,12 +65,13 @@ export const PACKING_SPEC_FIELD_IDS = {
 // Category values in Podio (these would normally come from a dynamic source)
 export const PODIO_CATEGORIES = {
   CUSTOMER_APPROVAL_STATUS: {
-    APPROVE_SPECIFICATION: { id: 1, text: "approve-specification" },
+    PENDING_CUSTOMER_APPROVAL: { id: 1, text: "pending-customer-approval" },
+    APPROVE_SPECIFICATION: { id: 2, text: "approve-specification" }, // Updated to ID 2 from logs
     REQUEST_CHANGES: { id: 3, text: "request-changes" }
   },
   APPROVAL_STATUS: {
     PENDING_APPROVAL: { id: 1, text: "pending-approval" },
-    CHANGES_REQUESTED: { id: 2, text: "changes-requested" },
+    CHANGES_REQUESTED: { id: 4, text: "changes-requested" }, // ID 4 from logs
     APPROVED_BY_CUSTOMER: { id: 3, text: "approved-by-customer" }
   }
 };
@@ -109,6 +111,8 @@ const formatCategoryValue = (value: string | number): { value: { id: number } } 
     return { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id } };
   } else if (value === 'approved-by-customer') {
     return { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id } };
+  } else if (value === 'pending-customer-approval') {
+    return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.PENDING_CUSTOMER_APPROVAL.id } };
   }
   
   // Default case, pass the string directly (may fail for category fields)

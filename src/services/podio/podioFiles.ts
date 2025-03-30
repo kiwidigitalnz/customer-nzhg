@@ -16,9 +16,21 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     
     console.log(`Preparing to upload file: ${fileName}`);
     
+    // Validate that the data URL is not empty or invalid
+    if (!fileDataUrl || typeof fileDataUrl !== 'string' || !fileDataUrl.startsWith('data:')) {
+      console.error('Invalid file data URL provided');
+      throw new Error('Invalid file data URL format');
+    }
+    
     // Convert data URL to blob
     const response = await fetch(fileDataUrl);
     const blob = await response.blob();
+    
+    // Validate the blob to ensure it has content
+    if (!blob || blob.size === 0) {
+      console.error('Empty blob created from data URL');
+      throw new Error('File data is empty');
+    }
     
     // Create FormData object
     const formData = new FormData();
