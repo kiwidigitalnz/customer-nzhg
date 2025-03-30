@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
+import { MessageSquare, Clock, User, RefreshCcw, AlertCircle, Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface Comment {
   id: number;
@@ -38,6 +39,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
     refreshComments,
     lastPolled,
     newCommentsCount,
+    newCommentIds,
     markAllAsSeen
   } = useCommentPolling(
     specId || 0,
@@ -62,6 +64,29 @@ const CommentsList: React.FC<CommentsListProps> = ({
       description: "Checking for the latest comments from Podio...",
       duration: 2000
     });
+  };
+  
+  // Format time to NZ Pacific timezone
+  const formatNZTime = (dateStr: string) => {
+    try {
+      // Format time in 12-hour format (e.g., 2:30 PM)
+      const date = new Date(dateStr);
+      // Using Auckland specific time format
+      return format(date, 'h:mm a');
+    } catch (err) {
+      console.error('Error formatting time:', err);
+      return '';
+    }
+  };
+  
+  const formatLastPolledTime = (timestamp: number) => {
+    try {
+      const date = new Date(timestamp);
+      return format(date, 'h:mm a');
+    } catch (err) {
+      console.error('Error formatting last polled time:', err);
+      return '';
+    }
   };
   
   if (!comments || comments.length === 0) {
@@ -106,7 +131,11 @@ const CommentsList: React.FC<CommentsListProps> = ({
       {specId && (
         <div className="flex justify-between items-center mb-4">
           <p className="text-xs text-muted-foreground">
-            {isLoading ? 'Checking for new comments...' : `Last updated: ${formatDate(new Date(lastPolled).toISOString())}`}
+            {isLoading ? 'Checking for new comments...' : (
+              <>
+                Last updated: {formatDate(new Date(lastPolled).toISOString())} at {formatLastPolledTime(lastPolled)}
+              </>
+            )}
           </p>
           <Button 
             variant="ghost" 
@@ -161,14 +190,22 @@ const CommentsList: React.FC<CommentsListProps> = ({
 
         // Format time to show below the date
         const commentDate = new Date(comment.createdAt);
-        const timeString = format(commentDate, 'h:mm a');
+        const timeString = formatNZTime(comment.createdAt);
+        
+        // Check if this is a new comment
+        const isNewComment = newCommentIds.has(comment.id);
         
         return (
-          <div key={comment.id} className="bg-card rounded-md p-4 border">
+          <div key={comment.id} className={`bg-card rounded-md p-4 border ${isNewComment ? 'border-primary' : ''}`}>
             <div className="flex justify-between items-start">
               <div className="flex items-center">
                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
                 <p className="font-medium text-sm">{displayName}</p>
+                {isNewComment && (
+                  <Badge variant="default" className="ml-2 bg-primary text-primary-foreground text-xs px-2">
+                    New
+                  </Badge>
+                )}
               </div>
               <div className="flex flex-col items-end text-xs">
                 <div className="text-muted-foreground">

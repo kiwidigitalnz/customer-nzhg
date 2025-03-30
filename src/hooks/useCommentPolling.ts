@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getCommentsFromPodio } from '../services/podioApi';
+import { format } from 'date-fns';
 
 interface Comment {
   id: number;
@@ -26,9 +27,11 @@ export const useCommentPolling = (
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newCommentsCount, setNewCommentsCount] = useState(0);
+  const [newCommentIds, setNewCommentIds] = useState<Set<number>>(new Set());
   const lastPollTimeRef = useRef<number>(Date.now());
   const pollingIntervalRef = useRef<number | null>(null);
   const seenCommentsRef = useRef<Set<number>>(new Set());
+  const newCommentsTimeoutRef = useRef<number | null>(null);
   
   // Initialize seen comments with initial comments
   useEffect(() => {
@@ -53,6 +56,8 @@ export const useCommentPolling = (
       
       if (newComments.length > 0) {
         setNewCommentsCount(newComments.length);
+        // Track which comments are new for highlighting
+        setNewCommentIds(new Set(newComments.map(comment => comment.id)));
       }
       
       // Check if we need to update the comments list
@@ -87,14 +92,24 @@ export const useCommentPolling = (
       seenCommentsRef.current.add(comment.id);
     });
     setNewCommentsCount(0);
+    setNewCommentIds(new Set());
   };
 
   // Mark comments as seen
   const markAllAsSeen = () => {
-    comments.forEach(comment => {
-      seenCommentsRef.current.add(comment.id);
-    });
-    setNewCommentsCount(0);
+    // Clear any existing timeout
+    if (newCommentsTimeoutRef.current) {
+      window.clearTimeout(newCommentsTimeoutRef.current);
+    }
+    
+    // Set a timeout to clear new comments after 5 seconds
+    newCommentsTimeoutRef.current = window.setTimeout(() => {
+      comments.forEach(comment => {
+        seenCommentsRef.current.add(comment.id);
+      });
+      setNewCommentsCount(0);
+      setNewCommentIds(new Set());
+    }, 5000);
   };
 
   // Setup polling when component becomes active
@@ -124,6 +139,11 @@ export const useCommentPolling = (
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      
+      if (newCommentsTimeoutRef.current) {
+        window.clearTimeout(newCommentsTimeoutRef.current);
+        newCommentsTimeoutRef.current = null;
+      }
     };
   }, [itemId, isActive, pollingInterval]);
 
@@ -146,6 +166,15 @@ export const useCommentPolling = (
     }
   }, [isActive]);
 
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (newCommentsTimeoutRef.current) {
+        window.clearTimeout(newCommentsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return {
     comments,
     isLoading,
@@ -153,6 +182,7 @@ export const useCommentPolling = (
     refreshComments,
     lastPolled: lastPollTimeRef.current,
     newCommentsCount,
+    newCommentIds,
     markAllAsSeen
   };
 };
