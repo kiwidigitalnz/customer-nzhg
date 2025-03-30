@@ -1,5 +1,4 @@
-
-import { refreshPodioToken, isPodioConfigured, ensureInitialPodioAuth } from '../podioApi';
+import { refreshPodioToken, isPodioConfigured } from '../podioApi';
 import { toast } from '@/hooks/use-toast';
 
 // Session duration in milliseconds (4 hours by default)
@@ -174,12 +173,7 @@ export const handleAuthError = (error: AuthError): void => {
 
 // Initialize auth monitoring (call this on app start)
 export const initAuthMonitoring = (): void => {
-  // In production, ensure we're authenticated with Podio
-  if (import.meta.env.PROD) {
-    ensureInitialPodioAuth().catch(error => {
-      console.error('Error during initial Podio authentication:', error);
-    });
-  }
+  // Remove the production-specific ensureInitialPodioAuth call since we handle it in Index.tsx
   
   // Set initial session expiry if not set
   if (!localStorage.getItem('nzhg_session_expiry') && localStorage.getItem('nzhg_user')) {

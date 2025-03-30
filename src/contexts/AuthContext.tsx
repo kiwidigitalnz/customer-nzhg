@@ -8,7 +8,8 @@ import {
   handleAuthError, 
   isSessionValid, 
   extendSession,
-  initAuthMonitoring
+  initAuthMonitoring,
+  AuthError
 } from '../services/auth/authService';
 
 interface ContactData {
