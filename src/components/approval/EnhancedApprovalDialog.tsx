@@ -17,6 +17,7 @@ import ApprovalChecklist from './ApprovalChecklist';
 import { updatePackingSpecStatus } from '@/services/podioApi';
 import { useToast } from '@/components/ui/use-toast';
 import { LoaderCircle } from 'lucide-react';
+import { addCommentToPackingSpec } from '@/services/podioApi';
 
 interface EnhancedApprovalDialogProps {
   specId: number;
@@ -67,6 +68,12 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     setLoading(true);
 
     try {
+      // Add comment first if notes are provided
+      if (notes) {
+        await addCommentToPackingSpec(specId, notes);
+      }
+
+      // Update the status
       await updatePackingSpecStatus(
         specId,
         type === 'approve' ? 'approved' : 'rejected',

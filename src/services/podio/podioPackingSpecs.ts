@@ -4,7 +4,7 @@
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
 import { uploadFileToPodio } from './podioFiles';
-import { getCommentsFromPodio, CommentItem } from './podioComments';
+import { getCommentsFromPodio, CommentItem, addCommentToPodio } from './podioComments';
 
 // Packing Spec Field IDs
 export const PACKING_SPEC_FIELD_IDS = {
@@ -316,6 +316,9 @@ export const updatePackingSpecStatus = async (
     
     // Add the comment to the comments field as well
     if (comments) {
+      // Add comment to Podio
+      await addCommentToPodio(specId, comments);
+      
       // Get existing comments
       const spec = await getPackingSpecDetails(specId);
       if (spec) {

@@ -48,8 +48,7 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
 // Function to add a comment to a Podio item
 export const addCommentToPodio = async (
   itemId: number,
-  comment: string,
-  userName?: string
+  comment: string
 ): Promise<boolean> => {
   try {
     console.log(`Adding comment to Podio item ${itemId}: ${comment}`);
@@ -60,7 +59,7 @@ export const addCommentToPodio = async (
     
     // Get user info from localStorage for company name
     const userInfo = localStorage.getItem('user_info');
-    const companyName = userInfo ? JSON.parse(userInfo).name : (userName || 'Customer Portal User');
+    const companyName = userInfo ? JSON.parse(userInfo).name : 'Customer Portal User';
     
     // Prepare the comment data - prepend with company name
     const commentData = {
@@ -86,26 +85,23 @@ export const addCommentToPodio = async (
 // Function to add a comment to a packing spec
 export const addCommentToPackingSpec = async (
   specId: number,
-  comment: string,
-  userName?: string
+  comment: string
 ): Promise<boolean> => {
   try {
     console.log(`Adding comment to packing spec ${specId}: ${comment}`);
     
     // Store user information in localStorage to identify comments made by the current user
     const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
-      // We already have this information stored when the user logs in
-      console.log('User info already stored in localStorage');
-    } else if (userName) {
+    if (!userInfo) {
       // If not stored yet for some reason, add basic info
+      const userName = 'Customer Portal User';
       localStorage.setItem('user_info', JSON.stringify({
         username: userName,
-        name: userName // Use userName directly instead of a hardcoded value
+        name: userName
       }));
     }
     
-    const success = await addCommentToPodio(specId, comment, userName);
+    const success = await addCommentToPodio(specId, comment);
     
     if (!success) {
       throw new Error('Failed to add comment to Podio');
