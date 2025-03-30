@@ -213,8 +213,22 @@ export const initAuthMonitoring = (): void => {
     }, { passive: true });
   });
   
-  // Cleanup on unmount (though this won't happen for a service initialized at app root)
-  return () => {
+  // The error is here - returning a function instead of the function's result
+  // Fix: Don't return the cleanup function since this method is supposed to return void
+  // Just define the cleanup logic that would run if this were a React hook
+  
+  // If we need to clean up (e.g., in a component unmount scenario)
+  // someone can manually call this cleanup function
+  const cleanup = () => {
     clearInterval(interval);
+    activityEvents.forEach(eventType => {
+      window.removeEventListener(eventType, () => {});
+    });
+    window.removeEventListener('storage', () => {});
   };
+  
+  // For environments where a cleanup function is expected (like testing)
+  // We can expose the cleanup function as a property
+  (initAuthMonitoring as any).cleanup = cleanup;
 };
+
