@@ -58,6 +58,13 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Lid Colour</h4>
                 <p className="font-medium">{details.lidColour || "N/A"}</p>
               </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Seal Instructions</h4>
+                <p>{details.sealInstructions ? 
+                  formatTextContent(details.sealInstructions) : 
+                  "N/A"}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -80,13 +87,6 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Pouch Size</h4>
                 <p className="font-medium">{details.pouchSize || "N/A"}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Seal Instructions</h4>
-                <p>{details.sealInstructions ? 
-                  formatTextContent(details.sealInstructions) : 
-                  "N/A"}
-                </p>
               </div>
             </div>
           </div>
