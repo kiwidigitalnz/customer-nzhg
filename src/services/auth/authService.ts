@@ -1,5 +1,5 @@
 
-import { refreshPodioToken, isPodioConfigured } from '../podioApi';
+import { refreshPodioToken, isPodioConfigured, ensureInitialPodioAuth } from '../podioApi';
 import { toast } from '@/hooks/use-toast';
 
 // Session duration in milliseconds (4 hours by default)
@@ -100,7 +100,7 @@ export const handleAuthError = (error: AuthError): void => {
   console.error(`Auth error (${error.type}):`, error.message);
   
   // Log error for debugging
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.error('Authentication error details:', error);
   }
   
@@ -115,7 +115,7 @@ export const handleAuthError = (error: AuthError): void => {
       break;
       
     case AuthErrorType.CONFIGURATION:
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         toast({
           title: 'Configuration Error',
           description: 'Podio is not configured correctly. Please check your settings.',
@@ -174,6 +174,13 @@ export const handleAuthError = (error: AuthError): void => {
 
 // Initialize auth monitoring (call this on app start)
 export const initAuthMonitoring = (): void => {
+  // In production, ensure we're authenticated with Podio
+  if (import.meta.env.PROD) {
+    ensureInitialPodioAuth().catch(error => {
+      console.error('Error during initial Podio authentication:', error);
+    });
+  }
+  
   // Set initial session expiry if not set
   if (!localStorage.getItem('nzhg_session_expiry') && localStorage.getItem('nzhg_user')) {
     extendSession();
@@ -213,12 +220,7 @@ export const initAuthMonitoring = (): void => {
     }, { passive: true });
   });
   
-  // The error is here - returning a function instead of the function's result
-  // Fix: Don't return the cleanup function since this method is supposed to return void
-  // Just define the cleanup logic that would run if this were a React hook
-  
-  // If we need to clean up (e.g., in a component unmount scenario)
-  // someone can manually call this cleanup function
+  // The cleanup function that would run if this were a React hook
   const cleanup = () => {
     clearInterval(interval);
     activityEvents.forEach(eventType => {

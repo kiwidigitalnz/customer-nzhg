@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, isPodioConfigured } from '../services/podioApi';
+import { authenticateUser, isPodioConfigured, ensureInitialPodioAuth } from '../services/podioApi';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   AuthErrorType, 
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initialize auth monitoring
+    // Initialize auth monitoring (which also handles initial Podio auth in production)
     initAuthMonitoring();
     
     // Check for saved user session
@@ -82,16 +82,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
-    // Check if Podio is configured
-    const podioConfigured = isPodioConfigured();
-    
-    if (!podioConfigured) {
-      // Create appropriate error message based on environment
+    // In production, make sure Podio is authenticated first
+    if (import.meta.env.PROD && !isPodioConfigured()) {
+      try {
+        const authenticated = await ensureInitialPodioAuth();
+        if (!authenticated) {
+          const authError = createAuthError(
+            AuthErrorType.CONFIGURATION,
+            'Could not connect to service. Please try again later.'
+          );
+          
+          handleAuthError(authError);
+          setError(authError.message);
+          setLoading(false);
+          return false;
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error 
+          ? `Service connection error: ${err.message}` 
+          : 'Could not connect to service';
+        
+        const authError = createAuthError(
+          AuthErrorType.CONFIGURATION,
+          errorMsg
+        );
+        
+        handleAuthError(authError);
+        setError(errorMsg);
+        setLoading(false);
+        return false;
+      }
+    } else if (!isPodioConfigured()) {
+      // Dev environment without Podio configured
       const authError = createAuthError(
         AuthErrorType.CONFIGURATION,
-        process.env.NODE_ENV === 'production'
-          ? 'The system is currently undergoing maintenance.'
-          : 'Podio API is not configured. Please set up Podio API first.'
+        'Podio API is not configured. Please set up Podio API first.'
       );
       
       handleAuthError(authError);
@@ -123,7 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           const authError = createAuthError(
             AuthErrorType.AUTHENTICATION,
-            'No matching contact found with these credentials in Podio'
+            'No matching contact found with these credentials'
           );
           
           handleAuthError(authError);
@@ -151,17 +176,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw networkErr;
       }
     } catch (err) {
-      const errorMsg = err instanceof Error 
-        ? `Login error: ${err.message}` 
-        : 'An unknown error occurred during login';
+      // Handle authentication errors
+      if (err && typeof err === 'object' && 'type' in err && 'message' in err) {
+        // It's already an AuthError
+        handleAuthError(err as AuthError);
+        setError((err as AuthError).message);
+      } else {
+        const errorMsg = err instanceof Error 
+          ? `Login error: ${err.message}` 
+          : 'An unknown error occurred during login';
+        
+        const authError = createAuthError(
+          AuthErrorType.UNKNOWN,
+          errorMsg
+        );
+        
+        handleAuthError(authError);
+        setError(errorMsg);
+      }
       
-      const authError = createAuthError(
-        AuthErrorType.UNKNOWN,
-        errorMsg
-      );
-      
-      handleAuthError(authError);
-      setError(errorMsg);
       setLoading(false);
       return false;
     }

@@ -1,25 +1,31 @@
 
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isPodioConfigured } from '../services/podioApi';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { useEffect } from 'react';
+import { ensureInitialPodioAuth } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
 const Index = () => {
   const { user, checkSession } = useAuth();
   const { toast } = useToast();
-  
-  // Check if Podio is configured - this is the first and most important check
-  const podioConfigured = isPodioConfigured();
+  const [isAttemptingAuth, setIsAttemptingAuth] = useState(false);
   
   useEffect(() => {
-    // Only show this toast to admins or in development environment
-    if (!podioConfigured && process.env.NODE_ENV === 'development') {
-      toast({
-        title: "Podio Setup Required",
-        description: "Please configure Podio API settings before using this application",
-        duration: 5000,
+    // In production, try to automatically authenticate with Podio
+    if (import.meta.env.PROD && !isAttemptingAuth) {
+      setIsAttemptingAuth(true);
+      ensureInitialPodioAuth().catch(err => {
+        console.error('Error during automatic Podio authentication:', err);
+        
+        // Only show errors in development
+        if (import.meta.env.DEV) {
+          toast({
+            title: "Podio Authentication Error",
+            description: err instanceof Error ? err.message : "Could not connect to Podio",
+            duration: 5000,
+          });
+        }
       });
     }
     
@@ -31,13 +37,7 @@ const Index = () => {
         duration: 5000,
       });
     }
-  }, [podioConfigured, toast, user, checkSession]);
-  
-  // If Podio is not configured, we'll only redirect to setup if we're in development mode
-  // In production, we'll still let the user see the landing page but they won't be able to login
-  if (!podioConfigured && process.env.NODE_ENV === 'development') {
-    return <Navigate to="/podio-setup" replace />;
-  }
+  }, [isAttemptingAuth, toast, user, checkSession]);
   
   // If the user is logged in and session is valid, redirect them to the dashboard
   if (user && checkSession()) {

@@ -7,26 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { isPodioConfigured } from '../services/podioApi';
+import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, AlertCircle } from 'lucide-react';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loginAttempted, setLoginAttempted] = useState(false);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check if Podio is configured - only used for UI feedback
-  const podioConfigured = isPodioConfigured();
-  // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginAttempted(true);
     
     if (!username || !password) {
       toast({
@@ -94,27 +86,6 @@ const LoginForm = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Login Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Only show technical Podio connection messages in development mode */}
-          {isDevelopment && !podioConfigured && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Connection Issue</AlertTitle>
-              <AlertDescription>
-                Podio connection not configured. Please contact an administrator.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {isDevelopment && podioConfigured && loginAttempted && !error && !loading && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Connection Status</AlertTitle>
-              <AlertDescription>
-                Podio is configured, but login attempt failed. Check console for details.
-              </AlertDescription>
             </Alert>
           )}
           

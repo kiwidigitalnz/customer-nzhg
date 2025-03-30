@@ -1,69 +1,45 @@
-# Welcome to your Lovable project
 
-## Project info
+# NZ Honey Group Customer Portal
 
-**URL**: https://lovable.dev/projects/2a45f4f6-b2bf-4364-8f82-d357936cd57b
+## Overview
 
-## How can I edit this code?
+This is the customer portal application for NZ Honey Group. It allows customers to log in and view their packing specifications, approve products, and communicate with the team.
 
-There are several ways of editing your application.
+## Development Setup
 
-**Use Lovable**
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the development server: `npm run dev`
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2a45f4f6-b2bf-4364-8f82-d357936cd57b) and start prompting.
+## Production Deployment
 
-Changes made via Lovable will be committed automatically to this repo.
+### Environment Variables
 
-**Use your preferred IDE**
+For production deployment, create a `.env.production` file with the following variables:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+VITE_PODIO_CLIENT_ID=your_podio_client_id
+VITE_PODIO_CLIENT_SECRET=your_podio_client_secret
 ```
 
-**Edit a file directly in GitHub**
+These environment variables will be used for automatic Podio authentication in production.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build
 
-**Use GitHub Codespaces**
+To build the application for production:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+npm run build
+```
 
-## What technologies are used for this project?
+The build output will be in the `dist` directory.
 
-This project is built with .
+### Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The application is designed to be deployed to the domain `customer.nzhg.com`. Deploy the contents of the `dist` directory to your web server.
 
-## How can I deploy this project?
+## Important Notes
 
-Simply open [Lovable](https://lovable.dev/projects/2a45f4f6-b2bf-4364-8f82-d357936cd57b) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- In production, the application will automatically authenticate with Podio using the provided environment variables.
+- Users will only need to enter their username and password to log in, with no manual Podio setup required.
+- The application is designed to work seamlessly in both development and production environments.
