@@ -76,16 +76,16 @@ export const getImageUrl = (image: any): string | null => {
       return `https://files.podio.com/${image.hosted_by_id}`;
     }
     
-    // Check for file_id which might need to be constructed into a URL
+    // Check for file_id which needs to be constructed into a proper Podio URL
     if (image.file_id) {
-      // Construct URL for Podio files
+      // Construct a proper URL for Podio files that works with their download service
       return `https://files.podio.com/${image.file_id}`;
     }
     
     // Check if it's a Podio reference with ID
     if (image.id) {
       // For Podio embedded files
-      return `https://files.podio.com/file/${image.id}`;
+      return `https://files.podio.com/${image.id}`;
     }
     
     // Check for values array with file data (common in Podio API responses)
