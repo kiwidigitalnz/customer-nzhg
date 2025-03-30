@@ -61,6 +61,14 @@ export const PACKING_SPEC_FIELD_IDS = {
   comments: 267538001  // Field ID for comments
 };
 
+// Category values in Podio (these would normally come from a dynamic source)
+export const PODIO_CATEGORIES = {
+  CUSTOMER_APPROVAL_STATUS: {
+    APPROVE_SPECIFICATION: { id: 1, text: "approve-specification" },
+    REQUEST_CHANGES: { id: 2, text: "request-changes" }
+  }
+};
+
 export interface PackingSpec {
   id: number;
   title: string;
@@ -76,6 +84,26 @@ export interface PackingSpec {
   };
   comments?: CommentItem[];
 }
+
+// Helper function to format category field values for Podio API
+const formatCategoryValue = (value: string | number): { value: { id: number } } | { value: string } => {
+  // If it's already a category ID (number)
+  if (typeof value === 'number') {
+    return { value: { id: value } };
+  }
+  
+  // If it's a string representing a category, convert to the proper format
+  // In a real implementation, you would look up the ID from a mapping
+  // This is a simplified example
+  if (value === 'approve-specification') {
+    return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id } };
+  } else if (value === 'request-changes') {
+    return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id } };
+  }
+  
+  // Default case, pass the string directly (may fail for category fields)
+  return { value: value as string };
+};
 
 // Get packing specs for a specific contact from Podio
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
@@ -281,8 +309,14 @@ export const updatePackingSpecStatus = async (
     
     // Handle different status types
     if (status === 'approved') {
-      // Set customer approval status to "Approve Specification" (use the actual category ID in production)
-      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = additionalData?.status || 'approve-specification';
+      // Set customer approval status with proper category format
+      const categoryStatus = additionalData?.status || 'approve-specification';
+      // For category fields, we need to use the proper format with category IDs
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [{
+        value: {
+          id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id
+        }
+      }];
       
       // Set approved by name
       if (additionalData?.approvedByName) {
@@ -304,8 +338,12 @@ export const updatePackingSpecStatus = async (
         }
       }
     } else if (status === 'rejected') {
-      // Set customer approval status to "Request Changes" (use the actual category ID in production)
-      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = additionalData?.status || 'request-changes';
+      // Set customer approval status with proper category format
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [{
+        value: {
+          id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id
+        }
+      }];
       
       // Set customer requested changes field
       if (comments) {
