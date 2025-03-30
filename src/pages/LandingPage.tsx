@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart } from 'lucide-react';
+
 const LandingPage = () => {
   return <MainLayout>
       {/* Hero Section - With honey packing image */}
@@ -19,7 +21,7 @@ const LandingPage = () => {
               e.currentTarget.src = 'https://placehold.co/320x120/F0F8FF/0078D7?text=NZ+Honey+Group';
             }} />
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 leading-tight">
-                Premium Honey <span className="text-blue-600">Welcome to your Customer Portal</span>
+                Premium Honey <span className="text-blue-600">Welcome to your Customer Portal</span>
               </h1>
               <p className="text-xl text-gray-600 max-w-2xl">
                 Your gateway to streamlined product approvals, specifications, and collaboration with our team through our intuitive customer portal.
@@ -33,10 +35,7 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="flex-1 relative">
-              <img src="https://dl.dropbox.com/scl/fi/jzfwk0tz6y49mzqc8bpn2/honey-jar-packaging-transparent.png?rlkey=0h3nwxddpnx5n6b5k6wj4f20t" alt="Honey Packaging" className="max-w-full h-auto" onError={e => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = 'https://placehold.co/600x400/F0F8FF/0078D7?text=Honey+Packaging';
-            }} />
+              {/* Image removed as requested */}
             </div>
           </div>
         </div>
@@ -50,7 +49,7 @@ const LandingPage = () => {
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Streamlined Product Management</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our portal brings together everything you need to manage your honey products with ease
+              The customer portal brings together everything you need to manage you packing orders with ease.
             </p>
           </div>
           
