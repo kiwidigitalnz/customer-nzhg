@@ -23,6 +23,8 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     // Create FormData object
     const formData = new FormData();
     formData.append('file', blob, fileName);
+    // Add source parameter that was missing from previous implementation
+    formData.append('source', 'web');
     
     // Use direct fetch with proper headers instead of relying on callPodioApi
     // The upload endpoint is different from regular API endpoints
@@ -48,6 +50,10 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
       
       if (uploadResponse.status === 404) {
         throw new Error('Podio file upload endpoint not found. The API may have changed.');
+      } else if (uploadResponse.status === 400) {
+        // This is likely an API parameter issue
+        console.error('API validation error, likely missing required parameter in the request');
+        throw new Error('File upload failed: API validation error');
       } else if (uploadResponse.status === 401) {
         // Try to refresh token and retry once
         if (await refreshPodioToken()) {

@@ -115,6 +115,18 @@ const formatCategoryValue = (value: string | number): { value: { id: number } } 
   return { value: value as string };
 };
 
+// Helper function to format date for Podio API
+const formatPodioDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
 // Get packing specs for a specific contact from Podio
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
@@ -345,9 +357,9 @@ export const updatePackingSpecStatus = async (
         updateData.fields[PACKING_SPEC_FIELD_IDS.approvedByName] = additionalData.approvedByName;
       }
       
-      // Set approval date to current date
+      // Set approval date to current date in the correct format
       updateData.fields[PACKING_SPEC_FIELD_IDS.approvalDate] = {
-        start: new Date().toISOString()
+        start: formatPodioDate(new Date())
       };
       
       // If signature data URL is provided, upload it to Podio

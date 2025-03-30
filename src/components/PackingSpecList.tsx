@@ -137,6 +137,7 @@ const QuickReview: React.FC<QuickReviewProps> = ({ spec, onOpenApproval }) => {
 const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListProps) => {
   const [selectedSpec, setSelectedSpec] = useState<PackingSpec | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -171,6 +172,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     if (!selectedSpec) return;
     
     setIsSubmitting(true);
+    setError(null);
     
     try {
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
@@ -196,26 +198,26 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           variant: 'default',
         });
         
-        const updatedSpecs = specs.map(spec => 
-          spec.id === selectedSpec.id ? { ...spec, status: 'approved-by-customer' } : spec
-        );
-        
         setSelectedSpec(null);
         setApprovalDialogOpen(false);
         approvalForm.reset();
         onUpdate();
       } else {
-        toast({
-          title: 'Error',
-          description: "Failed to approve the specification. Please try again.",
-          variant: 'destructive',
-        });
+        throw new Error(`Failed to approve the specification. Please try again.`);
       }
     } catch (error) {
+      console.error(`Error approving specification:`, error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to approve this specification.`;
+      
+      setError(errorMessage);
+      
       toast({
-        title: 'Error',
-        description: "An unexpected error occurred. Please try again.",
-        variant: 'destructive',
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -226,6 +228,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     if (!selectedSpec) return;
     
     setIsSubmitting(true);
+    setError(null);
     
     try {
       const rejectionData = {
@@ -242,31 +245,31 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
       
       if (success) {
         toast({
-          title: "Specification rejected",
-          description: "Feedback has been sent to the team.",
+          title: "Change request submitted",
+          description: "Your feedback has been sent to the team.",
           variant: 'default',
         });
-        
-        const updatedSpecs = specs.map(spec => 
-          spec.id === selectedSpec.id ? { ...spec, status: 'changes-requested' } : spec
-        );
         
         setSelectedSpec(null);
         setApprovalDialogOpen(false);
         rejectionForm.reset();
         onUpdate();
       } else {
-        toast({
-          title: 'Error',
-          description: "Failed to reject the specification. Please try again.",
-          variant: 'destructive',
-        });
+        throw new Error(`Failed to submit change request. Please try again.`);
       }
     } catch (error) {
+      console.error(`Error submitting change request:`, error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to submit change request.`;
+      
+      setError(errorMessage);
+      
       toast({
-        title: 'Error',
-        description: "An unexpected error occurred. Please try again.",
-        variant: 'destructive',
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
