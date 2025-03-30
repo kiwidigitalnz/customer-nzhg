@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -8,7 +9,10 @@ import {
   authenticateWithPasswordFlow,
   getPodioClientId,
   getPodioClientSecret,
-  startPodioOAuthFlow
+  startPodioOAuthFlow,
+  isRateLimited,
+  setRateLimit,
+  clearRateLimit
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import bcrypt from 'bcryptjs';
@@ -16,6 +20,43 @@ import bcrypt from 'bcryptjs';
 interface PodioCredentials {
   username: string;
   password: string;
+}
+
+// Rate limiting constants for API calls
+const API_CALL_COUNT_KEY = 'podio_api_call_count';
+const API_CALL_RESET_KEY = 'podio_api_call_reset';
+const MAX_API_CALLS_PER_MINUTE = 250; // Podio's general rate limit
+
+// Track API calls to prevent hitting rate limits
+const trackApiCall = (): boolean => {
+  // Check if we need to reset the counter
+  const resetTime = localStorage.getItem(API_CALL_RESET_KEY);
+  const now = Date.now();
+  
+  if (!resetTime || parseInt(resetTime, 10) < now) {
+    // Reset counter for a new minute
+    localStorage.setItem(API_CALL_COUNT_KEY, '1');
+    localStorage.setItem(API_CALL_RESET_KEY, (now + 60000).toString());
+    return true;
+  }
+  
+  // Increment counter
+  const count = parseInt(localStorage.getItem(API_CALL_COUNT_KEY) || '0', 10) + 1;
+  localStorage.setItem(API_CALL_COUNT_KEY, count.toString());
+  
+  // Check if we're approaching the limit
+  if (count >= MAX_API_CALLS_PER_MINUTE - 20) {
+    console.warn(`API call rate is high: ${count}/${MAX_API_CALLS_PER_MINUTE} calls this minute`);
+  }
+  
+  // Return false if we're over the limit
+  if (count >= MAX_API_CALLS_PER_MINUTE) {
+    console.error(`Rate limit preventive action: ${count} calls in the last minute exceeds limit`);
+    setRateLimit(60); // Wait a minute before trying again
+    return false;
+  }
+  
+  return true;
 }
 
 // Helper function to validate if token is actually working with Podio
@@ -69,7 +110,15 @@ export const clearPodioTokens = (): void => {
 
 // Function to initially authenticate with Podio using password flow
 export const ensureInitialPodioAuth = async (): Promise<boolean> => {
-  // First validate any existing tokens
+  // First check if we're rate limited
+  if (isRateLimited()) {
+    const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+    const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+    console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+    return false;
+  }
+  
+  // Then validate any existing tokens
   if (hasValidPodioTokens()) {
     console.log('Found valid Podio tokens, validating...');
     const isValid = await validatePodioToken();
@@ -91,6 +140,14 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
 
 // Enhanced function to refresh the access token if needed
 export const refreshPodioToken = async (): Promise<boolean> => {
+  // First check if we're rate limited
+  if (isRateLimited()) {
+    const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+    const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+    console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+    return false;
+  }
+  
   // With client_credentials flow, there's no refresh token
   // We need to get a new token each time
   return await authenticateWithPasswordFlow();
@@ -101,6 +158,29 @@ let retryCount = 0;
 const MAX_RETRIES = 2;
 
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  // Check if we're rate limited
+  if (isRateLimited()) {
+    const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+    const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+    
+    const error = createAuthError(
+      AuthErrorType.NETWORK,
+      `Rate limited. Please wait ${waitSecs} seconds before trying again.`,
+      false
+    );
+    throw error;
+  }
+  
+  // Track API call rate
+  if (!trackApiCall()) {
+    const error = createAuthError(
+      AuthErrorType.NETWORK,
+      'Too many API calls. Please try again later.',
+      false
+    );
+    throw error;
+  }
+  
   // First, ensure we have a valid token
   const tokenValid = await ensureValidToken();
   
@@ -129,6 +209,29 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       ...options,
       headers,
     });
+    
+    // Handle rate limiting (420 or 429 status)
+    if (response.status === 420 || response.status === 429) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Rate limit reached:', errorData);
+      
+      // Extract retry-after information
+      const retryAfter = response.headers.get('Retry-After') || 
+                        errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
+      
+      if (retryAfter) {
+        setRateLimit(parseInt(retryAfter, 10));
+      } else {
+        // Default to 60 seconds
+        setRateLimit(60);
+      }
+      
+      throw createAuthError(
+        AuthErrorType.NETWORK,
+        `Rate limit reached. Please wait before trying again. ${errorData.error_description || ''}`,
+        false
+      );
+    }
     
     // Handle 403 Forbidden specifically - this could mean the app doesn't have permission
     if (response.status === 403) {
@@ -215,6 +318,9 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         false
       );
     }
+    
+    // Clear rate limit on successful call
+    clearRateLimit();
     
     return await response.json();
   } catch (error) {
@@ -312,6 +418,17 @@ const extractContactData = (item: any): any => {
 export const authenticateUser = async (credentials: PodioCredentials): Promise<any | null> => {
   try {
     console.log('Authenticating with Podio...', credentials.username);
+    
+    // Check if we're rate limited first
+    if (isRateLimited()) {
+      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+      throw createAuthError(
+        AuthErrorType.NETWORK,
+        `Rate limited. Please wait ${waitSecs} seconds before trying again.`,
+        false
+      );
+    }
     
     // Ensure we're authenticated with Podio first using password flow
     const authenticated = await ensureInitialPodioAuth();

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ensureInitialPodioAuth } from '../services/podioApi';
+import { ensureInitialPodioAuth, isRateLimited } from '../services/podioApi';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -30,6 +30,19 @@ const LoginForm = () => {
       return;
     }
 
+    // Check if we're rate limited first
+    if (isRateLimited()) {
+      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+      
+      toast({
+        title: 'Rate Limit Reached',
+        description: `Please wait ${waitSecs} seconds before trying again.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     console.log(`Attempting login with username: ${username}`);
     
     try {
@@ -39,11 +52,23 @@ const LoginForm = () => {
       setConnectingToPodio(false);
       
       if (!podioConnected) {
-        toast({
-          title: 'Connection Error',
-          description: 'Could not connect to the service. Please try again later.',
-          variant: 'destructive',
-        });
+        // Check if failure was due to rate limiting
+        if (isRateLimited()) {
+          const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+          const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+          
+          toast({
+            title: 'Rate Limit Reached',
+            description: `Please wait ${waitSecs} seconds before trying again.`,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Connection Error',
+            description: 'Could not connect to the service. Please try again later.',
+            variant: 'destructive',
+          });
+        }
         return;
       }
       
@@ -59,8 +84,33 @@ const LoginForm = () => {
       }
     } catch (err) {
       console.error('Unhandled login error:', err);
+      
+      // Check if error is due to rate limiting
+      if (err && typeof err === 'object' && 'message' in err && 
+          typeof err.message === 'string' && err.message.includes('rate limit')) {
+        const waitMatch = err.message.match(/wait\s+(\d+)\s+seconds/i);
+        const waitSecs = waitMatch ? waitMatch[1] : '60';
+        
+        toast({
+          title: 'Rate Limit Reached',
+          description: `Please wait ${waitSecs} seconds before trying again.`,
+          variant: 'destructive',
+        });
+      }
     }
   };
+
+  // Generate a message for rate limiting if needed
+  const getRateLimitMessage = () => {
+    if (isRateLimited()) {
+      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
+      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+      return `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
+    }
+    return null;
+  };
+
+  const rateLimitMessage = getRateLimitMessage();
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">
@@ -80,7 +130,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={loading || connectingToPodio}
+              disabled={loading || connectingToPodio || isRateLimited()}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -93,26 +143,32 @@ const LoginForm = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
-              disabled={loading || connectingToPodio}
+              disabled={loading || connectingToPodio || isRateLimited()}
               autoComplete="current-password"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           
-          {error && (
+          {(error || rateLimitMessage) && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Login Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertTitle>{rateLimitMessage ? "Rate Limit Reached" : "Login Error"}</AlertTitle>
+              <AlertDescription>{rateLimitMessage || error}</AlertDescription>
             </Alert>
           )}
           
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={loading || connectingToPodio}
+            disabled={loading || connectingToPodio || isRateLimited()}
           >
-            {connectingToPodio ? 'Connecting to service...' : loading ? 'Logging in...' : 'Login'}
+            {connectingToPodio 
+              ? 'Connecting to service...' 
+              : loading 
+                ? 'Logging in...' 
+                : isRateLimited() 
+                  ? 'Rate limited' 
+                  : 'Login'}
           </Button>
         </form>
       </CardContent>

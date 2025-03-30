@@ -23,7 +23,10 @@ export {
   getPodioClientId,
   getPodioClientSecret,
   getPodioRedirectUri,
-  generatePodioAuthState
+  generatePodioAuthState,
+  isRateLimited,
+  setRateLimit,
+  clearRateLimit
 } from './podio/podioOAuth';
 
 // Export packing spec related functions and types

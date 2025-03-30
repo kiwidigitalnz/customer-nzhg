@@ -1,4 +1,3 @@
-
 // Service for handling Podio OAuth flow
 
 // Generate a random state for CSRF protection
@@ -25,9 +24,62 @@ export const getPodioRedirectUri = (): string => {
   return 'https://customer.nzhg.com/podio-callback';
 };
 
+// Rate limit handling
+const RATE_LIMIT_KEY = 'podio_rate_limit_until';
+const MIN_RETRY_DELAY = 2000; // Start with 2 seconds
+const MAX_RETRY_DELAY = 60000; // Maximum 1 minute
+
+// Check if we're currently rate limited
+export const isRateLimited = (): boolean => {
+  const limitUntil = localStorage.getItem(RATE_LIMIT_KEY);
+  if (!limitUntil) return false;
+  
+  const limitTime = parseInt(limitUntil, 10);
+  return Date.now() < limitTime;
+};
+
+// Set rate limit with exponential backoff
+export const setRateLimit = (retryAfterSecs?: number): void => {
+  // If Podio tells us when to retry, use that
+  if (retryAfterSecs) {
+    const limitTime = Date.now() + (retryAfterSecs * 1000);
+    localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
+    console.log(`Rate limited by Podio for ${retryAfterSecs} seconds`);
+    return;
+  }
+  
+  // Otherwise use exponential backoff
+  const currentDelay = localStorage.getItem('podio_retry_delay');
+  let delay = currentDelay ? parseInt(currentDelay, 10) : MIN_RETRY_DELAY;
+  
+  // Apply exponential backoff with jitter
+  delay = Math.min(delay * 2, MAX_RETRY_DELAY);
+  delay = delay + (Math.random() * delay * 0.2); // Add up to 20% jitter
+  
+  const limitTime = Date.now() + delay;
+  localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
+  localStorage.setItem('podio_retry_delay', delay.toString());
+  
+  console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
+};
+
+// Clear rate limit
+export const clearRateLimit = (): void => {
+  localStorage.removeItem(RATE_LIMIT_KEY);
+  localStorage.removeItem('podio_retry_delay');
+};
+
 // Implement Password Flow Authentication (App Authentication)
 export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
   try {
+    // Check for rate limiting first
+    if (isRateLimited()) {
+      const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
+      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+      console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      return false;
+    }
+    
     const clientId = getPodioClientId();
     const clientSecret = getPodioClientSecret();
     
@@ -50,11 +102,33 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       }).toString(),
     });
     
+    // Handle rate limiting specifically
+    if (response.status === 420 || response.status === 429) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Rate limit reached:', errorData);
+      
+      // Extract retry-after information if available
+      const retryAfter = response.headers.get('Retry-After') || 
+                         errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
+      
+      if (retryAfter) {
+        setRateLimit(parseInt(retryAfter, 10));
+      } else {
+        // Default to 60 seconds if no specific time given
+        setRateLimit(60);
+      }
+      
+      return false;
+    }
+    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Password flow authentication failed:', errorData);
       return false;
     }
+    
+    // Reset rate limit on success
+    clearRateLimit();
     
     const tokenData = await response.json();
     
@@ -71,6 +145,8 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error during Password Flow authentication:', error);
+    // Set a short backoff on error
+    setRateLimit(10);
     return false;
   }
 };
@@ -84,6 +160,14 @@ export const startPodioOAuthFlow = (): Promise<boolean> => {
 // Exchange the authorization code for access/refresh tokens - kept for backward compatibility
 export const exchangeCodeForToken = async (code: string, redirectUri: string): Promise<boolean> => {
   try {
+    // Check for rate limiting first
+    if (isRateLimited()) {
+      const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
+      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
+      console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      return false;
+    }
+    
     const clientId = getPodioClientId();
     const clientSecret = getPodioClientSecret();
     
@@ -109,11 +193,33 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       }).toString(),
     });
     
+    // Handle rate limiting
+    if (response.status === 420 || response.status === 429) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Rate limit reached during token exchange:', errorData);
+      
+      // Extract retry-after information
+      const retryAfter = response.headers.get('Retry-After') || 
+                         errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
+      
+      if (retryAfter) {
+        setRateLimit(parseInt(retryAfter, 10));
+      } else {
+        // Default to 60 seconds
+        setRateLimit(60);
+      }
+      
+      return false;
+    }
+    
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Token exchange failed:', errorData);
       return false;
     }
+    
+    // Reset rate limit on success
+    clearRateLimit();
     
     const tokenData = await response.json();
     
@@ -126,6 +232,8 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     return true;
   } catch (error) {
     console.error('Error during token exchange:', error);
+    // Set a short backoff on error
+    setRateLimit(10);
     return false;
   }
 };
