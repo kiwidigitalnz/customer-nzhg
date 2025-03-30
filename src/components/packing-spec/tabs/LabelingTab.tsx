@@ -13,7 +13,7 @@ interface LabelingTabProps {
 const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
   // Convert single label to array for consistency
   const labelImages = details.label ? (Array.isArray(details.label) ? details.label : [details.label]) : [];
-  const cartonLabelImages = details.cartonLabel ? (Array.isArray(details.cartonLabel) ? details.cartonLabel : [details.cartonLabel]) : [];
+  const shipperStickerImages = details.shipperSticker ? (Array.isArray(details.shipperSticker) ? details.shipperSticker : [details.shipperSticker]) : [];
   
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -80,15 +80,14 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                 </div>
               </div>
               
-              {labelImages.length > 0 && (
-                <div className="md:col-span-2 mt-4">
-                  <ImageGallery 
-                    images={labelImages} 
-                    title="Product Label Images" 
-                    emptyMessage="No product label images available"
-                  />
-                </div>
-              )}
+              <div className="md:col-span-2 mt-4">
+                <ImageGallery 
+                  images={labelImages} 
+                  title="Product Label Images" 
+                  emptyMessage="No product label images available"
+                  placeholderText="Product label images would be displayed here when available"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -116,6 +115,10 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Label Placement</h4>
                   <p className="font-medium">{details.cartonLabelPlacement || "N/A"}</p>
                 </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Number of Shipper Stickers</h4>
+                  <p className="font-medium">{details.shipperStickerCount || "N/A"}</p>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -129,15 +132,14 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                 </div>
               </div>
               
-              {cartonLabelImages.length > 0 && (
-                <div className="md:col-span-2 mt-4">
-                  <ImageGallery 
-                    images={cartonLabelImages} 
-                    title="Carton Label Images" 
-                    emptyMessage="No carton label images available"
-                  />
-                </div>
-              )}
+              <div className="md:col-span-2 mt-4">
+                <ImageGallery 
+                  images={shipperStickerImages} 
+                  title="Carton/Shipper Label Images" 
+                  emptyMessage="No carton label images available"
+                  placeholderText="Carton/shipper label images would be displayed here when available"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

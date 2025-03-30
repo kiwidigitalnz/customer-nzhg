@@ -10,23 +10,25 @@ interface ImageGalleryProps {
   images: any[];
   title: string;
   emptyMessage?: string;
+  placeholderText?: string;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({ 
   images, 
   title,
-  emptyMessage = "No images available" 
+  emptyMessage = "No images available",
+  placeholderText
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Filter out invalid images
-  const validImages = images.filter(img => getImageUrl(img));
+  const validImages = images && Array.isArray(images) ? images.filter(img => getImageUrl(img)) : [];
   
   if (!validImages || validImages.length === 0) {
     return (
       <div className="bg-muted/20 rounded-md p-8 flex flex-col items-center justify-center text-muted-foreground">
         <ImageIcon className="h-12 w-12 mb-2 opacity-30" />
-        <p>{emptyMessage}</p>
+        <p>{placeholderText || emptyMessage}</p>
       </div>
     );
   }

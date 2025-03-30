@@ -8,6 +8,7 @@ interface ImagePreviewProps {
   image: any;
   alt: string;
   maxHeight?: string;
+  placeholderText?: string;
 }
 
 /**
@@ -16,7 +17,8 @@ interface ImagePreviewProps {
 const ImagePreview: React.FC<ImagePreviewProps> = ({ 
   image, 
   alt, 
-  maxHeight = "max-h-80" 
+  maxHeight = "max-h-80",
+  placeholderText = "No image available"
 }) => {
   const imageUrl = getImageUrl(image);
   
@@ -24,7 +26,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
     return (
       <div className="bg-muted/20 rounded-md p-8 flex flex-col items-center justify-center text-muted-foreground">
         <ImageIcon className="h-12 w-12 mb-2 opacity-30" />
-        <p>No image available</p>
+        <p>{placeholderText}</p>
       </div>
     );
   }
