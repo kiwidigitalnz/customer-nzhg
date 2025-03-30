@@ -582,9 +582,21 @@ const PackingSpecDetails = () => {
                           { key: 'labelLink', label: 'Label Link' }
                         ])}
                         
-                        {spec.details.label && (
-                          <div className="mt-4">
-                            <h4 className="font-medium mb-2">Label Preview</h4>
+                        {/* Display label image if available */}
+                        {spec.details.label && spec.details.label.url ? (
+                          <div className="mt-6">
+                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
+                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
+                              <img 
+                                src={spec.details.label.url} 
+                                alt="Label Preview" 
+                                className="max-h-80 rounded-md object-contain"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-6">
+                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
                             <div className="bg-muted/20 rounded-md p-4 flex justify-center">
                               <div className="flex items-center justify-center h-40 w-40 bg-muted rounded-md">
                                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -630,9 +642,20 @@ const PackingSpecDetails = () => {
                           { key: 'shipperStickerCount', label: 'Shipper Sticker Count' }
                         ])}
                         
-                        {spec.details.shipperSticker && (
-                          <div className="mt-4">
-                            <h4 className="font-medium mb-2">Shipper Sticker Preview</h4>
+                        {spec.details.shipperSticker && spec.details.shipperSticker.url ? (
+                          <div className="mt-6">
+                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Shipper Sticker Preview</h4>
+                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
+                              <img 
+                                src={spec.details.shipperSticker.url} 
+                                alt="Shipper Sticker" 
+                                className="max-h-60 rounded-md object-contain"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-6">
+                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Shipper Sticker Preview</h4>
                             <div className="bg-muted/20 rounded-md p-4 flex justify-center">
                               <div className="flex items-center justify-center h-40 w-60 bg-muted rounded-md">
                                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -696,13 +719,15 @@ const PackingSpecDetails = () => {
                             { key: 'approvalDate', label: 'Approval Date', fieldType: 'date' },
                           ])}
                           
-                          {spec.details.signature && (
+                          {spec.details.signature && spec.details.signature.url && (
                             <div className="mt-4">
                               <h4 className="font-medium mb-2 text-sm text-muted-foreground">Digital Signature</h4>
                               <div className="bg-white rounded-md p-2 border border-muted flex justify-center">
-                                <div className="flex items-center justify-center h-20 w-60 bg-muted/10 rounded-md">
-                                  <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
-                                </div>
+                                <img 
+                                  src={spec.details.signature.url} 
+                                  alt="Digital Signature" 
+                                  className="h-20 object-contain"
+                                />
                               </div>
                             </div>
                           )}
@@ -1016,29 +1041,7 @@ const PackingSpecDetails = () => {
             </CardContent>
           </Card>
           
-          {/* Quick actions */}
-          <Card className="bg-muted/10">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center">
-                <Package className="mr-2 h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="mr-2 h-4 w-4" /> 
-                Export as PDF
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MessageSquare className="mr-2 h-4 w-4" /> 
-                Contact Support
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <ExternalLink className="mr-2 h-4 w-4" /> 
-                View in Podio
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Removed Quick Actions card */}
         </div>
       </div>
     </div>
