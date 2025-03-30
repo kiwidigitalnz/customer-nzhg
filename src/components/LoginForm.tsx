@@ -71,7 +71,7 @@ const LoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md shadow-lg border-gray-100">
       <CardHeader>
         <CardTitle>Customer Portal Login</CardTitle>
         <CardDescription>
@@ -89,6 +89,7 @@ const LoginForm = () => {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
               disabled={loading}
+              className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           <div className="space-y-2">
@@ -100,6 +101,7 @@ const LoginForm = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
               disabled={loading}
+              className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
           
@@ -131,7 +133,11 @@ const LoginForm = () => {
             </Alert>
           )}
           
-          <Button type="submit" className="w-full" disabled={loading || !podioConfigured}>
+          <Button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-700" 
+            disabled={loading || !podioConfigured}
+          >
             {loading ? 'Logging in...' : 'Login'}
           </Button>
           

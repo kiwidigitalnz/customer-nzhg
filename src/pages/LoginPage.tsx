@@ -11,19 +11,19 @@ const LoginPage = () => {
 
   return (
     <MainLayout>
-      <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 bg-gradient-to-b from-amber-50 to-white">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white">
         <div className="w-full max-w-md mb-8">
           <div className="text-center mb-8">
             <img 
-              src="/nz-honey-group-logo.png" 
+              src="https://dl.dropbox.com/scl/fi/ln475joiipgz6wb0vqos8/NZHG-Logo.png?rlkey=yh8katmkzr3h2lnd7mvswilul" 
               alt="NZ Honey Group" 
               className="h-16 mx-auto mb-4"
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = 'https://placehold.co/240x80/FFF6E5/FFB800?text=NZ+Honey+Group';
+                e.currentTarget.src = 'https://placehold.co/240x80/F0F8FF/0078D7?text=NZ+Honey+Group';
               }}
             />
-            <h1 className="text-3xl font-bold text-amber-900">Customer Portal</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Customer Portal</h1>
             <p className="text-muted-foreground mt-2">
               Access your packing specifications and approvals
             </p>
