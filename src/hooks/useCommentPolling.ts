@@ -25,8 +25,18 @@ export const useCommentPolling = (
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newCommentsCount, setNewCommentsCount] = useState(0);
   const lastPollTimeRef = useRef<number>(Date.now());
   const pollingIntervalRef = useRef<number | null>(null);
+  const seenCommentsRef = useRef<Set<number>>(new Set());
+  
+  // Initialize seen comments with initial comments
+  useEffect(() => {
+    if (initialComments && initialComments.length > 0) {
+      const initialIds = new Set(initialComments.map(comment => comment.id));
+      seenCommentsRef.current = initialIds;
+    }
+  }, []);
 
   // Function to fetch comments
   const fetchComments = async () => {
@@ -38,20 +48,26 @@ export const useCommentPolling = (
     try {
       const fetchedComments = await getCommentsFromPodio(itemId);
       
-      // Check if we have new comments
-      if (fetchedComments.length !== comments.length) {
-        setComments(fetchedComments);
-      } else {
-        // Check if any comments have different content
-        const hasChanges = fetchedComments.some((fetchedComment, index) => {
-          if (index >= comments.length) return true;
-          return fetchedComment.id !== comments[index].id || 
-                 fetchedComment.text !== comments[index].text;
+      // Check if we have new comments by comparing with what we've seen before
+      const newComments = fetchedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
+      
+      if (newComments.length > 0) {
+        setNewCommentsCount(newComments.length);
+      }
+      
+      // Check if we need to update the comments list
+      if (fetchedComments.length !== comments.length || 
+          fetchedComments.some((comment, index) => 
+            index >= comments.length || 
+            comment.id !== comments[index].id || 
+            comment.text !== comments[index].text
+          )) {
+        // Update comments without causing a flicker
+        setComments(prevComments => {
+          // Preserve references to existing comments where possible to minimize re-renders
+          const updatedComments = [...fetchedComments];
+          return updatedComments;
         });
-        
-        if (hasChanges) {
-          setComments(fetchedComments);
-        }
       }
       
       lastPollTimeRef.current = Date.now();
@@ -63,9 +79,22 @@ export const useCommentPolling = (
     }
   };
 
-  // Manual refresh function for immediate updates
+  // Manual refresh function for immediate updates and mark all as seen
   const refreshComments = () => {
     fetchComments();
+    // Mark all as seen when manually refreshed
+    comments.forEach(comment => {
+      seenCommentsRef.current.add(comment.id);
+    });
+    setNewCommentsCount(0);
+  };
+
+  // Mark comments as seen
+  const markAllAsSeen = () => {
+    comments.forEach(comment => {
+      seenCommentsRef.current.add(comment.id);
+    });
+    setNewCommentsCount(0);
   };
 
   // Setup polling when component becomes active
@@ -85,6 +114,11 @@ export const useCommentPolling = (
     // Set up polling interval
     pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
     
+    // Mark comments as seen when tab is active
+    if (isActive) {
+      markAllAsSeen();
+    }
+    
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -97,14 +131,28 @@ export const useCommentPolling = (
   useEffect(() => {
     if (initialComments && initialComments.length > 0) {
       setComments(initialComments);
+      
+      // Update seen comments with initial comments
+      initialComments.forEach(comment => {
+        seenCommentsRef.current.add(comment.id);
+      });
     }
   }, [initialComments]);
+
+  // Mark comments as seen when the tab becomes active
+  useEffect(() => {
+    if (isActive) {
+      markAllAsSeen();
+    }
+  }, [isActive]);
 
   return {
     comments,
     isLoading,
     error,
     refreshComments,
-    lastPolled: lastPollTimeRef.current
+    lastPolled: lastPollTimeRef.current,
+    newCommentsCount,
+    markAllAsSeen
   };
 };

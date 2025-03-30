@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,7 @@ import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 interface Comment {
   id: number;
@@ -35,7 +36,9 @@ const CommentsList: React.FC<CommentsListProps> = ({
     isLoading,
     error,
     refreshComments,
-    lastPolled
+    lastPolled,
+    newCommentsCount,
+    markAllAsSeen
   } = useCommentPolling(
     specId || 0,
     initialComments,
@@ -44,6 +47,13 @@ const CommentsList: React.FC<CommentsListProps> = ({
   
   // Use polled comments if available, otherwise use passed in comments
   const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
+  
+  // Mark comments as seen when tab becomes active
+  useEffect(() => {
+    if (isActive && newCommentsCount > 0) {
+      markAllAsSeen();
+    }
+  }, [isActive, newCommentsCount, markAllAsSeen]);
   
   const handleRefresh = () => {
     refreshComments();
@@ -103,7 +113,13 @@ const CommentsList: React.FC<CommentsListProps> = ({
             size="sm" 
             onClick={handleRefresh} 
             disabled={isLoading}
+            className="relative"
           >
+            {newCommentsCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {newCommentsCount}
+              </span>
+            )}
             <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -142,6 +158,10 @@ const CommentsList: React.FC<CommentsListProps> = ({
         if (isCurrentUserComment) {
           displayName = companyName;
         }
+
+        // Format time to show below the date
+        const commentDate = new Date(comment.createdAt);
+        const timeString = format(commentDate, 'h:mm a');
         
         return (
           <div key={comment.id} className="bg-card rounded-md p-4 border">
@@ -150,9 +170,14 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
                 <p className="font-medium text-sm">{displayName}</p>
               </div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                <Clock className="h-3 w-3 mr-1" />
-                {formatDate(comment.createdAt)}
+              <div className="flex flex-col items-end text-xs">
+                <div className="text-muted-foreground">
+                  {formatDate(comment.createdAt)}
+                </div>
+                <div className="text-muted-foreground/60 mt-0.5">
+                  <Clock className="h-3 w-3 inline mr-1" />
+                  {timeString}
+                </div>
               </div>
             </div>
             <p className="mt-2 whitespace-pre-line break-words">{commentText}</p>
