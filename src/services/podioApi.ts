@@ -18,7 +18,8 @@ export {
   getPackingSpecsForContact,
   getPackingSpecDetails,
   updatePackingSpecStatus,
-  PACKING_SPEC_FIELD_IDS
+  PACKING_SPEC_FIELD_IDS,
+  PODIO_CATEGORIES
 } from './podio/podioPackingSpecs';
 export type { PackingSpec } from './podio/podioPackingSpecs';
 

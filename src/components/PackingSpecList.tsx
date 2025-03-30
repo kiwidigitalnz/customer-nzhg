@@ -196,6 +196,11 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           description: "The packing specification has been marked as approved.",
           variant: 'default',
         });
+        
+        const updatedSpecs = specs.map(spec => 
+          spec.id === selectedSpec.id ? { ...spec, status: 'approved' } : spec
+        );
+        
         setSelectedSpec(null);
         setApprovalDialogOpen(false);
         approvalForm.reset();
@@ -242,6 +247,11 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           description: "Feedback has been sent to the team.",
           variant: 'default',
         });
+        
+        const updatedSpecs = specs.map(spec => 
+          spec.id === selectedSpec.id ? { ...spec, status: 'rejected' } : spec
+        );
+        
         setSelectedSpec(null);
         setApprovalDialogOpen(false);
         rejectionForm.reset();
@@ -265,7 +275,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
   };
 
   const getStatusBadge = (status: 'pending' | 'approved' | 'rejected') => {
-    return <StatusBadge status={status} compact={true} />;
+    return <StatusBadge status={status} compact={true} showIcon={true} />;
   };
 
   const formatDate = (dateString: string) => {
