@@ -428,6 +428,34 @@ const getFieldIdValue = (fields: any[], fieldId: number): number | null => {
   return null;
 };
 
+// Helper function to get date field value from Podio date fields
+const getDateFieldValue = (fields: any[], externalId: string): string | null => {
+  const field = fields.find(f => f.external_id === externalId);
+  
+  if (!field || !field.values || field.values.length === 0) {
+    return null;
+  }
+  
+  // Podio date fields can have start/end format or direct ISO string
+  if (field.values[0].start) {
+    return field.values[0].start;
+  }
+  
+  // Handle the case where it's a direct date value
+  if (field.values[0].value) {
+    if (typeof field.values[0].value === 'string') {
+      return field.values[0].value;
+    }
+    
+    // Some date fields have a start property inside the value
+    if (field.values[0].value.start) {
+      return field.values[0].value.start;
+    }
+  }
+  
+  return null;
+};
+
 // Map Podio approval status to our app's status format
 const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending' | 'approved' | 'rejected' => {
   if (!podioStatus) return 'pending';
