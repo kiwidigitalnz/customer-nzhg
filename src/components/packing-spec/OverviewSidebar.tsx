@@ -4,14 +4,33 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Info, Package, User, Tag, Hash, Calendar, Check } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 import StatusBadge from './StatusBadge';
+import ApprovalSection from './ApprovalSection';
 
 interface OverviewSidebarProps {
   details: Record<string, any>;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  spec?: {
+    id: number;
+    status: 'pending' | 'approved' | 'rejected';
+    details: Record<string, any>;
+  };
+  user?: any;
+  onApprove?: any;
+  onReject?: any;
+  isSubmitting?: boolean;
 }
 
-const OverviewSidebar: React.FC<OverviewSidebarProps> = ({ details, status, createdAt }) => {
+const OverviewSidebar: React.FC<OverviewSidebarProps> = ({ 
+  details, 
+  status, 
+  createdAt,
+  spec,
+  user,
+  onApprove,
+  onReject,
+  isSubmitting = false
+}) => {
   // Format version to have only 1 decimal place
   const formatVersion = (version: string | undefined) => {
     if (!version) return "N/A";
@@ -118,7 +137,18 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({ details, status, crea
         </CardContent>
       </Card>
       
-      {status === 'approved' && (
+      {/* Only show approval section if we have the full spec and handlers */}
+      {spec && user && onApprove && onReject && (
+        <ApprovalSection 
+          spec={spec}
+          user={user}
+          onApprove={onApprove}
+          onReject={onReject}
+          isSubmitting={isSubmitting}
+        />
+      )}
+      
+      {status === 'approved' && !spec && (
         <Card className="shadow-sm border-green-200 bg-green-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center text-green-800">

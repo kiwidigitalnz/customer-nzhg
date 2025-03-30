@@ -11,7 +11,7 @@ import * as z from 'zod';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 
 // Custom Components
 import HeaderSection from './packing-spec/HeaderSection';
@@ -23,7 +23,6 @@ import {
   PackagingTab,
   LabelingTab,
   ShippingTab,
-  ApprovalsTab,
   CommentsTab
 } from './packing-spec/tabs';
 
@@ -349,7 +348,7 @@ const PackingSpecDetails = () => {
             />
             <CardContent>
               <Tabs defaultValue="overview" className="w-full" onValueChange={handleTabChange}>
-                <TabsNavigation newCommentsCount={newCommentsCount} />
+                <TabsNavigation newCommentsCount={newCommentsCount} hideApprovalsTab={true} />
                 
                 {/* Honey Specification Tab */}
                 <TabsContent value="overview">
@@ -376,17 +375,6 @@ const PackingSpecDetails = () => {
                   <ShippingTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Approvals Tab */}
-                <TabsContent value="approvals">
-                  <ApprovalsTab 
-                    spec={spec} 
-                    user={user} 
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                    isSubmitting={isSubmitting}
-                  />
-                </TabsContent>
-                
                 {/* Comments Tab */}
                 <TabsContent value="comments">
                   <CommentsTab 
@@ -408,6 +396,11 @@ const PackingSpecDetails = () => {
             details={spec.details}
             status={spec.status}
             createdAt={spec.createdAt}
+            spec={spec}
+            user={user}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            isSubmitting={isSubmitting}
           />
         </div>
       </div>
