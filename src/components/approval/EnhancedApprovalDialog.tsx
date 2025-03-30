@@ -109,14 +109,14 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
             : "Your change request has been submitted.",
         });
 
-        // Close the dialog and trigger the status update in parent component
-        setOpen(false);
-        
-        // Reset form fields
-        resetForm();
-        
-        // Call the onStatusUpdated callback to refresh the badge status in the UI
+        // First call onStatusUpdated to refresh the parent component
         onStatusUpdated();
+        
+        // Then close the dialog and reset form with a slight delay to avoid state conflicts
+        setTimeout(() => {
+          setOpen(false);
+          resetForm();
+        }, 100);
       } else {
         throw new Error(`Failed to ${type === 'approve' ? 'approve' : 'request changes for'} specification`);
       }
