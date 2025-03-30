@@ -9,6 +9,8 @@ import {
   getPodioClientId,
   getPodioClientSecret
 } from './podioOAuth';
+import { getFieldValueByExternalId } from './podioFieldHelpers';
+import bcrypt from 'bcryptjs';
 
 interface PodioCredentials {
   username: string;
@@ -299,6 +301,47 @@ export const isPodioConfigured = (): boolean => {
           !!localStorage.getItem('podio_client_secret'));
 };
 
+// Simple utility to compare passwords securely
+const comparePasswords = async (plainPassword: string, storedPassword: string): Promise<boolean> => {
+  // For plain text comparison
+  if (!storedPassword.startsWith('$2a$') && !storedPassword.startsWith('$2b$')) {
+    return plainPassword === storedPassword;
+  }
+  
+  // For bcrypt hashed passwords
+  try {
+    return bcrypt.compareSync(plainPassword, storedPassword);
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    // Fallback to plain text if bcrypt fails
+    return plainPassword === storedPassword;
+  }
+};
+
+// Extract contact data from a Podio item
+const extractContactData = (item: any): any => {
+  if (!item || !item.fields) {
+    console.error('Invalid item structure for contact:', item);
+    return null;
+  }
+  
+  console.log('Processing contact item:', item.item_id);
+  
+  // Extract fields from the Podio contact item
+  const name = getFieldValueByExternalId(item.fields, 'title') || 'Unknown Contact';
+  const email = getFieldValueByExternalId(item.fields, 'email') || '';
+  const username = getFieldValueByExternalId(item.fields, CONTACT_FIELD_IDS.username) || '';
+  const logoUrl = getFieldValueByExternalId(item.fields, CONTACT_FIELD_IDS.logoUrl) || '';
+  
+  return {
+    id: item.item_id,
+    name,
+    email,
+    username,
+    logoUrl
+  };
+};
+
 // This function authenticates a user by checking the Podio contacts app
 export const authenticateUser = async (credentials: PodioCredentials): Promise<any | null> => {
   try {
@@ -421,8 +464,48 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       );
     }
     
-    // Rest of the authentication function remains the same
-    // ... keep existing code (processing contact item, checking password, and returning contact data)
+    // Get the first matching contact
+    const contactItem = searchResponse.items[0];
+    console.log('Found contact item with ID:', contactItem.item_id);
+    
+    // Get the password field from the contact
+    const storedPassword = getFieldValueByExternalId(
+      contactItem.fields, 
+      CONTACT_FIELD_IDS.password
+    );
+    
+    if (!storedPassword) {
+      console.error('Contact has no password field set');
+      throw createAuthError(
+        AuthErrorType.AUTHENTICATION,
+        'User account is not properly configured',
+        false
+      );
+    }
+    
+    // Verify the password
+    const passwordMatches = await comparePasswords(credentials.password, storedPassword);
+    if (!passwordMatches) {
+      console.log('Password verification failed');
+      throw createAuthError(
+        AuthErrorType.AUTHENTICATION,
+        'No matching contact found with these credentials',
+        false
+      );
+    }
+    
+    // Password matches, extract contact data
+    const contactData = extractContactData(contactItem);
+    if (!contactData) {
+      throw createAuthError(
+        AuthErrorType.UNKNOWN,
+        'Could not process contact data',
+        false
+      );
+    }
+    
+    console.log('Authentication successful for user:', contactData.username);
+    return contactData;
   } catch (error) {
     console.error('Authentication error:', error);
     
