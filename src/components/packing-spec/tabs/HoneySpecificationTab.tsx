@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Package, AlertCircle } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import CategoryDisplay from '../CategoryDisplay';
 import { formatTextContent } from '@/utils/formatters';
@@ -64,20 +64,6 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }
           </div>
         </CardContent>
       </Card>
-      
-      {details.customerRequestedChanges && (
-        <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center text-amber-800">
-              <AlertCircle className="mr-2 h-5 w-5 text-amber-600" />
-              Requested Changes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <p className="text-amber-800">{formatTextContent(details.customerRequestedChanges)}</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
