@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Box } from 'lucide-react';
+import { Package, Box, Container } from 'lucide-react';
 import { formatTextContent } from '@/utils/formatters';
 
 interface PackagingTabProps {
@@ -26,7 +26,7 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
                 <p className="font-medium">{details.jarSize || "N/A"}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Jar Color</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Jar Colour</h4>
                 <p className="font-medium">{details.jarColour || "N/A"}</p>
               </div>
               <div>
@@ -55,7 +55,7 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
                 <p className="font-medium">{details.lidSize || "N/A"}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Lid Color</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Lid Colour</h4>
                 <p className="font-medium">{details.lidColour || "N/A"}</p>
               </div>
             </div>
@@ -67,7 +67,7 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
         <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
             <Box className="mr-2 h-5 w-5 text-primary/80" />
-            Other Packaging
+            Portable Packaging
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -81,18 +81,35 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Pouch Size</h4>
                 <p className="font-medium">{details.pouchSize || "N/A"}</p>
               </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Customised Carton Type</h4>
-                <p className="font-medium">{details.customisedCartonType || "N/A"}</p>
-              </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Seal Instructions</h4>
                 <p>{details.sealInstructions ? 
                   formatTextContent(details.sealInstructions) : 
                   "N/A"}
                 </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm border-muted">
+        <CardHeader className="pb-2 bg-muted/30">
+          <CardTitle className="text-lg flex items-center">
+            <Container className="mr-2 h-5 w-5 text-primary/80" />
+            Shipping Packaging
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Size</h4>
+                <p className="font-medium">{details.shipperSize || "N/A"}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Customised Carton Type</h4>
+                <p className="font-medium">{details.customisedCartonType || "N/A"}</p>
               </div>
             </div>
           </div>
