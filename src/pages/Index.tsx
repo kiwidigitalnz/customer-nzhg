@@ -13,17 +13,17 @@ const Index = () => {
   const [podioAuthError, setPodioAuthError] = useState<string | null>(null);
   
   useEffect(() => {
-    // In production, try to automatically authenticate with Podio
-    if (import.meta.env.PROD && !isAttemptingAuth) {
+    // In production, try to automatically authenticate with Podio (now using Password Flow)
+    if (!isAttemptingAuth) {
       setIsAttemptingAuth(true);
       
       // Check if Podio is configured with environment variables
-      console.log('Production environment detected, checking Podio configuration');
+      console.log('Checking Podio configuration');
       const configured = isPodioConfigured();
       console.log('Podio configured:', configured);
       
       if (configured) {
-        console.log('Attempting initial Podio authentication');
+        console.log('Attempting initial Podio authentication with Password Flow');
         
         // Clear any previous errors
         setPodioAuthError(null);

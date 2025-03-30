@@ -5,7 +5,7 @@ import {
   ensureValidToken 
 } from '../auth/authService';
 import {
-  startPodioOAuthFlow,
+  authenticateWithPasswordFlow,
   getPodioClientId,
   getPodioClientSecret
 } from './podioOAuth';
@@ -60,7 +60,7 @@ export const clearPodioTokens = (): void => {
   console.log('Cleared Podio tokens');
 };
 
-// Function to initially authenticate with Podio in production
+// Function to initially authenticate with Podio using password flow
 export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   // First validate any existing tokens
   if (hasValidPodioTokens()) {
@@ -76,84 +76,17 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
     }
   }
   
-  console.log('Starting OAuth flow for Podio authentication...');
+  console.log('Starting Password Flow for Podio authentication...');
   
-  // Always use the OAuth flow for authentication
-  return await startPodioOAuthFlow();
+  // Use Password Flow (client_credentials) for app authentication
+  return await authenticateWithPasswordFlow();
 };
 
 // Enhanced function to refresh the access token if needed
 export const refreshPodioToken = async (): Promise<boolean> => {
-  const refreshToken = localStorage.getItem('podio_refresh_token');
-  const clientId = getPodioClientId();
-  const clientSecret = getPodioClientSecret();
-  
-  if (!clientId || !clientSecret) {
-    console.error('Missing Podio client credentials');
-    return false;
-  }
-  
-  // If we have a refresh token, use it
-  if (refreshToken) {
-    try {
-      // Log only in development
-      console.log('Refreshing Podio token using refresh token');
-      
-      const response = await fetch('https://podio.com/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-        }).toString(),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to refresh token using refresh token:', errorData);
-        
-        // Clear invalid tokens
-        clearPodioTokens();
-        
-        // If refresh token failed, start OAuth flow again
-        return startPodioOAuthFlow();
-      }
-      
-      const data = await response.json();
-      
-      localStorage.setItem('podio_access_token', data.access_token);
-      localStorage.setItem('podio_refresh_token', data.refresh_token);
-      
-      // Set expiry to 1 hour less than actual to ensure we refresh in time
-      const safeExpiryTime = Date.now() + ((data.expires_in - 3600) * 1000);
-      localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
-      
-      // Validate the new token
-      const isValid = await validatePodioToken();
-      if (!isValid) {
-        console.error('Refreshed token validation failed, starting OAuth flow');
-        clearPodioTokens();
-        return startPodioOAuthFlow();
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error refreshing Podio token:', error);
-      
-      // Clear invalid tokens
-      clearPodioTokens();
-      
-      // Start OAuth flow again
-      return startPodioOAuthFlow();
-    }
-  } else {
-    // No refresh token, use OAuth flow
-    return startPodioOAuthFlow();
-  }
+  // With client_credentials flow, there's no refresh token
+  // We need to get a new token each time
+  return await authenticateWithPasswordFlow();
 };
 
 // Improved function to make authenticated API calls to Podio with retry limits
@@ -353,23 +286,13 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
   try {
     console.log('Authenticating with Podio...', credentials.username);
     
-    // In production, ensure we're authenticated with Podio first
-    if (import.meta.env.PROD) {
-      console.log('Production environment, attempting to authenticate with Podio');
-      const authenticated = await ensureInitialPodioAuth();
-      if (!authenticated) {
-        console.error('Failed to authenticate with Podio');
-        throw createAuthError(
-          AuthErrorType.CONFIGURATION,
-          'Could not authenticate with Podio',
-          false
-        );
-      }
-    } else if (!hasValidPodioTokens() && !await refreshPodioToken()) {
-      console.error('No valid Podio tokens available for authentication');
+    // Ensure we're authenticated with Podio first using password flow
+    const authenticated = await ensureInitialPodioAuth();
+    if (!authenticated) {
+      console.error('Failed to authenticate with Podio');
       throw createAuthError(
         AuthErrorType.CONFIGURATION,
-        'Not authenticated with Podio API',
+        'Could not authenticate with Podio',
         false
       );
     }

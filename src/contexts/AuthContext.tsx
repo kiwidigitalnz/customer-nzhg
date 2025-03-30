@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initialize auth monitoring (which also handles initial Podio auth in production)
+    // Initialize auth monitoring
     initAuthMonitoring();
     
     // Check for saved user session
@@ -83,48 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
-    // In production, make sure Podio is authenticated first
-    if (import.meta.env.PROD && !isPodioConfigured()) {
-      try {
-        const authenticated = await ensureInitialPodioAuth();
-        if (!authenticated) {
-          const authError = createAuthError(
-            AuthErrorType.CONFIGURATION,
-            'Could not connect to service. Please try again later.'
-          );
-          
-          handleAuthError(authError);
-          setError(authError.message);
-          setLoading(false);
-          return false;
-        }
-      } catch (err) {
-        const errorMsg = err instanceof Error 
-          ? `Service connection error: ${err.message}` 
-          : 'Could not connect to service';
-        
-        const authError = createAuthError(
-          AuthErrorType.CONFIGURATION,
-          errorMsg
-        );
-        
-        handleAuthError(authError);
-        setError(errorMsg);
-        setLoading(false);
-        return false;
-      }
-    } else if (!isPodioConfigured()) {
-      // Dev environment without Podio configured
-      const authError = createAuthError(
-        AuthErrorType.CONFIGURATION,
-        'Podio API is not configured. Please set up Podio API first.'
-      );
-      
-      handleAuthError(authError);
-      setError(authError.message);
-      setLoading(false);
-      return false;
-    }
+    // We don't need to check Podio configuration here since that's now done in LoginForm
+    // The Password Flow authentication is handled before the login attempt
     
     try {
       console.log('Login attempt for:', username);

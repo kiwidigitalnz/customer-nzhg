@@ -13,13 +13,21 @@ const PodioCallbackPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Show a message that we're no longer using this flow
+    setStatus('success');
+    setMessage('Authentication is now handled automatically. You will be redirected to the login page.');
+    
+    // Redirect to home page after a brief delay
+    setTimeout(() => {
+      navigate('/', { replace: true });
+    }, 3000);
+    
+    // The code below is kept for backward compatibility but won't be executed
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
     const incomingState = urlParams.get('state');
     
     if (!code) {
-      setStatus('error');
-      setMessage('No authorization code received from Podio');
       return;
     }
 
@@ -31,9 +39,6 @@ const PodioCallbackPage = () => {
         code,
         state: incomingState
       }, window.location.origin);
-      
-      setStatus('success');
-      setMessage('Authorization successful! You can close this window.');
       
       // Close this window after a brief delay
       setTimeout(() => {
@@ -49,8 +54,6 @@ const PodioCallbackPage = () => {
     // Verify state parameter to prevent CSRF attacks
     if (!incomingState || !savedState || incomingState !== savedState) {
       console.error('State parameter mismatch:', { incomingState, savedState });
-      setStatus('error');
-      setMessage('Invalid state parameter - authorization request may have been tampered with');
       return;
     }
 
@@ -59,26 +62,7 @@ const PodioCallbackPage = () => {
     
     // Exchange the code for tokens
     const redirectUri = 'https://customer.nzhg.com/podio-callback';
-    exchangeCodeForToken(code, redirectUri)
-      .then(success => {
-        if (success) {
-          setStatus('success');
-          setMessage('Successfully connected to Podio API!');
-          
-          // Add a timer to automatically redirect to the landing page after success
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 2000);
-        } else {
-          setStatus('error');
-          setMessage('Failed to exchange authorization code for access token');
-        }
-      })
-      .catch(error => {
-        console.error('Error exchanging code:', error);
-        setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'An unknown error occurred');
-      });
+    exchangeCodeForToken(code, redirectUri);
   }, [location.search, navigate]);
 
   return (
@@ -88,7 +72,7 @@ const PodioCallbackPage = () => {
           <CardHeader>
             <CardTitle>
               {status === 'loading' && 'Connecting to Podio...'}
-              {status === 'success' && 'Podio Connection Successful'}
+              {status === 'success' && 'Podio Connection Info'}
               {status === 'error' && 'Podio Connection Failed'}
             </CardTitle>
           </CardHeader>
@@ -107,7 +91,7 @@ const PodioCallbackPage = () => {
             >
               <AlertTitle className="font-semibold">
                 {status === 'loading' ? 'Processing' :
-                 status === 'success' ? 'Success' :
+                 status === 'success' ? 'Information' :
                  'Error'}
               </AlertTitle>
               <AlertDescription>{message}</AlertDescription>

@@ -9,10 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ensureInitialPodioAuth } from '../services/podioApi';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [connectingToPodio, setConnectingToPodio] = useState(false);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -31,6 +33,20 @@ const LoginForm = () => {
     console.log(`Attempting login with username: ${username}`);
     
     try {
+      // First ensure we're connected to Podio using Password Flow
+      setConnectingToPodio(true);
+      const podioConnected = await ensureInitialPodioAuth();
+      setConnectingToPodio(false);
+      
+      if (!podioConnected) {
+        toast({
+          title: 'Connection Error',
+          description: 'Could not connect to the service. Please try again later.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       const success = await login(username, password);
       
       if (success) {
@@ -64,7 +80,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={loading}
+              disabled={loading || connectingToPodio}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -77,7 +93,7 @@ const LoginForm = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
-              disabled={loading}
+              disabled={loading || connectingToPodio}
               autoComplete="current-password"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -94,9 +110,9 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={loading}
+            disabled={loading || connectingToPodio}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {connectingToPodio ? 'Connecting to service...' : loading ? 'Logging in...' : 'Login'}
           </Button>
         </form>
       </CardContent>

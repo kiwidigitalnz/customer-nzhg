@@ -25,108 +25,63 @@ export const getPodioRedirectUri = (): string => {
   return 'https://customer.nzhg.com/podio-callback';
 };
 
-// Start the OAuth flow in a popup window
-export const startPodioOAuthFlow = (): Promise<boolean> => {
-  return new Promise((resolve) => {
+// Implement Password Flow Authentication (App Authentication)
+export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
+  try {
     const clientId = getPodioClientId();
+    const clientSecret = getPodioClientSecret();
     
-    if (!clientId) {
-      console.error('Missing Podio Client ID');
-      resolve(false);
-      return;
+    if (!clientId || !clientSecret) {
+      console.error('Missing Podio client credentials for password flow');
+      return false;
     }
     
-    // Generate state parameter for security
-    const state = generatePodioAuthState();
+    console.log('Attempting to authenticate with Podio using Password Flow');
     
-    // Build the authorization URL
-    const redirectUri = getPodioRedirectUri();
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      state: state
-      // Removing the scope parameter to match the manual flow
-      // This will default to 'global:all' which works in the manual process
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+      }).toString(),
     });
     
-    const authUrl = `https://podio.com/oauth/authorize?${params.toString()}`;
-    
-    // In production, open this in a popup window
-    const width = 600;
-    const height = 700;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-    
-    // Open the OAuth popup
-    const popup = window.open(
-      authUrl,
-      'PodioAuth',
-      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
-    );
-    
-    if (!popup) {
-      console.error('Popup blocked by browser');
-      // Try alternative approach - direct user to auth page
-      window.location.href = authUrl;
-      resolve(false);
-      return;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Password flow authentication failed:', errorData);
+      return false;
     }
     
-    // Set up a listener for when the code is received via the callback
-    window.addEventListener('message', function authMessageListener(event) {
-      // Only accept messages from our app domain
-      const isOurOrigin = event.origin === window.location.origin;
-      if (!isOurOrigin) return;
-      
-      // Check if this is our Podio auth message
-      if (event.data && event.data.type === 'PODIO_AUTH_CODE') {
-        const code = event.data.code;
-        const receivedState = event.data.state;
-        
-        // Remove the event listener
-        window.removeEventListener('message', authMessageListener);
-        
-        // Close the popup
-        if (!popup.closed) {
-          popup.close();
-        }
-        
-        // Check if state matches
-        const savedState = localStorage.getItem('podio_auth_state');
-        if (!savedState || savedState !== receivedState) {
-          console.error('State parameter mismatch - possible CSRF attack');
-          resolve(false);
-          return;
-        }
-        
-        // Clear the saved state
-        localStorage.removeItem('podio_auth_state');
-        
-        // Exchange the code for a token
-        exchangeCodeForToken(code, redirectUri)
-          .then(success => {
-            resolve(success);
-          })
-          .catch(error => {
-            console.error('Failed to exchange code for token:', error);
-            resolve(false);
-          });
-      }
-    });
+    const tokenData = await response.json();
     
-    // Check if the popup was closed before completing authentication
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener('message', () => {});
-        resolve(false);
-      }
-    }, 1000);
-  });
+    // Store tokens in localStorage
+    localStorage.setItem('podio_access_token', tokenData.access_token);
+    // Note: client_credentials flow doesn't provide a refresh token
+    localStorage.removeItem('podio_refresh_token');
+    
+    // Set expiry to 1 hour less than actual to ensure we refresh in time
+    const safeExpiryTime = Date.now() + ((tokenData.expires_in - 3600) * 1000);
+    localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
+    
+    console.log('Successfully obtained tokens via Password Flow');
+    return true;
+  } catch (error) {
+    console.error('Error during Password Flow authentication:', error);
+    return false;
+  }
 };
 
-// Exchange the authorization code for access/refresh tokens
+// Start the OAuth flow in a popup window - kept for backward compatibility
+export const startPodioOAuthFlow = (): Promise<boolean> => {
+  // Instead of using OAuth flow, we'll use password flow which is more suitable for this app
+  return authenticateWithPasswordFlow();
+};
+
+// Exchange the authorization code for access/refresh tokens - kept for backward compatibility
 export const exchangeCodeForToken = async (code: string, redirectUri: string): Promise<boolean> => {
   try {
     const clientId = getPodioClientId();
