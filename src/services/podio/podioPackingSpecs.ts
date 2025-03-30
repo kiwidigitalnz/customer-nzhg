@@ -1,3 +1,4 @@
+
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -85,7 +86,7 @@ export interface PackingSpec {
   comments?: CommentItem[];
 }
 
-// Helper function to format category field values for Podio API
+// Helper function to format category value for Podio API - FIXED
 const formatCategoryValue = (value: string | number): { value: { id: number } } | { value: string } => {
   // If it's already a category ID (number)
   if (typeof value === 'number') {
@@ -309,14 +310,10 @@ export const updatePackingSpecStatus = async (
     
     // Handle different status types
     if (status === 'approved') {
-      // Set customer approval status with proper category format
-      const categoryStatus = additionalData?.status || 'approve-specification';
-      // For category fields, we need to use the proper format with category IDs
-      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [{
-        value: {
-          id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id
-        }
-      }];
+      // Set customer approval status - FIX: Use the ID directly
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
+        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id }
+      ];
       
       // Set approved by name
       if (additionalData?.approvedByName) {
@@ -338,12 +335,10 @@ export const updatePackingSpecStatus = async (
         }
       }
     } else if (status === 'rejected') {
-      // Set customer approval status with proper category format
-      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [{
-        value: {
-          id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id
-        }
-      }];
+      // FIX: Set customer approval status with the correct format - use ID directly
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
+        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
+      ];
       
       // Set customer requested changes field
       if (comments) {
@@ -353,8 +348,14 @@ export const updatePackingSpecStatus = async (
     
     // Add the comment to Podio if provided
     if (comments) {
+      // Format the comment with a prefix for rejections
+      let formattedComment = comments;
+      if (status === 'rejected') {
+        formattedComment = `[REQUESTED CHANGES BY CUSTOMER] ${comments}`;
+      }
+      
       // Add comment to Podio using the dedicated comment API
-      await addCommentToPodio(specId, comments);
+      await addCommentToPodio(specId, formattedComment);
     }
     
     console.log('Updating Podio with data:', JSON.stringify(updateData, null, 2));
