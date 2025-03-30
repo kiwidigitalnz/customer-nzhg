@@ -63,10 +63,18 @@ export const addCommentToPodio = async (
     console.log('Comment will be attributed to:', companyName);
     
     // Prepare the comment data - prepend with company name
+    // Check if the comment already has the company name in brackets
+    let formattedComment = comment;
+    if (!comment.startsWith(`[${companyName}]`)) {
+      formattedComment = `[${companyName}] ${comment}`;
+    }
+    
     const commentData = {
-      value: `[${companyName}] ${comment}`,
+      value: formattedComment,
       external_id: `customer_comment_${Date.now()}`,
     };
+    
+    console.log('Sending formatted comment to Podio:', commentData.value);
     
     // Post the comment to Podio
     const endpoint = `comment/item/${itemId}`;

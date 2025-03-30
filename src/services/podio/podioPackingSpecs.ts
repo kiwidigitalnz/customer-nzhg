@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -314,27 +313,10 @@ export const updatePackingSpecStatus = async (
       }
     }
     
-    // Add the comment to the comments field as well
+    // Add the comment to Podio if provided
     if (comments) {
-      // Add comment to Podio
+      // Add comment to Podio using the dedicated comment API
       await addCommentToPodio(specId, comments);
-      
-      // Get existing comments
-      const spec = await getPackingSpecDetails(specId);
-      if (spec) {
-        const newComment: CommentItem = {
-          id: Date.now(),
-          text: comments,
-          createdBy: additionalData?.approvedByName || 'Customer Portal User',
-          createdAt: new Date().toISOString()
-        };
-        
-        // Add to existing comments or create new array
-        const updatedComments = spec.comments ? [...spec.comments, newComment] : [newComment];
-        
-        // Update comments field
-        updateData.fields[PACKING_SPEC_FIELD_IDS.comments] = JSON.stringify(updatedComments);
-      }
     }
     
     console.log('Updating Podio with data:', JSON.stringify(updateData, null, 2));
