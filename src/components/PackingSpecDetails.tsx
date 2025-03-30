@@ -65,6 +65,7 @@ const PackingSpecDetails = () => {
   const navigate = useNavigate();
   const [newCommentsCount, setNewCommentsCount] = useState<number>(0);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [isApprovalPending, setIsApprovalPending] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -116,6 +117,7 @@ const PackingSpecDetails = () => {
     console.log('Approving with data:', data);
     
     setIsSubmitting(true);
+    setIsApprovalPending(true);
     
     try {
       const approvalData = {
@@ -167,6 +169,7 @@ const PackingSpecDetails = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setIsApprovalPending(false);
     }
   };
 
@@ -191,8 +194,8 @@ const PackingSpecDetails = () => {
       
       if (success) {
         toast({
-          title: "Specification rejected",
-          description: "Feedback has been sent to the team.",
+          title: "Feedback submitted successfully",
+          description: "Your requested changes have been sent to the team.",
           variant: 'default',
         });
         
@@ -207,7 +210,7 @@ const PackingSpecDetails = () => {
       } else {
         toast({
           title: 'Error',
-          description: "Failed to reject the specification. Please try again.",
+          description: "Failed to submit your feedback. Please try again.",
           variant: 'destructive',
         });
       }
@@ -336,11 +339,29 @@ const PackingSpecDetails = () => {
     </div>
   );
 
+  // Determine if there are any pending changes by checking if a signature has been provided
+  // but not yet submitted for approval
+  const hasPendingChanges = isApprovalPending;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Button variant="outline" onClick={handleGoBack} className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
       </Button>
+      
+      {hasPendingChanges && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-blue-800">Signature captured</h3>
+              <p className="text-blue-700 text-sm mt-1">
+                Your approval has been prepared but not yet submitted. Please complete the approval process.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

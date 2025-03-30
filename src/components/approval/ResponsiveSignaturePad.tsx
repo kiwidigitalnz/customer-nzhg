@@ -1,9 +1,9 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Download, Check } from 'lucide-react';
+import { Trash2, Download, Save } from 'lucide-react';
 import { saveUserSignature } from '@/services/userPreferences';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import SavedSignatures from './SavedSignatures';
 
 interface ResponsiveSignaturePadProps {
@@ -127,6 +127,12 @@ const ResponsiveSignaturePad: React.FC<ResponsiveSignaturePadProps> = ({ onSigne
       ctx.closePath();
     }
     setDrawing(false);
+    
+    // When the user stops drawing, capture the signature and pass it up
+    if (hasSigned && canvasRef.current) {
+      const dataUrl = canvasRef.current.toDataURL('image/png');
+      onSigned(dataUrl);
+    }
   };
   
   const clearCanvas = () => {
@@ -134,20 +140,20 @@ const ResponsiveSignaturePad: React.FC<ResponsiveSignaturePadProps> = ({ onSigne
     
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     setHasSigned(false);
+    onSigned(''); // Clear the signature in the parent component
   };
   
   const saveSignature = () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !hasSigned) return;
     
     const dataUrl = canvasRef.current.toDataURL('image/png');
-    onSigned(dataUrl);
     
-    // Save for future use
+    // Save for future use, but don't trigger approval
     saveUserSignature(dataUrl, name);
     
     toast({
       title: "Signature saved",
-      description: "Your signature has been saved and can be reused for future approvals.",
+      description: "Your signature has been saved for future use.",
     });
   };
   
@@ -229,20 +235,6 @@ const ResponsiveSignaturePad: React.FC<ResponsiveSignaturePadProps> = ({ onSigne
             className="text-xs"
           >
             <Download className="h-3 w-3 mr-1" /> Save for reuse
-          </Button>
-          
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => {
-              if (canvasRef.current) {
-                onSigned(canvasRef.current.toDataURL('image/png'));
-              }
-            }}
-            disabled={!hasSigned}
-            className="text-xs"
-          >
-            <Check className="h-3 w-3 mr-1" /> Use Signature
           </Button>
         </div>
       </div>
