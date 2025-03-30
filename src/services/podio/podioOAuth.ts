@@ -1,6 +1,13 @@
 
 // Service for handling Podio OAuth flow
 
+// Define interfaces for error responses from Podio API
+interface PodioErrorResponse {
+  error?: string;
+  error_description?: string;
+  [key: string]: any; // Allow for additional properties
+}
+
 // Generate a random state for CSRF protection
 export const generatePodioAuthState = (): string => {
   const state = Math.random().toString(36).substring(2, 15) + 
@@ -115,7 +122,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
-      let errorData = {};
+      let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
       } catch (e) {
@@ -128,7 +135,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       
       // Extract retry-after information if available
       const retryAfter = response.headers.get('Retry-After') || 
-                         errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
+                         (errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1]);
       
       if (retryAfter) {
         setRateLimit(parseInt(retryAfter, 10));
@@ -141,7 +148,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      let errorData = {};
+      let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
       } catch (e) {
@@ -234,7 +241,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     
     // Handle rate limiting
     if (response.status === 420 || response.status === 429) {
-      let errorData = {};
+      let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
       } catch (e) {
@@ -247,7 +254,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       
       // Extract retry-after information
       const retryAfter = response.headers.get('Retry-After') || 
-                         errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
+                         (errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1]);
       
       if (retryAfter) {
         setRateLimit(parseInt(retryAfter, 10));
@@ -260,7 +267,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     }
     
     if (!response.ok) {
-      let errorData;
+      let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
         if (import.meta.env.DEV) {
