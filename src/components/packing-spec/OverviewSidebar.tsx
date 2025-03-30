@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Info, Package, User, Tag, Hash, Calendar, Check, ThumbsUp, AlertTriangle } from 'lucide-react';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatTextContent } from '@/utils/formatters';
 import StatusBadge, { SpecStatus } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 
@@ -178,7 +178,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
             <p className="text-amber-700 text-sm">Review requested changes in the Comments tab.</p>
             {details.customerRequestedChanges && (
               <div className="mt-2 text-sm text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
-                {details.customerRequestedChanges}
+                {formatTextContent(details.customerRequestedChanges)}
               </div>
             )}
           </CardContent>
