@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioApi';
+import { getPackingSpecsForContact, isPodioConfigured, PackingSpec } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,21 +9,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-interface PackingSpec {
-  id: number;
-  title: string;
-  description: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  details: {
-    product: string;
-    batchSize?: string;
-    packagingType?: string;
-    specialRequirements?: string;
-    [key: string]: any; // Allow additional fields
-  };
-}
 
 const Dashboard = () => {
   const { user, logout } = useAuth();

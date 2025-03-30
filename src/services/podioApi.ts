@@ -20,7 +20,7 @@ export {
   updatePackingSpecStatus,
   PACKING_SPEC_FIELD_IDS
 } from './podio/podioPackingSpecs';
-export type { PackingSpec } from './podio/podioPackingSpecs';
+export type { PackingSpec, PackingSpecDetails } from './podio/podioPackingSpecs';
 
 // Export comment-related functions and types
 export {

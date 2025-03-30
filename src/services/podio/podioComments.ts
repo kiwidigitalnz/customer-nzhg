@@ -58,7 +58,7 @@ export const addCommentToPodio = async (
   }
 };
 
-// Add a comment to a packing spec
+// Add a comment to a packing spec with user display name prepended
 export const addCommentToPackingSpec = async (
   specId: number, 
   commentText: string,
