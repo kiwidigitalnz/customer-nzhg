@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -853,4 +854,486 @@ const PackingSpecDetails = () => {
                               <p className="font-medium">{spec.details.printingColour || "N/A"}</p>
                             </div>
                           </div>
-                          <div className
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Language</h4>
+                              <p className="font-medium">{spec.details.printingLanguage || "N/A"}</p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Location</h4>
+                              <p className="font-medium">{spec.details.printingLocation || "N/A"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+                
+                {/* Shipping Tab */}
+                <TabsContent value="shipping" className="space-y-6 animate-in fade-in-50">
+                  <Card className="shadow-sm border border-primary/10 bg-gradient-to-br from-primary/5 to-background rounded-lg overflow-hidden">
+                    <CardHeader className="pb-2 bg-primary/10">
+                      <CardTitle className="text-lg flex items-center">
+                        <Truck className="mr-2 h-5 w-5 text-primary" />
+                        Shipping Details
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Method</h4>
+                            <p className="font-medium">{spec.details.shippingMethod || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Terms</h4>
+                            <p className="font-medium">{spec.details.shippingTerms || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Destination</h4>
+                            <p className="font-medium">{spec.details.shippingDestination || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Special Instructions</h4>
+                            <p>{spec.details.shippingInstructions ? 
+                              formatTextContent(spec.details.shippingInstructions) : 
+                              "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="shadow-sm border border-primary/10 bg-gradient-to-br from-primary/5 to-background rounded-lg overflow-hidden">
+                    <CardHeader className="pb-2 bg-primary/10">
+                      <CardTitle className="text-lg flex items-center">
+                        <Box className="mr-2 h-5 w-5 text-primary" />
+                        Palletizing Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Pallet Type</h4>
+                            <p className="font-medium">{spec.details.palletType || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Units Per Pallet</h4>
+                            <p className="font-medium">{spec.details.unitsPerPallet || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Pallet Wrapping</h4>
+                            <p className="font-medium">{spec.details.palletWrapping || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Pallet Marking</h4>
+                            <p className="font-medium">{spec.details.palletMarking || "N/A"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                {/* Approvals Tab */}
+                <TabsContent value="approvals" className="space-y-6 animate-in fade-in-50">
+                  {spec.status === 'approved' ? (
+                    <Card className="shadow-sm border-green-200 bg-green-50/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center text-green-800">
+                          <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
+                          Approval Information
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="text-sm font-medium text-muted-foreground">Approved By</h4>
+                                <p className="font-medium">{spec.details.approvedByName || "N/A"}</p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-medium text-muted-foreground">Approved On</h4>
+                                <p className="font-medium">{spec.details.approvalDate ? formatDate(spec.details.approvalDate) : "N/A"}</p>
+                              </div>
+                              {spec.details.approvalComments && (
+                                <div>
+                                  <h4 className="text-sm font-medium text-muted-foreground">Comments</h4>
+                                  <p>{formatTextContent(spec.details.approvalComments)}</p>
+                                </div>
+                              )}
+                            </div>
+                            {spec.details.signature && (
+                              <div>
+                                <h4 className="text-sm font-medium text-muted-foreground mb-2">Signature</h4>
+                                <div className="border rounded-md bg-white p-2">
+                                  <img 
+                                    src={spec.details.signature} 
+                                    alt="Approval Signature" 
+                                    className="max-h-24"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : spec.status === 'rejected' ? (
+                    <Card className="shadow-sm border-red-200 bg-red-50/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center text-red-800">
+                          <AlertCircle className="mr-2 h-5 w-5 text-red-600" />
+                          Specification Rejected
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-2">Requested Changes</h4>
+                          <div className="bg-white/50 p-3 rounded-md border border-red-100">
+                            <p>{formatTextContent(spec.details.customerRequestedChanges || "No specific changes requested")}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-6">
+                      <Card className="shadow-sm border-muted">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center">
+                            <Check className="mr-2 h-5 w-5 text-primary/80" />
+                            Approve Specification
+                          </CardTitle>
+                          <CardDescription>
+                            Approve this packing specification if all details meet your requirements
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <Form {...approvalForm}>
+                              <form className="space-y-4">
+                                <div className="grid grid-cols-1 gap-4">
+                                  <FormField
+                                    control={approvalForm.control}
+                                    name="approvedByName"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Your Name</FormLabel>
+                                        <FormControl>
+                                          <Input placeholder="Enter your name" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={approvalForm.control}
+                                    name="comments"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Comments (Optional)</FormLabel>
+                                        <FormControl>
+                                          <Textarea 
+                                            placeholder="Add any additional comments here" 
+                                            {...field} 
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <div className="space-y-2">
+                                    <FormLabel className="text-sm font-medium">Signature</FormLabel>
+                                    <SignaturePad onSave={handleSignatureSave} />
+                                    {signatureDataUrl && (
+                                      <div className="mt-2 p-2 border rounded-md bg-white">
+                                        <img src={signatureDataUrl} alt="Your Signature" className="max-h-24" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      type="button" 
+                                      className="w-full" 
+                                      disabled={isSubmitting || !approvalForm.formState.isValid}
+                                    >
+                                      {isSubmitting ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          Processing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Check className="mr-2 h-4 w-4" /> 
+                                          Approve Specification
+                                        </>
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirm Approval</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to approve this packing specification?
+                                        This action will notify the supplier that the specification meets your requirements.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => approvalForm.handleSubmit(handleApprove)()}
+                                        className="bg-green-600 hover:bg-green-700"
+                                      >
+                                        Yes, Approve
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </form>
+                            </Form>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="shadow-sm border-muted">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center">
+                            <X className="mr-2 h-5 w-5 text-primary/80" />
+                            Request Changes
+                          </CardTitle>
+                          <CardDescription>
+                            Request changes if the specification does not meet your requirements
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <Form {...rejectionForm}>
+                              <form className="space-y-4">
+                                <FormField
+                                  control={rejectionForm.control}
+                                  name="customerRequestedChanges"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Requested Changes</FormLabel>
+                                      <FormControl>
+                                        <Textarea 
+                                          placeholder="Describe what changes are needed to meet your requirements" 
+                                          className="min-h-[150px]"
+                                          {...field} 
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      type="button" 
+                                      variant="outline" 
+                                      className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" 
+                                      disabled={isSubmitting || !rejectionForm.formState.isValid}
+                                    >
+                                      {isSubmitting ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          Processing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <X className="mr-2 h-4 w-4" /> 
+                                          Request Changes
+                                        </>
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirm Rejection</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to reject this specification and request changes?
+                                        This will notify the supplier that changes are needed.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => rejectionForm.handleSubmit(handleReject)()}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Yes, Request Changes
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </form>
+                            </Form>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                {/* Comments Tab */}
+                <TabsContent value="comments" className="space-y-6 animate-in fade-in-50">
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center">
+                        <MessageSquare className="mr-2 h-5 w-5 text-primary/80" />
+                        Comments & Discussion
+                      </CardTitle>
+                      <CardDescription>
+                        Communicate with the team about this specification
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex space-x-2">
+                        <Textarea
+                          placeholder="Add a comment or question..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button 
+                          onClick={handleAddComment} 
+                          disabled={!newComment.trim() || isAddingComment}
+                          className="self-end"
+                        >
+                          {isAddingComment ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-1.5" /> Send
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-medium">Comment History</h3>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-2 text-xs" 
+                            onClick={async () => {
+                              try {
+                                const comments = await getCommentsFromPodio(spec.id);
+                                if (comments) {
+                                  setSpec(prev => prev ? { ...prev, comments } : null);
+                                  setNewCommentsCount(0);
+                                }
+                              } catch (error) {
+                                console.error('Error refreshing comments:', error);
+                              }
+                            }}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+                          </Button>
+                        </div>
+                        
+                        {spec.comments && spec.comments.length > 0 ? (
+                          <CommentsList comments={spec.comments} />
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <MessageSquare className="mx-auto h-8 w-8 opacity-20 mb-2" />
+                            <p>No comments yet</p>
+                            <p className="text-sm">Be the first to start the conversation</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="space-y-6">
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Current Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Status:</span>
+                  <StatusBadge status={spec.status} showIcon />
+                </div>
+                {spec.details.dateCreated && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Created:</span>
+                    <span className="text-sm">{formatDate(spec.details.dateCreated)}</span>
+                  </div>
+                )}
+                {spec.details.dateReviewed && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Last Updated:</span>
+                    <span className="text-sm">{formatDate(spec.details.dateReviewed)}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Additional Cards for Customer and Product Information */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Factory Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Factory Name</h4>
+                  <p>{spec.details.factoryName || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Factory Location</h4>
+                  <p>{spec.details.factoryLocation || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Factory Contact</h4>
+                  <p>{spec.details.factoryContact || "N/A"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Related Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {spec.details.documents ? (
+                  <div>
+                    <p>Document list would appear here</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <FileText className="mx-auto h-8 w-8 opacity-20 mb-2" />
+                    <p className="text-sm">No documents attached</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PackingSpecDetails;
