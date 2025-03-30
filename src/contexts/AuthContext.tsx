@@ -39,9 +39,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const savedUser = localStorage.getItem('nzhg_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        
+        // Also store user info in a consistent location for components to access
+        localStorage.setItem('user_info', JSON.stringify(userData));
       } catch (e) {
         localStorage.removeItem('nzhg_user');
+        localStorage.removeItem('user_info');
       }
     }
     setLoading(false);
@@ -72,7 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (userData) {
         console.log('Authentication successful, user data:', userData);
         setUser(userData);
+        
+        // Store in both locations for consistency
         localStorage.setItem('nzhg_user', JSON.stringify(userData));
+        localStorage.setItem('user_info', JSON.stringify(userData));
+        
         setLoading(false);
         return true;
       } else {
@@ -97,6 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('nzhg_user');
+    localStorage.removeItem('user_info');
   };
 
   return (

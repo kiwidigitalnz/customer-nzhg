@@ -2,6 +2,7 @@
 import React from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Comment {
   id: number;
@@ -15,6 +16,8 @@ interface CommentsListProps {
 }
 
 const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
+  const { user } = useAuth();
+  
   if (!comments || comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -29,10 +32,9 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   
-  // Get current user info from localStorage
-  const userInfo = localStorage.getItem('user_info');
-  const companyName = userInfo ? JSON.parse(userInfo).name : null;
-  const authUsername = userInfo ? JSON.parse(userInfo).username : null;
+  // Get current user's company name directly from auth context
+  const companyName = user?.name || "Unknown Company";
+  const authUsername = user?.username || null;
   
   return (
     <div className="space-y-4">
@@ -57,8 +59,8 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
           commentText = companyMatch[2]; // The rest of the comment after the company name
         }
         
-        // For current user's comment, always use their company name from local storage
-        if (isCurrentUserComment && companyName) {
+        // For current user's comment, always use their company name from auth context
+        if (isCurrentUserComment) {
           displayName = companyName;
         }
         
