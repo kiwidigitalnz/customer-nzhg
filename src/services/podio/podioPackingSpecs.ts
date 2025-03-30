@@ -314,7 +314,7 @@ export const updatePackingSpecStatus = async (
     
     // Handle different status types
     if (status === 'approved') {
-      // Set customer approval status
+      // Set customer approval status to "approve-specification"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
         { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id }
       ];
@@ -344,7 +344,7 @@ export const updatePackingSpecStatus = async (
         }
       }
     } else if (status === 'rejected') {
-      // Set customer approval status with the correct ID value (3 for REQUEST_CHANGES)
+      // Set customer approval status to "request-changes"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
         { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
       ];
