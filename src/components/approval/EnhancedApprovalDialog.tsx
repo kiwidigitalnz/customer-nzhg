@@ -16,9 +16,10 @@ import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
 import { updatePackingSpecStatus, PODIO_CATEGORIES } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
-import { LoaderCircle } from 'lucide-react';
+import { AlertCircle, LoaderCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
 import { SpecStatus } from '../packing-spec/StatusBadge';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface EnhancedApprovalDialogProps {
   specId: number;
@@ -41,13 +42,25 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [checklistCompleted, setChecklistCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleSignatureCapture = (dataUrl: string) => {
     setSignature(dataUrl);
   };
 
+  const resetForm = () => {
+    setName('');
+    setNotes('');
+    setSignature(null);
+    setChecklistCompleted(false);
+    setError(null);
+  };
+
   const handleSubmit = async () => {
+    // Reset any previous errors
+    setError(null);
+    
     if (type === 'approve' && (!name || !signature)) {
       toast({
         title: "Missing Information",
@@ -100,10 +113,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         setOpen(false);
         
         // Reset form fields
-        setName('');
-        setNotes('');
-        setSignature(null);
-        setChecklistCompleted(false);
+        resetForm();
         
         // Call the onStatusUpdated callback to refresh the badge status in the UI
         onStatusUpdated();
@@ -112,9 +122,17 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       }
     } catch (error) {
       console.error(`Error ${type === 'approve' ? 'approving' : 'rejecting'} specification:`, error);
+      
+      // Set a more user-friendly error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to ${type === 'approve' ? 'approve' : 'request changes for'} this specification.`;
+      
+      setError(errorMessage);
+      
       toast({
         title: "Error",
-        description: `Failed to ${type === 'approve' ? 'approve' : 'request changes for'} this specification. Please try again.`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -122,8 +140,20 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     }
   };
 
+  const handleClose = () => {
+    if (!loading) {
+      setOpen(false);
+      resetForm();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!loading) {
+        setOpen(isOpen);
+        if (!isOpen) resetForm();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button 
           className={buttonClassName}
@@ -143,6 +173,14 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
               : 'Request changes to this packing specification.'}
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {type === 'approve' && (
           <ApprovalChecklist onComplete={setChecklistCompleted} />
@@ -209,7 +247,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
           <Button 

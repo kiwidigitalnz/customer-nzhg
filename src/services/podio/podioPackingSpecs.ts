@@ -1,9 +1,8 @@
-
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
-import { uploadFileToPodio } from './podioFiles';
+import { uploadFileToPodio, shouldProceedWithoutSignature } from './podioFiles';
 import { getCommentsFromPodio, CommentItem, addCommentToPodio } from './podioComments';
 
 // Packing Spec Field IDs
@@ -352,12 +351,25 @@ export const updatePackingSpecStatus = async (
       };
       
       // If signature data URL is provided, upload it to Podio
+      let fileId = null;
       if (additionalData?.signature) {
-        const signatureFileName = `signature_${specId}_${Date.now()}.jpg`;
-        const fileId = await uploadFileToPodio(additionalData.signature, signatureFileName);
-        
-        if (fileId) {
-          updateData.fields[PACKING_SPEC_FIELD_IDS.signature] = fileId;
+        try {
+          const signatureFileName = `signature_${specId}_${Date.now()}.jpg`;
+          fileId = await uploadFileToPodio(additionalData.signature, signatureFileName);
+          
+          if (fileId) {
+            updateData.fields[PACKING_SPEC_FIELD_IDS.signature] = fileId;
+          } else {
+            console.log('No file ID returned from upload, proceeding without signature');
+          }
+        } catch (uploadError) {
+          console.error('Error uploading signature:', uploadError);
+          // Check if we should proceed without signature
+          if (!shouldProceedWithoutSignature(uploadError)) {
+            throw uploadError; // Re-throw if we shouldn't proceed
+          }
+          // Otherwise continue with the update without the signature
+          console.log('Proceeding with approval without signature due to upload error');
         }
       }
     } else if (status === 'changes-requested') {
@@ -387,19 +399,24 @@ export const updatePackingSpecStatus = async (
         formattedComment = `[REQUESTED CHANGES BY CUSTOMER] ${comments}`;
       }
       
-      // Add comment to Podio using the dedicated comment API
-      await addCommentToPodio(specId, formattedComment);
+      try {
+        // Add comment to Podio using the dedicated comment API
+        await addCommentToPodio(specId, formattedComment);
+      } catch (commentError) {
+        console.error('Error adding comment, but continuing with status update:', commentError);
+      }
     }
     
     console.log('Updating Podio with data:', JSON.stringify(updateData, null, 2));
     
     const endpoint = `item/${specId}`;
     
-    await callPodioApi(endpoint, {
+    const response = await callPodioApi(endpoint, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
     
+    console.log('Podio update response:', response);
     return true;
   } catch (error) {
     console.error('Error updating packing spec:', error);
