@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, isPodioConfigured } from '../services/podioApi';
+import { authenticateUser, isPodioConfigured, refreshPodioToken } from '../services/podioApi';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ContactData {
@@ -28,12 +28,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Only try to restore the session if Podio is configured
-    const podioConfigured = isPodioConfigured();
-    if (!podioConfigured) {
-      setLoading(false);
-      return;
-    }
+    // Always try to refresh token on app start if token exists
+    refreshPodioToken().catch(err => {
+      // Only log error in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to refresh Podio token:", err);
+      }
+    });
 
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
@@ -56,8 +57,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
-    // Verify Podio is configured before attempting login
-    if (!isPodioConfigured()) {
+    const podioConfigured = isPodioConfigured();
+    
+    if (!podioConfigured && process.env.NODE_ENV === 'production') {
+      // In production, show a user-friendly message
+      const errorMsg = 'The system is currently undergoing maintenance. Please try again later or contact support.';
+      setError(errorMsg);
+      setLoading(false);
+      toast({
+        title: 'Service Temporarily Unavailable',
+        description: 'Please try again later or contact support',
+        variant: 'destructive',
+      });
+      console.error('Podio not configured in production environment');
+      return false;
+    } else if (!podioConfigured) {
+      // In development, show more technical message
       const errorMsg = 'Podio API is not configured. Please set up Podio API first.';
       setError(errorMsg);
       setLoading(false);

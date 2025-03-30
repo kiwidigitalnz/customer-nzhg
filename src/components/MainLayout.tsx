@@ -11,6 +11,7 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
   const { user, loading } = useAuth();
+  const currentYear = new Date().getFullYear();
 
   if (loading) {
     return (
@@ -42,7 +43,7 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
         <footer className="border-t py-5 bg-white shadow-sm mt-10">
           <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
             <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-              &copy; {new Date().getFullYear()} NZ Honey Group Ltd. All rights reserved.
+              &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground">
               Customer Portal v1.0

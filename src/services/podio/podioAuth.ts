@@ -17,7 +17,8 @@ export const hasValidPodioTokens = (): boolean => {
   const expiryTime = parseInt(tokenExpiry, 10);
   const now = Date.now();
   
-  return expiryTime > now;
+  // Add a 5-minute buffer to account for processing time
+  return expiryTime > (now + 300000);
 };
 
 // Helper function to refresh the access token if needed
@@ -29,6 +30,11 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   if (!refreshToken || !clientId || !clientSecret) return false;
   
   try {
+    // Log only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Refreshing Podio token');
+    }
+    
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -48,11 +54,16 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     
     localStorage.setItem('podio_access_token', data.access_token);
     localStorage.setItem('podio_refresh_token', data.refresh_token);
-    localStorage.setItem('podio_token_expiry', (Date.now() + data.expires_in * 1000).toString());
+    
+    // Set expiry to 1 hour less than actual to ensure we refresh in time
+    const safeExpiryTime = Date.now() + ((data.expires_in - 3600) * 1000);
+    localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
     
     return true;
   } catch (error) {
-    console.error('Error refreshing Podio token:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error refreshing Podio token:', error);
+    }
     return false;
   }
 };
@@ -79,6 +90,17 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       headers,
     });
     
+    // If token is expired, try refreshing it once and retry the call
+    if (response.status === 401) {
+      const refreshed = await refreshPodioToken();
+      if (refreshed) {
+        // Retry the API call with the new token
+        return callPodioApi(endpoint, options);
+      } else {
+        throw new Error('Failed to refresh Podio token');
+      }
+    }
+    
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error_description || 'Podio API error');
@@ -86,13 +108,17 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     return await response.json();
   } catch (error) {
-    console.error('Podio API call error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Podio API call error:', error);
+    }
     throw error;
   }
 };
 
 // Function to check if Podio API is configured
 export const isPodioConfigured = (): boolean => {
+  // In production, we could add a check for a service account or preconfigured tokens
+  // For now, we'll just check if we have valid tokens
   return hasValidPodioTokens();
 };
 

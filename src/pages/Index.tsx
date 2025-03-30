@@ -14,7 +14,8 @@ const Index = () => {
   const podioConfigured = isPodioConfigured();
   
   useEffect(() => {
-    if (!podioConfigured) {
+    // Only show this toast to admins or in development environment
+    if (!podioConfigured && process.env.NODE_ENV === 'development') {
       toast({
         title: "Podio Setup Required",
         description: "Please configure Podio API settings before using this application",
@@ -23,18 +24,18 @@ const Index = () => {
     }
   }, [podioConfigured, toast]);
   
-  // If Podio is not configured, redirect to Podio setup as the highest priority
-  if (!podioConfigured) {
+  // If Podio is not configured, we'll only redirect to setup if we're in development mode
+  // In production, we'll still let the user see the landing page but they won't be able to login
+  if (!podioConfigured && process.env.NODE_ENV === 'development') {
     return <Navigate to="/podio-setup" replace />;
   }
   
-  // Only if Podio is configured, check if user is logged in
+  // If the user is logged in, redirect them to the dashboard
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
   
-  // If Podio is configured but no user is logged in, show the landing page
-  // instead of redirecting to login
+  // For everyone else, show the landing page
   return <LandingPage />;
 };
 

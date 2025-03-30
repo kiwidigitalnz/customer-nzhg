@@ -19,14 +19,16 @@ const LoginForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check if Podio is configured
+  // Check if Podio is configured - only used for UI feedback
   const podioConfigured = isPodioConfigured();
+  // Check if we're in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginAttempted(true);
     
-    if (!podioConfigured) {
+    if (!podioConfigured && isDevelopment) {
       toast({
         title: 'Podio Not Configured',
         description: 'Please set up Podio API credentials first',
@@ -58,7 +60,7 @@ const LoginForm = () => {
     } else {
       toast({
         title: 'Login failed',
-        description: error || 'No matching contact found in Podio. Please check your credentials.',
+        description: error || 'Invalid username or password. Please check your credentials.',
         variant: 'destructive',
       });
       console.error('Login failed. Error:', error);
@@ -108,7 +110,8 @@ const LoginForm = () => {
             </Alert>
           )}
           
-          {!podioConfigured && (
+          {/* Only show technical Podio connection messages in development mode */}
+          {isDevelopment && !podioConfigured && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle>Connection Issue</AlertTitle>
@@ -118,7 +121,7 @@ const LoginForm = () => {
             </Alert>
           )}
           
-          {podioConfigured && loginAttempted && !error && !loading && (
+          {isDevelopment && podioConfigured && loginAttempted && !error && !loading && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle>Connection Status</AlertTitle>
@@ -131,7 +134,7 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={loading || !podioConfigured}
+            disabled={loading || (isDevelopment && !podioConfigured)}
           >
             {loading ? 'Logging in...' : 'Login'}
           </Button>
