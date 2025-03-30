@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -66,7 +65,7 @@ export const PACKING_SPEC_FIELD_IDS = {
 export const PODIO_CATEGORIES = {
   CUSTOMER_APPROVAL_STATUS: {
     APPROVE_SPECIFICATION: { id: 1, text: "approve-specification" },
-    REQUEST_CHANGES: { id: 2, text: "request-changes" }
+    REQUEST_CHANGES: { id: 3, text: "request-changes" }
   }
 };
 
@@ -335,7 +334,7 @@ export const updatePackingSpecStatus = async (
         }
       }
     } else if (status === 'rejected') {
-      // FIX: Set customer approval status with the correct format - use ID directly
+      // FIX: Set customer approval status with the correct ID value (3 for REQUEST_CHANGES)
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
         { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
       ];
