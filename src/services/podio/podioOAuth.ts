@@ -45,8 +45,9 @@ export const startPodioOAuthFlow = (): Promise<boolean> => {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      state: state,
-      scope: 'app' // Changed from 'write' to 'app' as per Podio documentation
+      state: state
+      // Removing the scope parameter to match the manual flow
+      // This will default to 'global:all' which works in the manual process
     });
     
     const authUrl = `https://podio.com/oauth/authorize?${params.toString()}`;
