@@ -2,6 +2,7 @@
 import React from 'react';
 import { getImageUrl } from '@/utils/formatters';
 import { ImageIcon } from 'lucide-react';
+import EnhancedImageViewer from './EnhancedImageViewer';
 
 interface ImagePreviewProps {
   image: any;
@@ -30,16 +31,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   
   return (
     <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-      <img 
-        src={imageUrl}
-        alt={alt} 
-        className={`${maxHeight} rounded-md object-contain`}
-        onError={(e) => {
-          // Replace with fallback on error
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = 'https://placehold.co/400x300/f5f5f5/a3a3a3?text=Image+Unavailable';
-        }}
-      />
+      <EnhancedImageViewer image={image} alt={alt} />
     </div>
   );
 };
