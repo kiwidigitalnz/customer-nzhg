@@ -8,7 +8,7 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, Search, X, Move, AlertTriangle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Search, X, Move, AlertTriangle, ExternalLink } from 'lucide-react';
 import { getImageUrl } from '@/utils/formatters';
 
 interface EnhancedImageViewerProps {
@@ -47,6 +47,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
       console.log('Image object properties:', Object.keys(image));
       if (image.file_id) {
         console.log('File ID from image:', image.file_id);
+        console.log('URL constructed:', `https://files.podio.com/d/${image.file_id}`);
       }
     }
   }, [image, imageUrl]);
@@ -145,6 +146,19 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
               <p className="text-lg font-medium">Failed to load image</p>
               <div className="mt-4 p-4 bg-gray-100 rounded-md w-full max-w-md overflow-auto">
                 <p className="text-xs font-mono break-all">{imageUrl}</p>
+                {typeof image === 'object' && image.file_id && (
+                  <div className="mt-2 text-xs">
+                    <p>File ID: {image.file_id}</p>
+                    <a 
+                      href={`https://files.podio.com/d/${image.file_id}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center mt-2"
+                    >
+                      Try direct Podio link <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

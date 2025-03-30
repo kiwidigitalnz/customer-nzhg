@@ -38,6 +38,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           // Check for file_id which is what we need for Podio
           if (img.file_id) {
             console.log(`Found file_id: ${img.file_id} for image ${idx}`);
+            console.log(`Constructed URL: https://files.podio.com/d/${img.file_id}`);
           }
         }
       });
@@ -88,7 +89,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       
       if (validImages[index].file_id) {
         console.log('File ID:', validImages[index].file_id);
-        console.log('URL constructed:', `https://files.podio.com/${validImages[index].file_id}`);
+        console.log('URL constructed:', `https://files.podio.com/d/${validImages[index].file_id}`);
       }
     }
   };
