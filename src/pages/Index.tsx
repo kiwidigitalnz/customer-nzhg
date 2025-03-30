@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { ensureInitialPodioAuth } from '../services/podioApi';
+import { ensureInitialPodioAuth, isPodioConfigured } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
 const Index = () => {
@@ -15,18 +15,36 @@ const Index = () => {
     // In production, try to automatically authenticate with Podio
     if (import.meta.env.PROD && !isAttemptingAuth) {
       setIsAttemptingAuth(true);
-      ensureInitialPodioAuth().catch(err => {
-        console.error('Error during automatic Podio authentication:', err);
-        
-        // Only show errors in development
-        if (import.meta.env.DEV) {
-          toast({
-            title: "Podio Authentication Error",
-            description: err instanceof Error ? err.message : "Could not connect to Podio",
-            duration: 5000,
+      
+      // Check if Podio is configured with environment variables
+      console.log('Production environment detected, checking Podio configuration');
+      const configured = isPodioConfigured();
+      console.log('Podio configured:', configured);
+      
+      if (configured) {
+        console.log('Attempting initial Podio authentication');
+        ensureInitialPodioAuth()
+          .then(success => {
+            console.log('Initial Podio authentication result:', success ? 'Success' : 'Failed');
+            if (!success) {
+              console.error('Could not automatically authenticate with Podio');
+            }
+          })
+          .catch(err => {
+            console.error('Error during automatic Podio authentication:', err);
+            
+            // Only show errors in development
+            if (import.meta.env.DEV) {
+              toast({
+                title: "Podio Authentication Error",
+                description: err instanceof Error ? err.message : "Could not connect to Podio",
+                duration: 5000,
+              });
+            }
           });
-        }
-      });
+      } else {
+        console.error('Podio not properly configured. Check environment variables.');
+      }
     }
     
     // Check if there's a stale session

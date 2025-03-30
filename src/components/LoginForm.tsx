@@ -65,6 +65,7 @@ const LoginForm = () => {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
               disabled={loading}
+              autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -77,6 +78,7 @@ const LoginForm = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
               disabled={loading}
+              autoComplete="current-password"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>

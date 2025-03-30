@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -51,6 +52,8 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
       console.error('Missing Podio client credentials in environment variables');
       return false;
     }
+    
+    console.log('Starting client credential authentication with Podio...');
     
     try {
       // Get client credentials token
@@ -111,9 +114,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   if (refreshToken) {
     try {
       // Log only in development
-      if (import.meta.env.DEV) {
-        console.log('Refreshing Podio token using refresh token');
-      }
+      console.log('Refreshing Podio token using refresh token');
       
       const response = await fetch('https://podio.com/oauth/token', {
         method: 'POST',
@@ -308,10 +309,16 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
 export const isPodioConfigured = (): boolean => {
   // In production, check if we have env variables
   if (import.meta.env.PROD) {
+    // Check for environment variables first
+    const hasEnvVars = !!import.meta.env.VITE_PODIO_CLIENT_ID && 
+                       !!import.meta.env.VITE_PODIO_CLIENT_SECRET;
+    
+    console.log('Production environment, checking Podio config:', 
+      hasEnvVars ? 'Environment variables found' : 'No environment variables', 
+      hasValidPodioTokens() ? 'Valid tokens found' : 'No valid tokens');
+    
     // If we have built-in credentials or valid tokens, consider it configured
-    return (!!import.meta.env.VITE_PODIO_CLIENT_ID && 
-            !!import.meta.env.VITE_PODIO_CLIENT_SECRET) || 
-           hasValidPodioTokens();
+    return hasEnvVars || hasValidPodioTokens();
   }
   
   // In development, check if we have valid tokens or local storage credentials
@@ -327,8 +334,10 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     // In production, ensure we're authenticated with Podio first
     if (import.meta.env.PROD && !hasValidPodioTokens()) {
+      console.log('No valid tokens, attempting to authenticate with Podio');
       const authenticated = await ensureInitialPodioAuth();
       if (!authenticated) {
+        console.error('Failed to authenticate with Podio');
         throw createAuthError(
           AuthErrorType.CONFIGURATION,
           'Could not authenticate with Podio',
@@ -346,15 +355,34 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     // First, test to see if we can get the app details to verify our connection
     try {
+      console.log(`Attempting to retrieve app details for app ${PODIO_CONTACTS_APP_ID}`);
       const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
       console.log('Podio app details retrieved successfully:', appDetails.app_id);
     } catch (error) {
       console.error('Failed to retrieve app details:', error);
-      throw createAuthError(
-        AuthErrorType.CONFIGURATION,
-        'Could not connect to Podio. Please check your credentials.',
-        false
-      );
+      
+      // Try to refresh the token and try again
+      const refreshed = await refreshPodioToken();
+      if (refreshed) {
+        try {
+          console.log('Retrying app details after token refresh');
+          const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
+          console.log('Podio app details retrieved successfully after retry:', appDetails.app_id);
+        } catch (retryError) {
+          console.error('Failed to retrieve app details after token refresh:', retryError);
+          throw createAuthError(
+            AuthErrorType.CONFIGURATION,
+            'Could not connect to Podio. Please check your credentials.',
+            false
+          );
+        }
+      } else {
+        throw createAuthError(
+          AuthErrorType.CONFIGURATION,
+          'Could not connect to Podio. Please check your credentials.',
+          false
+        );
+      }
     }
 
     // Use a simpler approach to find items by field value
