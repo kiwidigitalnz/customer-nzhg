@@ -72,6 +72,7 @@ import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import SignaturePad from './SignaturePad';
 
 interface PackingSpec {
   id: number;
@@ -95,7 +96,8 @@ interface CommentItem {
 // Form schema for approval
 const approvalFormSchema = z.object({
   approvedByName: z.string().min(2, { message: "Please enter your name" }),
-  comments: z.string().optional()
+  comments: z.string().optional(),
+  signature: z.string().min(1, { message: "Signature is required" }),
 });
 
 // Form schema for rejection
@@ -115,6 +117,7 @@ const PackingSpecDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeAccordionItems, setActiveAccordionItems] = useState<string[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -123,7 +126,8 @@ const PackingSpecDetails = () => {
     resolver: zodResolver(approvalFormSchema),
     defaultValues: {
       approvedByName: user?.name || '',
-      comments: ''
+      comments: '',
+      signature: '',
     }
   });
 
@@ -185,16 +189,34 @@ const PackingSpecDetails = () => {
     }
   };
 
+  const handleSignatureSave = (dataUrl: string) => {
+    setSignatureDataUrl(dataUrl);
+    approvalForm.setValue('signature', dataUrl);
+  };
+
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
     if (!spec) return;
     
     setIsSubmitting(true);
     
     try {
+      // Prepare approval data
+      const approvalData = {
+        approvedByName: data.approvedByName,
+        comments: data.comments || '',
+        signature: data.signature,
+        status: 'approve-specification' // This should match Podio category option value
+      };
+      
       // We'll send both the approval status and the name
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
       
-      const success = await updatePackingSpecStatus(spec.id, 'approved', comments);
+      const success = await updatePackingSpecStatus(
+        spec.id, 
+        'approved', 
+        comments,
+        approvalData
+      );
       
       if (success) {
         toast({
@@ -210,7 +232,8 @@ const PackingSpecDetails = () => {
           details: {
             ...prev.details,
             approvedByName: data.approvedByName,
-            approvalDate: new Date().toISOString()
+            approvalDate: new Date().toISOString(),
+            signature: data.signature
           }
         } : null);
       } else {
@@ -237,7 +260,18 @@ const PackingSpecDetails = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await updatePackingSpecStatus(spec.id, 'rejected', data.customerRequestedChanges);
+      // Prepare rejection data
+      const rejectionData = {
+        customerRequestedChanges: data.customerRequestedChanges,
+        status: 'request-changes' // This should match Podio category option value
+      };
+      
+      const success = await updatePackingSpecStatus(
+        spec.id, 
+        'rejected', 
+        data.customerRequestedChanges,
+        rejectionData
+      );
       
       if (success) {
         toast({
@@ -583,24 +617,15 @@ const PackingSpecDetails = () => {
                         ])}
                         
                         {/* Display label image if available */}
-                        {spec.details.label && spec.details.label.url ? (
+                        {spec.details.label && (
                           <div className="mt-6">
                             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
                             <div className="bg-muted/20 rounded-md p-4 flex justify-center">
                               <img 
-                                src={spec.details.label.url} 
+                                src={typeof spec.details.label === 'string' ? spec.details.label : spec.details.label.url} 
                                 alt="Label Preview" 
                                 className="max-h-80 rounded-md object-contain"
                               />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-6">
-                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
-                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-                              <div className="flex items-center justify-center h-40 w-40 bg-muted rounded-md">
-                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                              </div>
                             </div>
                           </div>
                         )}
@@ -642,24 +667,15 @@ const PackingSpecDetails = () => {
                           { key: 'shipperStickerCount', label: 'Shipper Sticker Count' }
                         ])}
                         
-                        {spec.details.shipperSticker && spec.details.shipperSticker.url ? (
+                        {spec.details.shipperSticker && (
                           <div className="mt-6">
                             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Shipper Sticker Preview</h4>
                             <div className="bg-muted/20 rounded-md p-4 flex justify-center">
                               <img 
-                                src={spec.details.shipperSticker.url} 
+                                src={typeof spec.details.shipperSticker === 'string' ? spec.details.shipperSticker : spec.details.shipperSticker.url} 
                                 alt="Shipper Sticker" 
                                 className="max-h-60 rounded-md object-contain"
                               />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-6">
-                            <h4 className="font-medium mb-3 text-sm text-muted-foreground">Shipper Sticker Preview</h4>
-                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-                              <div className="flex items-center justify-center h-40 w-60 bg-muted rounded-md">
-                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                              </div>
                             </div>
                           </div>
                         )}
@@ -719,12 +735,12 @@ const PackingSpecDetails = () => {
                             { key: 'approvalDate', label: 'Approval Date', fieldType: 'date' },
                           ])}
                           
-                          {spec.details.signature && spec.details.signature.url && (
+                          {spec.details.signature && (
                             <div className="mt-4">
                               <h4 className="font-medium mb-2 text-sm text-muted-foreground">Digital Signature</h4>
                               <div className="bg-white rounded-md p-2 border border-muted flex justify-center">
                                 <img 
-                                  src={spec.details.signature.url} 
+                                  src={typeof spec.details.signature === 'string' ? spec.details.signature : spec.details.signature.url} 
                                   alt="Digital Signature" 
                                   className="h-20 object-contain"
                                 />
@@ -754,7 +770,7 @@ const PackingSpecDetails = () => {
                                   <ThumbsUp className="mr-2 h-4 w-4" /> Approve Specification
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="max-w-md">
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Approve Packing Specification</AlertDialogTitle>
                                   <AlertDialogDescription>
@@ -790,6 +806,25 @@ const PackingSpecDetails = () => {
                                               placeholder="Add any optional comments or notes..."
                                               className="min-h-[100px]"
                                             />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    
+                                    <FormField
+                                      control={approvalForm.control}
+                                      name="signature"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Digital Signature</FormLabel>
+                                          <FormControl>
+                                            <div className="border rounded-md overflow-hidden">
+                                              <SignaturePad 
+                                                onSave={handleSignatureSave} 
+                                                defaultName={approvalForm.getValues().approvedByName}
+                                              />
+                                            </div>
                                           </FormControl>
                                           <FormMessage />
                                         </FormItem>
@@ -1040,8 +1075,6 @@ const PackingSpecDetails = () => {
               )}
             </CardContent>
           </Card>
-          
-          {/* Removed Quick Actions card */}
         </div>
       </div>
     </div>

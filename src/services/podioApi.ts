@@ -105,6 +105,11 @@ export interface PackingSpec {
   comments?: CommentItem[];
 }
 
+// Helper function to convert image data URL to Podio-compatible file object
+interface FileUploadResponse {
+  file_id: number;
+}
+
 // Mock data for development - will be replaced with actual API calls
 const MOCK_CONTACTS: ContactData[] = [
   { 
@@ -491,11 +496,66 @@ const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending' | 'app
   return 'pending';
 };
 
+// Upload a file to Podio
+const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise<number | null> => {
+  try {
+    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+      throw new Error('Not authenticated with Podio API');
+    }
+    
+    console.log(`Preparing to upload file: ${fileName}`);
+    
+    // For development, simulate a successful upload with a mock file ID
+    console.log('Simulating file upload for development');
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    
+    // Generate a random file ID for development
+    const mockFileId = Math.floor(Math.random() * 9000000) + 1000000;
+    console.log(`Mock file uploaded with ID: ${mockFileId}`);
+    
+    return mockFileId;
+    
+    // In production, we would implement actual file upload like this:
+    /*
+    // Convert data URL to blob
+    const blob = await (await fetch(fileDataUrl)).blob();
+    
+    // Create FormData object
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    
+    // Upload the file
+    const uploadResponse = await fetch('https://api.podio.com/file', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('podio_access_token')}`,
+      },
+      body: formData,
+    });
+    
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload file to Podio');
+    }
+    
+    const fileData = await uploadResponse.json() as FileUploadResponse;
+    return fileData.file_id;
+    */
+  } catch (error) {
+    console.error('Error uploading file to Podio:', error);
+    return null;
+  }
+};
+
 // Update packing spec status in Podio
 export const updatePackingSpecStatus = async (
   specId: number, 
   status: 'approved' | 'rejected', 
-  comments?: string
+  comments?: string,
+  additionalData?: {
+    approvedByName?: string;
+    signature?: string;
+    status?: string;
+  }
 ): Promise<boolean> => {
   try {
     console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
@@ -504,18 +564,68 @@ export const updatePackingSpecStatus = async (
       throw new Error('Not authenticated with Podio API');
     }
     
-    // Map our status to Podio category values
-    // We would need to know the actual category option IDs here
-    // For now, using placeholder values
-    const podioStatus = status === 'approved' ? 1 : 2; // Placeholder IDs
+    // Prepare the update data
+    const updateData: any = {
+      fields: {}
+    };
+    
+    // Handle different status types
+    if (status === 'approved') {
+      // Set customer approval status to "Approve Specification" (use the actual category ID in production)
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = additionalData?.status || 'approve-specification';
+      
+      // Set approved by name
+      if (additionalData?.approvedByName) {
+        updateData.fields[PACKING_SPEC_FIELD_IDS.approvedByName] = additionalData.approvedByName;
+      }
+      
+      // Set approval date to current date
+      updateData.fields[PACKING_SPEC_FIELD_IDS.approvalDate] = {
+        start: new Date().toISOString()
+      };
+      
+      // If signature data URL is provided, upload it to Podio
+      if (additionalData?.signature) {
+        const signatureFileName = `signature_${specId}_${Date.now()}.jpg`;
+        const fileId = await uploadFileToPodio(additionalData.signature, signatureFileName);
+        
+        if (fileId) {
+          updateData.fields[PACKING_SPEC_FIELD_IDS.signature] = fileId;
+        }
+      }
+    } else if (status === 'rejected') {
+      // Set customer approval status to "Request Changes" (use the actual category ID in production)
+      updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = additionalData?.status || 'request-changes';
+      
+      // Set customer requested changes field
+      if (comments) {
+        updateData.fields[PACKING_SPEC_FIELD_IDS.customerRequestedChanges] = comments;
+      }
+    }
+    
+    // Add the comment to the comments field as well
+    if (comments) {
+      // Get existing comments
+      const spec = await getPackingSpecDetails(specId);
+      if (spec) {
+        const newComment: CommentItem = {
+          id: Date.now(),
+          text: comments,
+          createdBy: additionalData?.approvedByName || 'Customer Portal User',
+          createdAt: new Date().toISOString()
+        };
+        
+        // Add to existing comments or create new array
+        const updatedComments = spec.comments ? [...spec.comments, newComment] : [newComment];
+        
+        // Update comments field
+        updateData.fields[PACKING_SPEC_FIELD_IDS.comments] = JSON.stringify(updatedComments);
+      }
+    }
+    
+    console.log('Updating Podio with data:', JSON.stringify(updateData, null, 2));
     
     const endpoint = `item/${specId}`;
-    const updateData = {
-      fields: {
-        [PACKING_SPEC_FIELD_IDS.customerApprovalStatus]: podioStatus,
-        [PACKING_SPEC_FIELD_IDS.customerRequestedChanges]: comments || ''
-      }
-    };
     
     await callPodioApi(endpoint, {
       method: 'PUT',
@@ -828,4 +938,12 @@ const getMockComments = (specId: number): CommentItem[] => {
   return comments.sort((a, b) => 
     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
+};
+
+export { 
+  authenticateUser, 
+  getPackingSpecsForContact,
+  getPackingSpecDetails,
+  addCommentToPackingSpec,
+  isPodioConfigured 
 };
