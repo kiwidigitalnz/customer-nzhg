@@ -1,8 +1,9 @@
+
 // This file contains functions for working with packing specifications in Podio
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
-import { getCommentsFromPodio, CommentItem } from './podioComments';
+import { getCommentsFromPodio } from './podioComments';
 
 // Packing Spec Field IDs
 export const PACKING_SPEC_FIELD_IDS = {
@@ -36,22 +37,21 @@ export const PACKING_SPEC_FIELD_IDS = {
 };
 
 // Types
-export interface PackingSpecDetails {
-  [key: string]: any;
-  product: string;
-  batchSize?: string;
-  packagingType?: string;
-  specialRequirements?: string;
-}
-
 export interface PackingSpec {
   id: number;
   title: string;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
-  details: PackingSpecDetails;
-  comments?: CommentItem[];
+  details: {
+    [key: string]: any;
+  };
+  comments?: {
+    id: number;
+    text: string;
+    createdBy: string;
+    createdAt: string;
+  }[];
 }
 
 // Get a list of packing specs associated with a contact
@@ -84,7 +84,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         status: mapPodioStatusToAppStatus(getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.status)),
         createdAt: item.created_on,
         details: {
-          product: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.product) || '',
+          product: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.product),
           productCode: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.productCode),
           honeyType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.honeyType),
           umfMgo: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.umfMgo),
@@ -96,9 +96,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
           batchSize: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.batchSize),
           packagingType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.packagingType),
           versionNumber: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.versionNumber),
-          // Parse string to number or provide proper type conversion
-          customerId: getFieldIdValue(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.customer, 10)),
-          specialRequirements: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.specialRequirements),
+          customerId: getFieldIdValue(item.fields, PACKING_SPEC_FIELD_IDS.customer),
         }
       };
     });
@@ -126,9 +124,8 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
     const comments = await getCommentsFromPodio(specId);
     
     // Extract additional details
-    // Parse string to number
-    const labelImages = extractPodioImages(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.labelImages, 10));
-    const productImages = extractPodioImages(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.productImages, 10));
+    const labelImages = extractPodioImages(item.fields, PACKING_SPEC_FIELD_IDS.labelImages);
+    const productImages = extractPodioImages(item.fields, PACKING_SPEC_FIELD_IDS.productImages);
     
     // Map Podio item to our app format with more details
     const spec: PackingSpec = {
@@ -138,7 +135,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
       status: mapPodioStatusToAppStatus(getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.status)),
       createdAt: item.created_on,
       details: {
-        product: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.product) || '',
+        product: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.product),
         productCode: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.productCode),
         honeyType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.honeyType),
         umfMgo: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.umfMgo),
@@ -150,8 +147,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
         batchSize: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.batchSize),
         packagingType: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.packagingType),
         versionNumber: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.versionNumber),
-        // Parse string to number
-        customerId: getFieldIdValue(item.fields, parseInt(PACKING_SPEC_FIELD_IDS.customer, 10)),
+        customerId: getFieldIdValue(item.fields, PACKING_SPEC_FIELD_IDS.customer),
         markets: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.markets),
         specialRequirements: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.specialRequirements),
         labelInformation: getFieldValueByExternalId(item.fields, PACKING_SPEC_FIELD_IDS.labelInformation),

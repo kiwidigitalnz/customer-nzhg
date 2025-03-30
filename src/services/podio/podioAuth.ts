@@ -58,7 +58,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 };
 
 // Helper function to make authenticated API calls to Podio
-export const callPodioApi = async (endpoint: string, method: string = 'GET', body?: any): Promise<any> => {
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check if we have a valid token, try to refresh if not
   if (!hasValidPodioTokens() && !await refreshPodioToken()) {
     throw new Error('Not authenticated with Podio');
@@ -66,22 +66,18 @@ export const callPodioApi = async (endpoint: string, method: string = 'GET', bod
   
   const accessToken = localStorage.getItem('podio_access_token');
   
-  // Prepare request options
-  const options: RequestInit = {
-    method,
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    }
+  // Merge the authorization header with the provided options
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    ...options.headers,
   };
   
-  // Add body if provided
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-  
   try {
-    const response = await fetch(`https://api.podio.com/${endpoint}`, options);
+    const response = await fetch(`https://api.podio.com/${endpoint}`, {
+      ...options,
+      headers,
+    });
     
     if (!response.ok) {
       const errorData = await response.json();
@@ -138,7 +134,10 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     // Make the API call
     let searchResponse;
     try {
-      searchResponse = await callPodioApi(endpoint, 'POST', filters);
+      searchResponse = await callPodioApi(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(filters),
+      });
     } catch (error) {
       console.error('Error during contact search:', error);
       
@@ -154,7 +153,10 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
         };
         console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
         
-        searchResponse = await callPodioApi(endpoint, 'POST', alternativeFilters);
+        searchResponse = await callPodioApi(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(alternativeFilters),
+        });
       } catch (secondError) {
         console.error('Alternative filter also failed:', secondError);
         throw new Error('Failed to search for user in Podio contacts');

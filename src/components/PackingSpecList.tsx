@@ -1,3 +1,4 @@
+
 import { 
   Card, 
   CardContent, 
@@ -9,13 +10,44 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { updatePackingSpecStatus } from '../services/podioApi';
 import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { EnhancedApprovalDialog } from './approval';
-import { CommentItem, PackingSpec } from '../services/podioApi';
+
+interface CommentItem {
+  id: number;
+  text: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface PackingSpec {
+  id: number;
+  title: string;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  details: {
+    product: string;
+    productCode?: string;
+    umfMgo?: string;
+    honeyType?: string;
+    jarSize?: string;
+    jarColour?: string;
+    jarMaterial?: string;
+    lidSize?: string;
+    lidColour?: string;
+    batchSize?: string;
+    packagingType?: string;
+    specialRequirements?: string;
+    [key: string]: any; // Allow additional fields
+  };
+  comments?: CommentItem[]; // Add the comments property
+}
 
 interface PackingSpecListProps {
   specs: PackingSpec[];
