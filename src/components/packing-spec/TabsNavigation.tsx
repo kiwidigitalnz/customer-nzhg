@@ -9,9 +9,13 @@ import {
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
+  hideApprovalsTab?: boolean;
 }
 
-const TabsNavigation: React.FC<TabsNavigationProps> = ({ newCommentsCount = 0 }) => {
+const TabsNavigation: React.FC<TabsNavigationProps> = ({ 
+  newCommentsCount = 0,
+  hideApprovalsTab = false
+}) => {
   return (
     <TabsList className="mb-6 w-full flex overflow-x-auto justify-start p-1 bg-muted/70 rounded-md">
       <TabsTrigger value="overview" className="flex items-center">
@@ -34,10 +38,12 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({ newCommentsCount = 0 })
         <Truck className="mr-1.5 h-4 w-4" />
         <span>Shipping</span>
       </TabsTrigger>
-      <TabsTrigger value="approvals" className="flex items-center">
-        <Check className="mr-1.5 h-4 w-4" />
-        <span>Approvals</span>
-      </TabsTrigger>
+      {!hideApprovalsTab && (
+        <TabsTrigger value="approvals" className="flex items-center">
+          <Check className="mr-1.5 h-4 w-4" />
+          <span>Approvals</span>
+        </TabsTrigger>
+      )}
       <TabsTrigger value="comments" className="flex items-center relative">
         <MessageSquare className="mr-1.5 h-4 w-4" />
         <span>Comments</span>
