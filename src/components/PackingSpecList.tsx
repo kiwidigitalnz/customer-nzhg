@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { updatePackingSpecStatus } from '../services/podioApi';
-import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
+import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink, Loader2, MessageSquare, Clipboard } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
 
 interface CommentItem {
   id: number;
@@ -60,29 +62,91 @@ interface PackingSpecListProps {
   readOnly?: boolean;
 }
 
-// Form schema for approval
-const approvalFormSchema = z.object({
-  approvedByName: z.string().min(2, { message: "Please enter your name" }),
-  comments: z.string().optional()
-});
+interface QuickReviewProps {
+  spec: PackingSpec;
+  onOpenApproval: (spec: PackingSpec) => void;
+}
 
-// Form schema for rejection
-const rejectionFormSchema = z.object({
-  customerRequestedChanges: z.string().min(10, { message: "Please provide detailed feedback on why you're rejecting this specification" })
-});
+const QuickReview: React.FC<QuickReviewProps> = ({ spec, onOpenApproval }) => {
+  const details = spec.details;
+  
+  return (
+    <div className="space-y-3 py-2 max-w-sm">
+      <h4 className="text-sm font-semibold">Quick Specification Review</h4>
+      
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+        <div>
+          <span className="font-medium text-xs text-muted-foreground block">Product:</span>
+          <span>{details.product || 'N/A'}</span>
+        </div>
+        
+        {details.productCode && (
+          <div>
+            <span className="font-medium text-xs text-muted-foreground block">Product Code:</span>
+            <span>{details.productCode}</span>
+          </div>
+        )}
+        
+        {details.honeyType && (
+          <div>
+            <span className="font-medium text-xs text-muted-foreground block">Honey Type:</span>
+            <span>{details.honeyType}</span>
+          </div>
+        )}
+        
+        {details.umfMgo && (
+          <div>
+            <span className="font-medium text-xs text-muted-foreground block">UMF/MGO:</span>
+            <span>{details.umfMgo}</span>
+          </div>
+        )}
+        
+        {details.jarSize && (
+          <div>
+            <span className="font-medium text-xs text-muted-foreground block">Jar Size:</span>
+            <span>{details.jarSize}</span>
+          </div>
+        )}
+        
+        {details.packagingType && (
+          <div>
+            <span className="font-medium text-xs text-muted-foreground block">Packaging:</span>
+            <span>{details.packagingType}</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="pt-2">
+        <Button 
+          variant="default" 
+          className="w-full"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenApproval(spec);
+          }}
+        >
+          <Check className="mr-2 h-4 w-4" /> 
+          Review & Approve
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListProps) => {
   const [selectedSpec, setSelectedSpec] = useState<PackingSpec | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   
-  // Forms for approval and rejection
   const approvalForm = useForm<z.infer<typeof approvalFormSchema>>({
     resolver: zodResolver(approvalFormSchema),
     defaultValues: {
       approvedByName: '',
-      comments: ''
+      comments: '',
+      signature: ''
     }
   });
 
@@ -109,10 +173,21 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     setIsSubmitting(true);
     
     try {
-      // We'll send both the approval status and the name
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
       
-      const success = await updatePackingSpecStatus(selectedSpec.id, 'approved', comments);
+      const approvalData = {
+        approvedByName: data.approvedByName,
+        comments: data.comments || '',
+        signature: data.signature,
+        status: 'approve-specification'
+      };
+      
+      const success = await updatePackingSpecStatus(
+        selectedSpec.id, 
+        'approved', 
+        comments,
+        approvalData
+      );
       
       if (success) {
         toast({
@@ -121,6 +196,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           variant: 'default',
         });
         setSelectedSpec(null);
+        setApprovalDialogOpen(false);
         approvalForm.reset();
         onUpdate();
       } else {
@@ -147,7 +223,17 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     setIsSubmitting(true);
     
     try {
-      const success = await updatePackingSpecStatus(selectedSpec.id, 'rejected', data.customerRequestedChanges);
+      const rejectionData = {
+        customerRequestedChanges: data.customerRequestedChanges,
+        status: 'request-changes'
+      };
+      
+      const success = await updatePackingSpecStatus(
+        selectedSpec.id, 
+        'rejected', 
+        data.customerRequestedChanges,
+        rejectionData
+      );
       
       if (success) {
         toast({
@@ -156,6 +242,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           variant: 'default',
         });
         setSelectedSpec(null);
+        setApprovalDialogOpen(false);
         rejectionForm.reset();
         onUpdate();
       } else {
@@ -201,224 +288,106 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     navigate(`/packing-spec/${spec.id}`);
   };
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {specs.map(spec => (
-        <Card key={spec.id} className="flex flex-col hover:shadow-md transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-lg">{spec.title}</CardTitle>
-              {getStatusBadge(spec.status)}
-            </div>
-            <CardDescription className="line-clamp-2">
-              {spec.details.productCode && `${spec.details.productCode} • `}
-              {spec.details.versionNumber && `Version ${spec.details.versionNumber}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow">
-            <div className="space-y-3">
-              {spec.details.honeyType && (
-                <div className="flex items-center text-sm">
-                  <Package className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="font-medium mr-2">Honey Type:</span> {spec.details.honeyType}
-                </div>
-              )}
-              {spec.details.umfMgo && (
-                <div className="flex items-center text-sm">
-                  <Info className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="font-medium mr-2">UMF/MGO:</span> {spec.details.umfMgo}
-                </div>
-              )}
-              <div className="flex items-center text-sm">
-                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="font-medium mr-2">Created:</span> {formatDate(spec.createdAt)}
-              </div>
-              
-              {spec.comments && spec.comments.length > 0 && (
-                <div className="flex items-center text-sm pt-1">
-                  <MessageSquare className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="font-medium mr-2">Comments:</span> {spec.comments.length}
-                </div>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-2 pt-3">
-            <Button 
-              variant="outline"
-              className="w-full"
-              onClick={() => handleViewDetails(spec)}
-            >
-              <ExternalLink className="mr-2 h-4 w-4" /> View Details
-            </Button>
-            
-            {spec.status === 'pending' && !readOnly && (
-              <Dialog onOpenChange={(open) => {
-                if (open) setSelectedSpec(spec);
-                else {
-                  approvalForm.reset();
-                  rejectionForm.reset();
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="default" 
-                    className="w-full"
-                  >
-                    Review
-                  </Button>
-                </DialogTrigger>
-                {selectedSpec && (
-                  <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                      <DialogTitle>{selectedSpec.title}</DialogTitle>
-                      <DialogDescription>
-                        {selectedSpec.details.productCode && `Product Code: ${selectedSpec.details.productCode}`}
-                        {selectedSpec.description && (
-                          <div className="mt-2">{selectedSpec.description}</div>
-                        )}
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="py-4">
-                      <Tabs defaultValue="approve">
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="approve">Approve</TabsTrigger>
-                          <TabsTrigger value="reject">Request Changes</TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="approve">
-                          <div className="space-y-4 py-4">
-                            <div className="text-sm rounded-md bg-muted p-4 space-y-2">
-                              <h4 className="font-medium">Quick Review</h4>
-                              
-                              <div><span className="font-medium">Product:</span> {selectedSpec.details.product}</div>
-                              
-                              {selectedSpec.details.honeyType && (
-                                <div><span className="font-medium">Honey Type:</span> {selectedSpec.details.honeyType}</div>
-                              )}
-                              
-                              {selectedSpec.details.umfMgo && (
-                                <div><span className="font-medium">UMF/MGO:</span> {selectedSpec.details.umfMgo}</div>
-                              )}
-                            </div>
-                            
-                            <Form {...approvalForm}>
-                              <form onSubmit={approvalForm.handleSubmit(handleApprove)} className="space-y-4">
-                                <FormField
-                                  control={approvalForm.control}
-                                  name="approvedByName"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Your Name</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} placeholder="Enter your full name" />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={approvalForm.control}
-                                  name="comments"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Additional Comments (Optional)</FormLabel>
-                                      <FormControl>
-                                        <Textarea 
-                                          {...field} 
-                                          placeholder="Add any optional comments or notes..."
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <Button
-                                  type="submit"
-                                  disabled={isSubmitting}
-                                  className="w-full"
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Check className="mr-2 h-4 w-4" /> 
-                                      Approve Specification
-                                    </>
-                                  )}
-                                </Button>
-                              </form>
-                            </Form>
-                          </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="reject">
-                          <div className="space-y-4 py-4">
-                            <div className="text-sm rounded-md bg-muted p-4 space-y-2">
-                              <p>Please provide detailed feedback about what changes are needed.</p>
-                            </div>
-                            
-                            <Form {...rejectionForm}>
-                              <form onSubmit={rejectionForm.handleSubmit(handleReject)} className="space-y-4">
-                                <FormField
-                                  control={rejectionForm.control}
-                                  name="customerRequestedChanges"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Changes Requested</FormLabel>
-                                      <FormControl>
-                                        <Textarea 
-                                          {...field} 
-                                          placeholder="Please describe in detail what changes are needed..."
-                                          className="min-h-[150px]"
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <Button 
-                                  type="submit"
-                                  disabled={isSubmitting}
-                                  variant="destructive"
-                                  className="w-full"
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <X className="mr-2 h-4 w-4" /> 
-                                      Request Changes
-                                    </>
-                                  )}
-                                </Button>
-                              </form>
-                            </Form>
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  </DialogContent>
-                )}
-              </Dialog>
-            )}
-          </CardFooter>
-        </Card>
-      ))}
+  const handleOpenApproval = (spec: PackingSpec) => {
+    setSelectedSpec(spec);
+    setApprovalDialogOpen(true);
+  };
+
+  const getApprovalPreview = (spec: PackingSpec) => (
+    <div className="text-sm">
+      <p><strong>Product:</strong> {spec.details.product || 'N/A'}</p>
+      <p><strong>Code:</strong> {spec.details.productCode || 'N/A'}</p>
+      {spec.details.honeyType && <p><strong>Honey Type:</strong> {spec.details.honeyType}</p>}
+      {spec.details.umfMgo && <p><strong>UMF/MGO:</strong> {spec.details.umfMgo}</p>}
+      {spec.details.versionNumber && <p><strong>Version:</strong> {spec.details.versionNumber}</p>}
     </div>
+  );
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {specs.map(spec => (
+          <Card key={spec.id} className="flex flex-col hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg">{spec.title}</CardTitle>
+                {getStatusBadge(spec.status)}
+              </div>
+              <CardDescription className="line-clamp-2">
+                {spec.details.productCode && `${spec.details.productCode} • `}
+                {spec.details.versionNumber && `Version ${spec.details.versionNumber}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <div className="space-y-3">
+                {spec.details.honeyType && (
+                  <div className="flex items-center text-sm">
+                    <Package className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="font-medium mr-2">Honey Type:</span> {spec.details.honeyType}
+                  </div>
+                )}
+                {spec.details.umfMgo && (
+                  <div className="flex items-center text-sm">
+                    <Info className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="font-medium mr-2">UMF/MGO:</span> {spec.details.umfMgo}
+                  </div>
+                )}
+                <div className="flex items-center text-sm">
+                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="font-medium mr-2">Created:</span> {formatDate(spec.createdAt)}
+                </div>
+                
+                {spec.comments && spec.comments.length > 0 && (
+                  <div className="flex items-center text-sm pt-1">
+                    <MessageSquare className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="font-medium mr-2">Comments:</span> {spec.comments.length}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex gap-2 pt-3">
+              <Button 
+                variant="outline"
+                className="w-full"
+                onClick={() => handleViewDetails(spec)}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" /> View Details
+              </Button>
+              
+              {spec.status === 'pending' && !readOnly && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="default" className="w-full">
+                      <Clipboard className="mr-2 h-4 w-4" /> Quick Review
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-auto p-4">
+                    <QuickReview spec={spec} onOpenApproval={handleOpenApproval} />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+
+      {selectedSpec && (
+        <ApprovalSharedInterface
+          isOpen={approvalDialogOpen}
+          onOpenChange={setApprovalDialogOpen}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          title="Review Packing Specification"
+          description="Please review all details carefully before approving or requesting changes."
+          isSubmitting={isSubmitting}
+          defaultName=""
+          itemPreview={selectedSpec ? getApprovalPreview(selectedSpec) : undefined}
+        />
+      )}
+    </>
   );
 };
 
-// Add missing Tabs components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default PackingSpecList;
