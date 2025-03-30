@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
   defaultName?: string;
+  initialData?: string; // Added initialData prop for existing signature
 }
 
-const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, defaultName = '' }) => {
+const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, defaultName = '', initialData = '' }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
@@ -32,8 +33,17 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, defaultName = '' })
       context.lineCap = 'round';
       context.strokeStyle = '#000';
       setCtx(context);
+      
+      // If initialData is provided, load it into the canvas
+      if (initialData) {
+        const img = new Image();
+        img.onload = () => {
+          context.drawImage(img, 0, 0);
+        };
+        img.src = initialData;
+      }
     }
-  }, []);
+  }, [initialData]);
 
   // Handle window resize
   useEffect(() => {
