@@ -116,9 +116,10 @@ export const createAuthError = (
 
 // Handle auth errors with standardized handling
 export const handleAuthError = (error: AuthError): void => {
+  // Critical error: should log it even in production
   console.error(`Auth error (${error.type}):`, error.message);
   
-  // Log error for debugging
+  // Log detailed error only in development
   if (import.meta.env.DEV) {
     console.error('Authentication error details:', error);
   }

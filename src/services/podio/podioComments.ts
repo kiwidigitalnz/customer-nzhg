@@ -13,8 +13,6 @@ export interface CommentItem {
 // Get comments from Podio for a specific item
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    console.log('Fetching comments for item ID:', itemId);
-    
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       throw new Error('Not authenticated with Podio API');
     }
@@ -25,7 +23,9 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
     const response = await callPodioApi(endpoint);
     
     if (!response || !Array.isArray(response)) {
-      console.log('No comments found or invalid response');
+      if (import.meta.env.DEV) {
+        console.log('No comments found or invalid response');
+      }
       return [];
     }
     
@@ -37,7 +37,9 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
       createdAt: comment.created_on
     }));
     
-    console.log(`Found ${comments.length} comments for item ID ${itemId}`);
+    if (import.meta.env.DEV) {
+      console.log(`Found ${comments.length} comments for item ID ${itemId}`);
+    }
     return comments;
   } catch (error) {
     console.error('Error fetching comments from Podio:', error);
@@ -51,8 +53,6 @@ export const addCommentToPodio = async (
   comment: string
 ): Promise<boolean> => {
   try {
-    console.log(`Adding comment to Podio item ${itemId}: ${comment}`);
-    
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       throw new Error('Not authenticated with Podio API');
     }
@@ -60,7 +60,6 @@ export const addCommentToPodio = async (
     // Get user info from localStorage for company name
     const userInfo = localStorage.getItem('user_info');
     const companyName = userInfo ? JSON.parse(userInfo).name : 'Customer Portal User';
-    console.log('Comment will be attributed to:', companyName);
     
     // Prepare the comment data - prepend with company name
     // Check if the comment already has the company name in brackets
@@ -74,8 +73,6 @@ export const addCommentToPodio = async (
       external_id: `customer_comment_${Date.now()}`,
     };
     
-    console.log('Sending formatted comment to Podio:', commentData.value);
-    
     // Post the comment to Podio
     const endpoint = `comment/item/${itemId}`;
     
@@ -84,7 +81,6 @@ export const addCommentToPodio = async (
       body: JSON.stringify(commentData),
     });
     
-    console.log('Comment successfully added to Podio');
     return true;
   } catch (error) {
     console.error('Error adding comment to Podio:', error);
@@ -98,8 +94,6 @@ export const addCommentToPackingSpec = async (
   comment: string
 ): Promise<boolean> => {
   try {
-    console.log(`Adding comment to packing spec ${specId}: ${comment}`);
-    
     // Store user information in localStorage to identify comments made by the current user
     const userInfo = localStorage.getItem('user_info');
     if (!userInfo) {
@@ -109,7 +103,6 @@ export const addCommentToPackingSpec = async (
         username: userName,
         name: userName
       }));
-      console.log('Created default user info since none was found');
     }
     
     const success = await addCommentToPodio(specId, comment);

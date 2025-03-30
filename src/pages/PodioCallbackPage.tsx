@@ -33,7 +33,6 @@ const PodioCallbackPage = () => {
 
     // In a popup scenario, send the code back to the parent window
     if (window.opener && !window.opener.closed) {
-      console.log('Sending auth code to parent window');
       window.opener.postMessage({
         type: 'PODIO_AUTH_CODE',
         code,
@@ -53,7 +52,6 @@ const PodioCallbackPage = () => {
     
     // Verify state parameter to prevent CSRF attacks
     if (!incomingState || !savedState || incomingState !== savedState) {
-      console.error('State parameter mismatch:', { incomingState, savedState });
       return;
     }
 

@@ -14,8 +14,6 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
       throw new Error('Not authenticated with Podio API');
     }
     
-    console.log(`Preparing to upload file: ${fileName}`);
-    
     // Validate that the data URL is not empty or invalid
     if (!fileDataUrl || typeof fileDataUrl !== 'string' || !fileDataUrl.startsWith('data:')) {
       console.error('Invalid file data URL provided');
@@ -46,7 +44,6 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
       throw new Error('Missing Podio access token');
     }
     
-    console.log('Attempting to upload file to Podio API...');
     const uploadResponse = await fetch('https://api.podio.com/file', {
       method: 'POST',
       headers: {
@@ -56,8 +53,13 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     });
     
     if (!uploadResponse.ok) {
-      const errorData = await uploadResponse.text();
-      console.error('Podio upload error response:', errorData);
+      let errorData;
+      try {
+        errorData = await uploadResponse.text();
+        console.error('Podio upload error response:', errorData);
+      } catch (e) {
+        // Failed to parse response text
+      }
       console.error('Status:', uploadResponse.status, uploadResponse.statusText);
       
       if (uploadResponse.status === 404) {
@@ -79,14 +81,12 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     }
     
     const fileData = await uploadResponse.json() as FileUploadResponse;
-    console.log('File uploaded successfully with ID:', fileData.file_id);
     return fileData.file_id;
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
     
     // Implement fallback mechanism - if we can't upload the signature,
     // we should still allow the user to approve the spec without a signature
-    console.log('Implementing fallback: approval will proceed without signature');
     return null;
   }
 };
@@ -94,6 +94,5 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
 // Fallback function to handle approvals without signatures
 export const shouldProceedWithoutSignature = (error: any): boolean => {
   // Determine if we should proceed with approval even if signature upload failed
-  console.log('Checking if approval should proceed without signature');
   return true; // Allow approval to proceed even if signature upload fails
 };

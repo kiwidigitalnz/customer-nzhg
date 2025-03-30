@@ -1,3 +1,4 @@
+
 // Service for handling Podio OAuth flow
 
 // Generate a random state for CSRF protection
@@ -44,7 +45,9 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   if (retryAfterSecs) {
     const limitTime = Date.now() + (retryAfterSecs * 1000);
     localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
-    console.log(`Rate limited by Podio for ${retryAfterSecs} seconds`);
+    if (import.meta.env.DEV) {
+      console.log(`Rate limited by Podio for ${retryAfterSecs} seconds`);
+    }
     return;
   }
   
@@ -60,7 +63,9 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
   localStorage.setItem('podio_retry_delay', delay.toString());
   
-  console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
+  if (import.meta.env.DEV) {
+    console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
+  }
 };
 
 // Clear rate limit
@@ -76,7 +81,9 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     if (isRateLimited()) {
       const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
       const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-      console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      if (import.meta.env.DEV) {
+        console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      }
       return false;
     }
     
@@ -84,11 +91,15 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     const clientSecret = getPodioClientSecret();
     
     if (!clientId || !clientSecret) {
-      console.error('Missing Podio client credentials for password flow');
+      if (import.meta.env.DEV) {
+        console.error('Missing Podio client credentials for password flow');
+      }
       return false;
     }
     
-    console.log('Attempting to authenticate with Podio using Password Flow');
+    if (import.meta.env.DEV) {
+      console.log('Attempting to authenticate with Podio using Password Flow');
+    }
     
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
@@ -104,8 +115,16 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Rate limit reached:', errorData);
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+      }
+      
+      if (import.meta.env.DEV) {
+        console.error('Rate limit reached:', errorData);
+      }
       
       // Extract retry-after information if available
       const retryAfter = response.headers.get('Retry-After') || 
@@ -122,8 +141,16 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Password flow authentication failed:', errorData);
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+      }
+      
+      if (import.meta.env.DEV) {
+        console.error('Password flow authentication failed:', errorData);
+      }
       return false;
     }
     
@@ -141,10 +168,14 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     const safeExpiryTime = Date.now() + ((tokenData.expires_in - 3600) * 1000);
     localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
     
-    console.log('Successfully obtained tokens via Password Flow');
+    if (import.meta.env.DEV) {
+      console.log('Successfully obtained tokens via Password Flow');
+    }
     return true;
   } catch (error) {
-    console.error('Error during Password Flow authentication:', error);
+    if (import.meta.env.DEV) {
+      console.error('Error during Password Flow authentication:', error);
+    }
     // Set a short backoff on error
     setRateLimit(10);
     return false;
@@ -153,7 +184,9 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
 
 // Start the OAuth flow - always use password flow for better consistency
 export const startPodioOAuthFlow = (): Promise<boolean> => {
-  console.log('Using Password Flow instead of OAuth flow for consistency');
+  if (import.meta.env.DEV) {
+    console.log('Using Password Flow instead of OAuth flow for consistency');
+  }
   return authenticateWithPasswordFlow();
 };
 
@@ -164,7 +197,9 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     if (isRateLimited()) {
       const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
       const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-      console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      if (import.meta.env.DEV) {
+        console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+      }
       return false;
     }
     
@@ -172,11 +207,15 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     const clientSecret = getPodioClientSecret();
     
     if (!clientId || !clientSecret) {
-      console.error('Missing Podio client credentials');
+      if (import.meta.env.DEV) {
+        console.error('Missing Podio client credentials');
+      }
       return false;
     }
     
-    console.log('Exchanging code for tokens with redirect URI:', redirectUri);
+    if (import.meta.env.DEV) {
+      console.log('Exchanging code for tokens with redirect URI:', redirectUri);
+    }
     
     const tokenUrl = 'https://podio.com/oauth/token';
     const response = await fetch(tokenUrl, {
@@ -195,8 +234,16 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     
     // Handle rate limiting
     if (response.status === 420 || response.status === 429) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Rate limit reached during token exchange:', errorData);
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+      }
+      
+      if (import.meta.env.DEV) {
+        console.error('Rate limit reached during token exchange:', errorData);
+      }
       
       // Extract retry-after information
       const retryAfter = response.headers.get('Retry-After') || 
@@ -213,8 +260,17 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     }
     
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Token exchange failed:', errorData);
+      let errorData;
+      try {
+        errorData = await response.json();
+        if (import.meta.env.DEV) {
+          console.error('Token exchange failed:', errorData);
+        }
+      } catch (e) {
+        if (import.meta.env.DEV) {
+          console.error('Token exchange failed with non-JSON response');
+        }
+      }
       return false;
     }
     
@@ -228,10 +284,14 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     localStorage.setItem('podio_refresh_token', tokenData.refresh_token);
     localStorage.setItem('podio_token_expiry', (Date.now() + tokenData.expires_in * 1000).toString());
     
-    console.log('Successfully obtained tokens via OAuth flow');
+    if (import.meta.env.DEV) {
+      console.log('Successfully obtained tokens via OAuth flow');
+    }
     return true;
   } catch (error) {
-    console.error('Error during token exchange:', error);
+    if (import.meta.env.DEV) {
+      console.error('Error during token exchange:', error);
+    }
     // Set a short backoff on error
     setRateLimit(10);
     return false;
