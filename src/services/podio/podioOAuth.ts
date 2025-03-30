@@ -18,12 +18,20 @@ export const generatePodioAuthState = (): string => {
 
 // Get client ID from environment or localStorage
 export const getPodioClientId = (): string | null => {
-  return import.meta.env.VITE_PODIO_CLIENT_ID || localStorage.getItem('podio_client_id');
+  // Always prioritize environment variables
+  if (import.meta.env.VITE_PODIO_CLIENT_ID) {
+    return import.meta.env.VITE_PODIO_CLIENT_ID;
+  }
+  return localStorage.getItem('podio_client_id');
 };
 
 // Get client secret from environment or localStorage
 export const getPodioClientSecret = (): string | null => {
-  return import.meta.env.VITE_PODIO_CLIENT_SECRET || localStorage.getItem('podio_client_secret');
+  // Always prioritize environment variables
+  if (import.meta.env.VITE_PODIO_CLIENT_SECRET) {
+    return import.meta.env.VITE_PODIO_CLIENT_SECRET;
+  }
+  return localStorage.getItem('podio_client_secret');
 };
 
 // Get the redirect URI based on the current environment
@@ -106,6 +114,8 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     
     if (import.meta.env.DEV) {
       console.log('Attempting to authenticate with Podio using Password Flow');
+      console.log('Client ID (first 5 chars):', clientId.substring(0, 5) + '...');
+      console.log('Client secret available:', !!clientSecret);
     }
     
     const response = await fetch('https://podio.com/oauth/token', {

@@ -58,11 +58,56 @@ const trackApiCall = (): boolean => {
   return true;
 }
 
+// Function to check if Podio API is configured
+export const isPodioConfigured = (): boolean => {
+  // Check for environment variables first in both environments
+  const hasEnvVars = !!import.meta.env.VITE_PODIO_CLIENT_ID && 
+                     !!import.meta.env.VITE_PODIO_CLIENT_SECRET;
+                     
+  if (hasEnvVars) {
+    if (import.meta.env.DEV) {
+      console.log('Podio config check: Environment variables found');
+    }
+    return true;
+  }
+  
+  // Then check for valid tokens
+  if (hasValidPodioTokens()) {
+    if (import.meta.env.DEV) {
+      console.log('Podio config check: Valid tokens found');
+    }
+    return true;
+  }
+  
+  // Finally check localStorage for credentials (fallback for development)
+  const hasLocalStorageCreds = !!localStorage.getItem('podio_client_id') && 
+                              !!localStorage.getItem('podio_client_secret');
+                              
+  if (hasLocalStorageCreds && import.meta.env.DEV) {
+    console.log('Podio config check: localStorage credentials found');
+    return true;
+  }
+  
+  // Log what's missing for debugging
+  if (import.meta.env.DEV) {
+    console.log('Podio not configured:',
+      !hasEnvVars ? 'No environment variables' : '',
+      !hasValidPodioTokens() ? 'No valid tokens' : '',
+      !hasLocalStorageCreds ? 'No localStorage credentials' : '');
+  }
+  
+  return false;
+};
+
 // Helper function to validate if token is actually working with Podio
 export const validatePodioToken = async (): Promise<boolean> => {
   try {
     const accessToken = localStorage.getItem('podio_access_token');
     if (!accessToken) return false;
+    
+    if (import.meta.env.DEV) {
+      console.log('Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
+    }
     
     // Use an endpoint that works with app authentication instead of user authentication
     // The /app/ endpoint requires only app authorization
@@ -74,6 +119,12 @@ export const validatePodioToken = async (): Promise<boolean> => {
     
     if (response.status === 403) {
       console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
+      
+      if (import.meta.env.DEV) {
+        console.log('This typically means the Podio app does not have the correct permissions.');
+        console.log('Ensure the Podio API client has access to the Contacts app (ID: 26969025)');
+      }
+      
       return false;
     }
     
@@ -342,31 +393,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       false
     );
   }
-};
-
-// Function to check if Podio API is configured
-export const isPodioConfigured = (): boolean => {
-  // In production, check if we have env variables
-  if (import.meta.env.PROD) {
-    // Check for environment variables first
-    const hasEnvVars = !!import.meta.env.VITE_PODIO_CLIENT_ID && 
-                       !!import.meta.env.VITE_PODIO_CLIENT_SECRET;
-    
-    // Only log in development mode or when debug is enabled
-    if (import.meta.env.DEV) {
-      console.log('Production environment, checking Podio config:', 
-        hasEnvVars ? 'Environment variables found' : 'No environment variables', 
-        hasValidPodioTokens() ? 'Valid tokens found' : 'No valid tokens');
-    }
-    
-    // If we have built-in credentials or valid tokens, consider it configured
-    return hasEnvVars || hasValidPodioTokens();
-  }
-  
-  // In development, check if we have valid tokens or local storage credentials
-  return hasValidPodioTokens() || 
-         (!!localStorage.getItem('podio_client_id') && 
-          !!localStorage.getItem('podio_client_secret'));
 };
 
 // Improved utility to compare passwords securely with browser-safe fallbacks

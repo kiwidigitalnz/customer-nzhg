@@ -39,6 +39,9 @@ const Index = () => {
           import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'environment variable' : 'localStorage');
         console.log('Client ID available:', !!clientId);
         console.log('Client secret available:', !!clientSecret);
+        console.log('Environment variables:',
+          import.meta.env.VITE_PODIO_CLIENT_ID ? 'VITE_PODIO_CLIENT_ID is set' : 'VITE_PODIO_CLIENT_ID is missing',
+          import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'VITE_PODIO_CLIENT_SECRET is set' : 'VITE_PODIO_CLIENT_SECRET is missing');
       }
       
       if (configured) {
@@ -126,6 +129,13 @@ const Index = () => {
       } else {
         console.error('Podio not properly configured. Check environment variables.');
         setPodioAuthError('Podio API is not properly configured. Please check your client credentials.');
+        
+        if (import.meta.env.DEV) {
+          console.log('To configure Podio:');
+          console.log('1. Ensure .env.development has the correct VITE_PODIO_CLIENT_ID and VITE_PODIO_CLIENT_SECRET');
+          console.log('2. Or use the Podio Setup page to enter credentials manually');
+          console.log('3. Ensure the Podio app has the correct permissions for the Contacts and Packing Specs apps');
+        }
       }
     }
     
