@@ -1,3 +1,4 @@
+
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -146,17 +147,28 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     }
     
     console.log(`Found ${response.items.length} packing specs for contact ID ${contactId}`);
+    console.log('Raw response from Podio:', JSON.stringify(response.items.map(item => ({
+      id: item.item_id,
+      title: item.title,
+      fields: item.fields.filter((f: any) => f.field_id === PACKING_SPEC_FIELD_IDS.approvalStatus || 
+                                              f.field_id === PACKING_SPEC_FIELD_IDS.customerApprovalStatus)
+    })), null, 2));
     
     // Transform Podio items into our PackingSpec format
     const packingSpecs: PackingSpec[] = response.items.map((item: any) => {
       const fields = item.fields;
+      
+      // Get the approval status and log it for debugging
+      const rawStatus = getFieldValueByExternalId(fields, 'customer-approval-status');
+      const mappedStatus = mapPodioStatusToAppStatus(rawStatus);
+      console.log(`Item ${item.item_id} status: raw=${rawStatus}, mapped=${mappedStatus}`);
       
       // Map to our application's format
       return {
         id: item.item_id,
         title: getFieldValueByExternalId(fields, 'product-name') || 'Untitled Spec',
         description: getFieldValueByExternalId(fields, 'customer-requrements') || '',
-        status: mapPodioStatusToAppStatus(getFieldValueByExternalId(fields, 'customer-approval-status')),
+        status: mappedStatus,
         createdAt: item.created_on,
         details: {
           product: getFieldValueByExternalId(fields, 'product-name') || '',

@@ -9,7 +9,7 @@ import { PackageCheck, LogOut, Loader2, Building, AlertTriangle } from 'lucide-r
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
 
 interface PackingSpec {
@@ -39,8 +39,31 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const podioConfigured = isPodioConfigured();
 
+  // Function to fetch specs data
+  const fetchSpecs = async () => {
+    if (user) {
+      setLoading(true);
+      try {
+        console.log(`Fetching specs for contact ID: ${user.id}`);
+        const data = await getPackingSpecsForContact(user.id);
+        setSpecs(data as PackingSpec[]);
+      } catch (error) {
+        console.error('Error fetching specs:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load your packing specifications',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Fetch specs when the component mounts or when user changes
   useEffect(() => {
     // Redirect to Podio setup if not configured
     if (!podioConfigured) {
@@ -59,28 +82,17 @@ const Dashboard = () => {
       return;
     }
 
-    const fetchSpecs = async () => {
-      if (user) {
-        setLoading(true);
-        try {
-          console.log(`Fetching specs for contact ID: ${user.id}`);
-          const data = await getPackingSpecsForContact(user.id);
-          setSpecs(data as PackingSpec[]);
-        } catch (error) {
-          console.error('Error fetching specs:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load your packing specifications',
-            variant: 'destructive',
-          });
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
     fetchSpecs();
   }, [user, toast, navigate, podioConfigured]);
+
+  // Re-fetch specs whenever the user navigates back to the dashboard
+  useEffect(() => {
+    // Only fetch if we already have a user (prevents double fetching on initial load)
+    if (user && location.pathname === '/') {
+      console.log('User navigated back to dashboard, refreshing specs data');
+      fetchSpecs();
+    }
+  }, [location.pathname, user]);
 
   // If there's no user or Podio is not configured, show a loading state
   if (!user || !podioConfigured) {
@@ -99,12 +111,7 @@ const Dashboard = () => {
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = async () => {
-    if (user) {
-      setLoading(true);
-      const data = await getPackingSpecsForContact(user.id);
-      setSpecs(data as PackingSpec[]);
-      setLoading(false);
-    }
+    await fetchSpecs();
   };
 
   // Function to get initials from company name for avatar fallback

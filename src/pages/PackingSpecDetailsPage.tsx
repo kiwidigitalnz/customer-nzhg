@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react';
 import PackingSpecDetails from '../components/PackingSpecDetails';
 import MainLayout from '../components/MainLayout';
 import { Loader2, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const PackingSpecDetailsPage = () => {
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Simulate loading for better UX
@@ -15,6 +17,12 @@ const PackingSpecDetailsPage = () => {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Function to handle navigating back to dashboard
+  const handleBackToDashboard = () => {
+    // Force a refresh of the dashboard when going back
+    navigate('/', { replace: true });
+  };
   
   return (
     <MainLayout requireAuth>
@@ -30,7 +38,7 @@ const PackingSpecDetailsPage = () => {
           </div>
         </div>
       ) : (
-        <PackingSpecDetails />
+        <PackingSpecDetails onBackToDashboard={handleBackToDashboard} />
       )}
     </MainLayout>
   );

@@ -104,12 +104,20 @@ export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending-
   // Make case-insensitive comparison and normalize whitespace
   const normalizedStatus = podioStatus.toLowerCase().trim();
   
+  console.log(`Mapping Podio status: "${podioStatus}" (normalized: "${normalizedStatus}")`);
+  
   // Exactly match Podio status values to our internal app status values (with consistent hyphenation)
-  if (normalizedStatus === 'approved by customer' || normalizedStatus === 'approved-by-customer') {
+  if (normalizedStatus === 'approved by customer' || 
+      normalizedStatus === 'approved-by-customer' || 
+      normalizedStatus === 'approve specification' || 
+      normalizedStatus === 'approve-specification') {
     return 'approved-by-customer';
   } 
   
-  if (normalizedStatus === 'changes requested' || normalizedStatus === 'changes-requested') {
+  if (normalizedStatus === 'changes requested' || 
+      normalizedStatus === 'changes-requested' || 
+      normalizedStatus === 'request changes' || 
+      normalizedStatus === 'request-changes') {
     return 'changes-requested';
   }
   
@@ -118,6 +126,6 @@ export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending-
   }
   
   // Default fallback - if we get an unknown status, assume pending
-  console.log(`Unrecognized Podio status: ${podioStatus}, defaulting to 'pending-approval'`);
+  console.log(`Unrecognized Podio status: "${podioStatus}", defaulting to 'pending-approval'`);
   return 'pending-approval';
 };
