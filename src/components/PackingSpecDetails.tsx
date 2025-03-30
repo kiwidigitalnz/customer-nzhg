@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,13 +27,14 @@ import {
 
 // Import shared approval interface
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
+import { SpecStatus } from './packing-spec/StatusBadge';
 
 // Types
 interface PackingSpec {
   id: number;
   title: string;
   description: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: SpecStatus;
   createdAt: string;
   details: {
     [key: string]: any;
@@ -127,7 +127,7 @@ const PackingSpecDetails = () => {
       
       const success = await updatePackingSpecStatus(
         spec.id, 
-        'approved', 
+        'approved-by-customer',
         comments,
         approvalData
       );
@@ -141,7 +141,7 @@ const PackingSpecDetails = () => {
         
         setSpec(prev => prev ? {
           ...prev, 
-          status: 'approved',
+          status: 'approved-by-customer',
           details: {
             ...prev.details,
             approvedByName: data.approvedByName,
@@ -182,7 +182,7 @@ const PackingSpecDetails = () => {
       
       const success = await updatePackingSpecStatus(
         spec.id, 
-        'rejected', 
+        'changes-requested',
         data.customerRequestedChanges,
         rejectionData
       );
@@ -196,7 +196,7 @@ const PackingSpecDetails = () => {
         
         setSpec(prev => prev ? {
           ...prev, 
-          status: 'rejected',
+          status: 'changes-requested',
           details: {
             ...prev.details,
             customerRequestedChanges: data.customerRequestedChanges
@@ -227,7 +227,6 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
-      // Updated to pass only 2 arguments as per the new function signature
       const success = await addCommentToPackingSpec(
         spec.id, 
         newComment
@@ -327,7 +326,6 @@ const PackingSpecDetails = () => {
     );
   }
 
-  // Prepare approval dialog preview content
   const approvalPreview = (
     <div className="text-sm">
       <p><strong>Product:</strong> {spec.details.product || 'N/A'}</p>
@@ -406,7 +404,6 @@ const PackingSpecDetails = () => {
         </div>
       </div>
 
-      {/* Shared Approval Interface */}
       <ApprovalSharedInterface
         isOpen={approvalDialogOpen}
         onOpenChange={setApprovalDialogOpen}

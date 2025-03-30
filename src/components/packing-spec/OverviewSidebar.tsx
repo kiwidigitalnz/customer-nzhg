@@ -3,16 +3,16 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Info, Package, User, Tag, Hash, Calendar, Check, ThumbsUp, AlertTriangle } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
-import StatusBadge from './StatusBadge';
+import StatusBadge, { SpecStatus } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 
 interface OverviewSidebarProps {
   details: Record<string, any>;
-  status: 'pending' | 'approved' | 'rejected';
+  status: SpecStatus;
   createdAt: string;
   spec?: {
     id: number;
-    status: 'pending' | 'approved' | 'rejected';
+    status: SpecStatus;
     details: Record<string, any>;
   };
   user?: any;
@@ -130,7 +130,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
       </Card>
       
       {/* Show approval actions or approved/rejected status cards */}
-      {spec && user && spec.status === 'pending' && onOpenApproval && (
+      {spec && user && spec.status === 'pending-approval' && onOpenApproval && (
         <Card className="shadow-sm mt-6">
           <CardContent className="pt-4 pb-4">
             <h3 className="text-sm font-medium mb-3">Specification Approval</h3>
@@ -146,12 +146,12 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
         </Card>
       )}
       
-      {spec && spec.status === 'approved' && (
+      {spec && spec.status === 'approved-by-customer' && (
         <Card className="shadow-sm border-green-200 bg-green-50/50 mt-6">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center text-green-800 mb-2">
               <Check className="mr-2 h-5 w-5 text-green-600" />
-              <span className="font-medium">Approved</span>
+              <span className="font-medium">Approved by Customer</span>
             </div>
             <p className="text-green-700 text-sm">This specification has been approved for production.</p>
             {details.approvedByName && (
@@ -168,7 +168,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
         </Card>
       )}
       
-      {spec && spec.status === 'rejected' && (
+      {spec && spec.status === 'changes-requested' && (
         <Card className="shadow-sm border-amber-200 bg-amber-50/50 mt-6">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center text-amber-800 mb-2">

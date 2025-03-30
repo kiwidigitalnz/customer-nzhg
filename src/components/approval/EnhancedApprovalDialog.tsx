@@ -15,9 +15,10 @@ import { Input } from '@/components/ui/input';
 import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
 import { updatePackingSpecStatus } from '@/services/podioApi';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { LoaderCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
+import { SpecStatus } from '../packing-spec/StatusBadge';
 
 interface EnhancedApprovalDialogProps {
   specId: number;
@@ -73,10 +74,10 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         await addCommentToPackingSpec(specId, notes);
       }
 
-      // Update the status
+      // Update the status with the correct Podio status values
       await updatePackingSpecStatus(
         specId,
-        type === 'approve' ? 'approved' : 'rejected',
+        type === 'approve' ? 'approved-by-customer' : 'changes-requested',
         notes,
         type === 'approve' ? { approvedByName: name, signature } : undefined
       );

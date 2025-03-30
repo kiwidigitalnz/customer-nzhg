@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -79,7 +78,7 @@ export interface PackingSpec {
   id: number;
   title: string;
   description: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending-approval' | 'approved-by-customer' | 'changes-requested';
   createdAt: string;
   details: {
     product: string;
@@ -99,7 +98,6 @@ const formatCategoryValue = (value: string | number): { value: { id: number } } 
   }
   
   // If it's a string representing a category, convert to the proper format
-  // In a real implementation, you would look up the ID from a mapping
   // This is a simplified example
   if (value === 'approve-specification') {
     return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id } };
@@ -293,7 +291,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
 // Update packing spec status in Podio
 export const updatePackingSpecStatus = async (
   specId: number, 
-  status: 'approved' | 'rejected', 
+  status: 'pending-approval' | 'approved-by-customer' | 'changes-requested', 
   comments?: string,
   additionalData?: {
     approvedByName?: string;
@@ -314,7 +312,7 @@ export const updatePackingSpecStatus = async (
     };
     
     // Handle different status types
-    if (status === 'approved') {
+    if (status === 'approved-by-customer') {
       // Set customer approval status to "approve-specification"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
         { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id }
@@ -344,7 +342,7 @@ export const updatePackingSpecStatus = async (
           updateData.fields[PACKING_SPEC_FIELD_IDS.signature] = fileId;
         }
       }
-    } else if (status === 'rejected') {
+    } else if (status === 'changes-requested') {
       // Set customer approval status to "request-changes"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
         { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
@@ -365,7 +363,7 @@ export const updatePackingSpecStatus = async (
     if (comments) {
       // Format the comment with a prefix for rejections
       let formattedComment = comments;
-      if (status === 'rejected') {
+      if (status === 'changes-requested') {
         formattedComment = `[REQUESTED CHANGES BY CUSTOMER] ${comments}`;
       }
       

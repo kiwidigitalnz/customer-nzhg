@@ -3,14 +3,14 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, Calendar, Book } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
-import StatusBadge from './StatusBadge';
+import StatusBadge, { SpecStatus } from './StatusBadge';
 
 interface HeaderSectionProps {
   title: string;
   productCode?: string;
   versionNumber?: string;
   dateReviewed?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: SpecStatus;
 }
 
 const HeaderSection: React.FC<HeaderSectionProps> = ({ 

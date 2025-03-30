@@ -98,26 +98,26 @@ export const extractPodioImages = (fields: any[], fieldId: number): any[] | null
 };
 
 // Map Podio approval status to our app's status format
-export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending' | 'approved' | 'rejected' => {
-  if (!podioStatus) return 'pending';
+export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending-approval' | 'approved-by-customer' | 'changes-requested' => {
+  if (!podioStatus) return 'pending-approval';
   
   // Make case-insensitive comparison and normalize whitespace
   const normalizedStatus = podioStatus.toLowerCase().trim();
   
-  // Explicitly map Podio status values to our internal app status values
+  // Exactly match Podio status values to our internal app status values (with consistent hyphenation)
   if (normalizedStatus === 'approved by customer' || normalizedStatus === 'approved-by-customer') {
-    return 'approved';
+    return 'approved-by-customer';
   } 
   
   if (normalizedStatus === 'changes requested' || normalizedStatus === 'changes-requested') {
-    return 'rejected';
+    return 'changes-requested';
   }
   
   if (normalizedStatus === 'pending approval' || normalizedStatus === 'pending-approval') {
-    return 'pending';
+    return 'pending-approval';
   }
   
   // Default fallback - if we get an unknown status, assume pending
-  console.log(`Unrecognized Podio status: ${podioStatus}, defaulting to 'pending'`);
-  return 'pending';
+  console.log(`Unrecognized Podio status: ${podioStatus}, defaulting to 'pending-approval'`);
+  return 'pending-approval';
 };

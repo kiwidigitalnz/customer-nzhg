@@ -35,7 +35,7 @@
 
     --radius: 0.5rem;
 
-    /* Status Badge Colors */
+    /* Status Badge Colors - improved with softer, more consistent hues */
     --status-pending-bg: 45 100% 96%;
     --status-pending-text: 45 100% 35%;
     --status-pending-border: 45 100% 85%;
@@ -135,7 +135,7 @@
   transform: translateY(-2px);
 }
 
-/* Status badge styles */
+/* Status badge styles - enhanced with consistent styling */
 .status-badge {
   @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors shadow-sm;
 }

@@ -6,7 +6,6 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,7 +23,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
-import StatusBadge from './packing-spec/StatusBadge';
+import StatusBadge, { SpecStatus } from './packing-spec/StatusBadge';
 
 interface CommentItem {
   id: number;
@@ -37,7 +36,7 @@ interface PackingSpec {
   id: number;
   title: string;
   description: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: SpecStatus;
   createdAt: string;
   details: {
     product: string;
@@ -185,7 +184,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
       
       const success = await updatePackingSpecStatus(
         selectedSpec.id, 
-        'approved', 
+        'approved-by-customer',
         comments,
         approvalData
       );
@@ -198,7 +197,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
         });
         
         const updatedSpecs = specs.map(spec => 
-          spec.id === selectedSpec.id ? { ...spec, status: 'approved' } : spec
+          spec.id === selectedSpec.id ? { ...spec, status: 'approved-by-customer' } : spec
         );
         
         setSelectedSpec(null);
@@ -236,7 +235,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
       
       const success = await updatePackingSpecStatus(
         selectedSpec.id, 
-        'rejected', 
+        'changes-requested',
         data.customerRequestedChanges,
         rejectionData
       );
@@ -249,7 +248,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
         });
         
         const updatedSpecs = specs.map(spec => 
-          spec.id === selectedSpec.id ? { ...spec, status: 'rejected' } : spec
+          spec.id === selectedSpec.id ? { ...spec, status: 'changes-requested' } : spec
         );
         
         setSelectedSpec(null);
@@ -274,7 +273,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     }
   };
 
-  const getStatusBadge = (status: 'pending' | 'approved' | 'rejected') => {
+  const getStatusBadge = (status: SpecStatus) => {
     return <StatusBadge status={status} compact={true} showIcon={true} />;
   };
 
@@ -356,7 +355,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details
               </Button>
               
-              {spec.status === 'pending' && !readOnly && (
+              {spec.status === 'pending-approval' && !readOnly && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="default" className="w-full">
