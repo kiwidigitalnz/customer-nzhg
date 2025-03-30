@@ -60,6 +60,7 @@ export const addCommentToPodio = async (
     // Get user info from localStorage for company name
     const userInfo = localStorage.getItem('user_info');
     const companyName = userInfo ? JSON.parse(userInfo).name : 'Customer Portal User';
+    console.log('Comment will be attributed to:', companyName);
     
     // Prepare the comment data - prepend with company name
     const commentData = {
@@ -75,6 +76,7 @@ export const addCommentToPodio = async (
       body: JSON.stringify(commentData),
     });
     
+    console.log('Comment successfully added to Podio');
     return true;
   } catch (error) {
     console.error('Error adding comment to Podio:', error);
@@ -82,7 +84,7 @@ export const addCommentToPodio = async (
   }
 };
 
-// Function to add a comment to a packing spec
+// Function to add a comment to a packing spec (wrapper for addCommentToPodio)
 export const addCommentToPackingSpec = async (
   specId: number,
   comment: string
@@ -99,6 +101,7 @@ export const addCommentToPackingSpec = async (
         username: userName,
         name: userName
       }));
+      console.log('Created default user info since none was found');
     }
     
     const success = await addCommentToPodio(specId, comment);

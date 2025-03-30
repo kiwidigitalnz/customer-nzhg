@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Info, Package, User, Tag, Hash, Calendar, Check } from 'lucide-react';
+import { Info, Package, User, Tag, Hash, Calendar, Check, ThumbsUp, AlertTriangle } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 import StatusBadge from './StatusBadge';
-import ApprovalSection from './ApprovalSection';
+import { Button } from '@/components/ui/button';
 
 interface OverviewSidebarProps {
   details: Record<string, any>;
@@ -19,6 +19,7 @@ interface OverviewSidebarProps {
   onApprove?: any;
   onReject?: any;
   isSubmitting?: boolean;
+  onOpenApproval?: () => void;
 }
 
 const OverviewSidebar: React.FC<OverviewSidebarProps> = ({ 
@@ -27,9 +28,8 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
   createdAt,
   spec,
   user,
-  onApprove,
-  onReject,
-  isSubmitting = false
+  isSubmitting = false,
+  onOpenApproval
 }) => {
   // Format version to have only 1 decimal place
   const formatVersion = (version: string | undefined) => {
@@ -129,27 +129,58 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
         </CardContent>
       </Card>
       
-      {/* Only show approval section if we have the full spec and handlers */}
-      {spec && user && onApprove && onReject && (
-        <ApprovalSection 
-          spec={spec}
-          user={user}
-          onApprove={onApprove}
-          onReject={onReject}
-          isSubmitting={isSubmitting}
-        />
+      {/* Show approval actions or approved/rejected status cards */}
+      {spec && user && spec.status === 'pending' && onOpenApproval && (
+        <Card className="shadow-sm mt-6">
+          <CardContent className="pt-4 pb-4">
+            <h3 className="text-sm font-medium mb-3">Specification Approval</h3>
+            <Button 
+              onClick={onOpenApproval}
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              <ThumbsUp className="mr-2 h-4 w-4" />
+              Review & Approve
+            </Button>
+          </CardContent>
+        </Card>
       )}
       
-      {status === 'approved' && !spec && (
-        <Card className="shadow-sm border-green-200 bg-green-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center text-green-800">
+      {spec && spec.status === 'approved' && (
+        <Card className="shadow-sm border-green-200 bg-green-50/50 mt-6">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center text-green-800 mb-2">
               <Check className="mr-2 h-5 w-5 text-green-600" />
-              Approved
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <p className="text-green-700 text-sm">This specification has been approved and is ready for production.</p>
+              <span className="font-medium">Approved</span>
+            </div>
+            <p className="text-green-700 text-sm">This specification has been approved for production.</p>
+            {details.approvedByName && (
+              <p className="text-green-700 text-sm mt-2">
+                Approved by: {details.approvedByName}
+              </p>
+            )}
+            {details.approvalDate && (
+              <p className="text-green-700 text-sm">
+                Approval date: {formatDate(details.approvalDate)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
+      {spec && spec.status === 'rejected' && (
+        <Card className="shadow-sm border-amber-200 bg-amber-50/50 mt-6">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center text-amber-800 mb-2">
+              <AlertTriangle className="mr-2 h-5 w-5 text-amber-600" />
+              <span className="font-medium">Changes Requested</span>
+            </div>
+            <p className="text-amber-700 text-sm">Review requested changes in the Comments tab.</p>
+            {details.customerRequestedChanges && (
+              <div className="mt-2 text-sm text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                {details.customerRequestedChanges}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

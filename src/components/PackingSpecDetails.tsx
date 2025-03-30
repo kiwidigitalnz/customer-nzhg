@@ -26,6 +26,9 @@ import {
   CommentsTab
 } from './packing-spec/tabs';
 
+// Import shared approval interface
+import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
+
 // Types
 interface PackingSpec {
   id: number;
@@ -46,17 +49,6 @@ interface CommentItem {
   createdAt: string;
 }
 
-// Form Schemas
-const approvalFormSchema = z.object({
-  approvedByName: z.string().min(2, { message: "Please enter your name" }),
-  comments: z.string().optional(),
-  signature: z.string().min(1, { message: "Signature is required" }),
-});
-
-const rejectionFormSchema = z.object({
-  customerRequestedChanges: z.string().min(10, { message: "Please provide detailed feedback on why you're rejecting this specification" })
-});
-
 const PackingSpecDetails = () => {
   const { id } = useParams<{ id: string }>();
   const specId = id ? parseInt(id) : 0;
@@ -71,6 +63,7 @@ const PackingSpecDetails = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [newCommentsCount, setNewCommentsCount] = useState<number>(0);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -96,6 +89,7 @@ const PackingSpecDetails = () => {
         }
         
         setSpec(data);
+        console.log('Loaded specification:', data);
       } catch (err) {
         console.error('Error fetching spec details:', err);
         setError('Failed to load specification details');
@@ -117,6 +111,7 @@ const PackingSpecDetails = () => {
 
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
     if (!spec) return;
+    console.log('Approving with data:', data);
     
     setIsSubmitting(true);
     
@@ -162,6 +157,7 @@ const PackingSpecDetails = () => {
         });
       }
     } catch (error) {
+      console.error('Error in approval process:', error);
       toast({
         title: 'Error',
         description: "An unexpected error occurred. Please try again.",
@@ -174,6 +170,7 @@ const PackingSpecDetails = () => {
 
   const handleReject = async (data: z.infer<typeof rejectionFormSchema>) => {
     if (!spec) return;
+    console.log('Rejecting with data:', data);
     
     setIsSubmitting(true);
     
@@ -213,6 +210,7 @@ const PackingSpecDetails = () => {
         });
       }
     } catch (error) {
+      console.error('Error in rejection process:', error);
       toast({
         title: 'Error',
         description: "An unexpected error occurred. Please try again.",
@@ -282,6 +280,7 @@ const PackingSpecDetails = () => {
         });
       }
     } catch (error) {
+      console.error('Error adding comment:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred. Please try again.',
@@ -290,6 +289,10 @@ const PackingSpecDetails = () => {
     } finally {
       setIsAddingComment(false);
     }
+  };
+
+  const handleOpenApproval = () => {
+    setApprovalDialogOpen(true);
   };
 
   if (loading) {
@@ -323,6 +326,15 @@ const PackingSpecDetails = () => {
       </div>
     );
   }
+
+  // Prepare approval dialog preview content
+  const approvalPreview = (
+    <div className="text-sm">
+      <p><strong>Product:</strong> {spec.details.product || 'N/A'}</p>
+      <p><strong>Code:</strong> {spec.details.productCode || 'N/A'}</p>
+      <p><strong>Version:</strong> {spec.details.versionNumber || 'N/A'}</p>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -389,9 +401,23 @@ const PackingSpecDetails = () => {
             onApprove={handleApprove}
             onReject={handleReject}
             isSubmitting={isSubmitting}
+            onOpenApproval={handleOpenApproval}
           />
         </div>
       </div>
+
+      {/* Shared Approval Interface */}
+      <ApprovalSharedInterface
+        isOpen={approvalDialogOpen}
+        onOpenChange={setApprovalDialogOpen}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        title="Review Packing Specification"
+        description="Please review all details carefully before approving or requesting changes."
+        isSubmitting={isSubmitting}
+        defaultName={user?.name || ''}
+        itemPreview={approvalPreview}
+      />
     </div>
   );
 };
