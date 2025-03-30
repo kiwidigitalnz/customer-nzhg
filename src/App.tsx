@@ -15,7 +15,17 @@ import PackingSpecDetailsPage from "./pages/PackingSpecDetailsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/AdminRoute";
 
-const queryClient = new QueryClient();
+// Create the query client with better error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+    },
+  },
+});
 
 const App = () => {
   const isDevelopment = process.env.NODE_ENV === 'development';

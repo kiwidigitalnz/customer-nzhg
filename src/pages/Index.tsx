@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import LandingPage from './LandingPage';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, checkSession } = useAuth();
   const { toast } = useToast();
   
   // Check if Podio is configured - this is the first and most important check
@@ -22,7 +22,16 @@ const Index = () => {
         duration: 5000,
       });
     }
-  }, [podioConfigured, toast]);
+    
+    // Check if there's a stale session
+    if (user && !checkSession()) {
+      toast({
+        title: "Session Expired",
+        description: "Your session has expired. Please log in again.",
+        duration: 5000,
+      });
+    }
+  }, [podioConfigured, toast, user, checkSession]);
   
   // If Podio is not configured, we'll only redirect to setup if we're in development mode
   // In production, we'll still let the user see the landing page but they won't be able to login
@@ -30,8 +39,8 @@ const Index = () => {
     return <Navigate to="/podio-setup" replace />;
   }
   
-  // If the user is logged in, redirect them to the dashboard
-  if (user) {
+  // If the user is logged in and session is valid, redirect them to the dashboard
+  if (user && checkSession()) {
     return <Navigate to="/dashboard" replace />;
   }
   

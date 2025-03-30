@@ -1,5 +1,9 @@
-
 // This module handles Podio authentication and token management
+import { 
+  AuthErrorType, 
+  createAuthError, 
+  ensureValidToken 
+} from '../auth/authService';
 
 interface PodioCredentials {
   username: string;
@@ -21,7 +25,7 @@ export const hasValidPodioTokens = (): boolean => {
   return expiryTime > (now + 300000);
 };
 
-// Helper function to refresh the access token if needed
+// Enhanced function to refresh the access token if needed
 export const refreshPodioToken = async (): Promise<boolean> => {
   const refreshToken = localStorage.getItem('podio_refresh_token');
   const clientId = localStorage.getItem('podio_client_id');
@@ -48,7 +52,12 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       }).toString(),
     });
     
-    if (!response.ok) return false;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error_description || 'Failed to refresh token';
+      
+      throw new Error(errorMessage);
+    }
     
     const data = await response.json();
     
@@ -68,11 +77,19 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
 };
 
-// Helper function to make authenticated API calls to Podio
+// Improved function to make authenticated API calls to Podio
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  // Check if we have a valid token, try to refresh if not
-  if (!hasValidPodioTokens() && !await refreshPodioToken()) {
-    throw new Error('Not authenticated with Podio');
+  // First, ensure we have a valid token
+  const tokenValid = await ensureValidToken();
+  
+  if (!tokenValid) {
+    const error = createAuthError(
+      AuthErrorType.TOKEN,
+      'Not authenticated with Podio',
+      true,
+      refreshPodioToken
+    );
+    throw error;
   }
   
   const accessToken = localStorage.getItem('podio_access_token');
@@ -97,13 +114,40 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         // Retry the API call with the new token
         return callPodioApi(endpoint, options);
       } else {
-        throw new Error('Failed to refresh Podio token');
+        throw createAuthError(
+          AuthErrorType.TOKEN,
+          'Failed to refresh Podio token',
+          false
+        );
       }
     }
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error_description || 'Podio API error');
+      let errorMessage = 'Podio API error';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error_description || errorMessage;
+      } catch (e) {
+        // Cannot parse response as JSON, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      // Classify error type based on status code
+      let errorType = AuthErrorType.UNKNOWN;
+      if (response.status >= 500) {
+        errorType = AuthErrorType.NETWORK;
+      } else if (response.status === 403) {
+        errorType = AuthErrorType.AUTHENTICATION;
+      } else if (response.status === 401) {
+        errorType = AuthErrorType.TOKEN;
+      }
+      
+      throw createAuthError(
+        errorType,
+        `API error (${response.status}): ${errorMessage}`,
+        false
+      );
     }
     
     return await response.json();
@@ -111,7 +155,18 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     if (process.env.NODE_ENV === 'development') {
       console.error('Podio API call error:', error);
     }
-    throw error;
+    
+    // If it's already an AuthError, just rethrow it
+    if (error && typeof error === 'object' && 'type' in error) {
+      throw error;
+    }
+    
+    // Otherwise, create a new AuthError
+    throw createAuthError(
+      AuthErrorType.NETWORK,
+      error instanceof Error ? error.message : 'Network error during API call',
+      false
+    );
   }
 };
 
@@ -129,7 +184,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       console.error('No valid Podio tokens available for authentication');
-      throw new Error('Not authenticated with Podio API');
+      throw createAuthError(
+        AuthErrorType.CONFIGURATION,
+        'Not authenticated with Podio API',
+        false
+      );
     }
     
     // First, test to see if we can get the app details to verify our connection
@@ -138,7 +197,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       console.log('Podio app details retrieved successfully:', appDetails.app_id);
     } catch (error) {
       console.error('Failed to retrieve app details:', error);
-      throw new Error('Could not connect to Podio. Please check your credentials.');
+      throw createAuthError(
+        AuthErrorType.CONFIGURATION,
+        'Could not connect to Podio. Please check your credentials.',
+        false
+      );
     }
 
     // Use a simpler approach to find items by field value
@@ -185,7 +248,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
         });
       } catch (secondError) {
         console.error('Alternative filter also failed:', secondError);
-        throw new Error('Failed to search for user in Podio contacts');
+        throw createAuthError(
+          AuthErrorType.CONFIGURATION,
+          'Failed to search for user in Podio contacts',
+          false
+        );
       }
     }
     
@@ -194,7 +261,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     // Check if we found any matches
     if (!searchResponse.items || searchResponse.items.length === 0) {
       console.log('No contact found with username:', credentials.username);
-      throw new Error('No user found with that username');
+      throw createAuthError(
+        AuthErrorType.CONFIGURATION,
+        'No user found with that username',
+        false
+      );
     }
     
     // Get the first contact that matches
@@ -221,7 +292,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     // Check if the password matches
     if (!passwordField || !passwordField.values || !passwordField.values.length) {
       console.log('Password field not found or empty');
-      throw new Error('Password field not found for this user');
+      throw createAuthError(
+        AuthErrorType.CONFIGURATION,
+        'Password field not found for this user',
+        false
+      );
     }
     
     // Compare the password
@@ -234,7 +309,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     if (savedPassword !== credentials.password) {
       console.log('Password does not match');
-      throw new Error('Invalid password');
+      throw createAuthError(
+        AuthErrorType.CONFIGURATION,
+        'Invalid password',
+        false
+      );
     }
     
     // Create the contact data object
@@ -251,7 +330,18 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
   } catch (error) {
     console.error('Authentication error:', error);
-    throw error;
+    
+    // If it's already an AuthError, just rethrow it
+    if (error && typeof error === 'object' && 'type' in error) {
+      throw error;
+    }
+    
+    // Convert to AuthError if it's not already one
+    throw createAuthError(
+      AuthErrorType.UNKNOWN,
+      error instanceof Error ? error.message : 'Unknown authentication error',
+      false
+    );
   }
 };
 

@@ -1,7 +1,7 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from './ui/loading-spinner';
 
 interface MainLayoutProps {
@@ -10,8 +10,23 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, checkSession } = useAuth();
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+
+  // Check session validity periodically
+  useEffect(() => {
+    if (requireAuth && user) {
+      const interval = setInterval(() => {
+        if (!checkSession()) {
+          // Session expired, redirect to login
+          navigate('/', { replace: true });
+        }
+      }, 60 * 1000); // Check every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [requireAuth, user, checkSession, navigate]);
 
   if (loading) {
     return (

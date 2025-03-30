@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -48,22 +47,19 @@ const LoginForm = () => {
 
     console.log(`Attempting login with username: ${username}`);
     
-    const success = await login(username, password);
-    
-    if (success) {
-      toast({
-        title: 'Login successful',
-        description: 'Welcome back',
-        variant: 'default',
-      });
-      navigate('/dashboard');
-    } else {
-      toast({
-        title: 'Login failed',
-        description: error || 'Invalid username or password. Please check your credentials.',
-        variant: 'destructive',
-      });
-      console.error('Login failed. Error:', error);
+    try {
+      const success = await login(username, password);
+      
+      if (success) {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back',
+          variant: 'default',
+        });
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Unhandled login error:', err);
     }
   };
 
