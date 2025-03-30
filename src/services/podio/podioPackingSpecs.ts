@@ -1,3 +1,4 @@
+
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -90,7 +91,7 @@ export interface PackingSpec {
   comments?: CommentItem[];
 }
 
-// Helper function to format category value for Podio API - FIXED
+// Helper function to format category value for Podio API
 const formatCategoryValue = (value: string | number): { value: { id: number } } | { value: string } => {
   // If it's already a category ID (number)
   if (typeof value === 'number') {
@@ -98,11 +99,17 @@ const formatCategoryValue = (value: string | number): { value: { id: number } } 
   }
   
   // If it's a string representing a category, convert to the proper format
-  // This is a simplified example
+  // Check both customer approval status and approval status categories
   if (value === 'approve-specification') {
     return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id } };
   } else if (value === 'request-changes') {
     return { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id } };
+  } else if (value === 'pending-approval') {
+    return { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.PENDING_APPROVAL.id } };
+  } else if (value === 'changes-requested') {
+    return { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id } };
+  } else if (value === 'approved-by-customer') {
+    return { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id } };
   }
   
   // Default case, pass the string directly (may fail for category fields)
@@ -315,12 +322,12 @@ export const updatePackingSpecStatus = async (
     if (status === 'approved-by-customer') {
       // Set customer approval status to "approve-specification"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
-        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id }
+        { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id } }
       ];
       
       // Set approval status to "Approved by Customer"
       updateData.fields[PACKING_SPEC_FIELD_IDS.approvalStatus] = [
-        { value: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id }
+        { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id } }
       ];
       
       // Set approved by name
@@ -345,13 +352,15 @@ export const updatePackingSpecStatus = async (
     } else if (status === 'changes-requested') {
       // Set customer approval status to "request-changes"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
-        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
+        { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id } }
       ];
       
       // Set approval status to "Changes Requested" - using the correct category ID
       updateData.fields[PACKING_SPEC_FIELD_IDS.approvalStatus] = [
-        { value: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id }
+        { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id } }
       ];
+      
+      console.log('Setting approval status to CHANGES_REQUESTED with ID:', PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id);
       
       // Set customer requested changes field
       if (comments) {

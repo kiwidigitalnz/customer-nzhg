@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
-import { updatePackingSpecStatus } from '@/services/podioApi';
+import { updatePackingSpecStatus, PODIO_CATEGORIES } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { LoaderCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
@@ -74,6 +73,9 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         await addCommentToPackingSpec(specId, notes);
       }
 
+      // Log the status being updated
+      console.log(`Updating status to: ${type === 'approve' ? 'approved-by-customer' : 'changes-requested'}`);
+      
       // Update the status with the correct Podio status values
       await updatePackingSpecStatus(
         specId,
