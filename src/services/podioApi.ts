@@ -847,8 +847,8 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
   }
 };
 
-// Helper function to get comments from Podio fields
-const getCommentsFromPodio = (fields: any[]): CommentItem[] | null => {
+// Helper function to extract comments from Podio fields
+const parseCommentsFromPodioField = (fields: any[]): CommentItem[] | null => {
   const commentsField = fields.find(f => f.field_id === PACKING_SPEC_FIELD_IDS.comments);
   
   if (!commentsField || !commentsField.values || commentsField.values.length === 0) {
