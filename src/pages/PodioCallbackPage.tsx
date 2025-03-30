@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import MainLayout from '../components/MainLayout';
@@ -10,6 +10,7 @@ const PodioCallbackPage = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing Podio authorization...');
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -63,6 +64,11 @@ const PodioCallbackPage = () => {
         if (success) {
           setStatus('success');
           setMessage('Successfully connected to Podio API!');
+          
+          // Add a timer to automatically redirect to the landing page after success
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 2000);
         } else {
           setStatus('error');
           setMessage('Failed to exchange authorization code for access token');
@@ -73,7 +79,7 @@ const PodioCallbackPage = () => {
         setStatus('error');
         setMessage(error instanceof Error ? error.message : 'An unknown error occurred');
       });
-  }, [location.search]);
+  }, [location.search, navigate]);
 
   return (
     <MainLayout>
@@ -105,6 +111,9 @@ const PodioCallbackPage = () => {
                  'Error'}
               </AlertTitle>
               <AlertDescription>{message}</AlertDescription>
+              {status === 'success' && (
+                <p className="mt-2 text-sm">Redirecting to home page...</p>
+              )}
             </Alert>
           </CardContent>
         </Card>

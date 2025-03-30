@@ -1,7 +1,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { LoadingSpinner } from './ui/loading-spinner';
 
 interface MainLayoutProps {
@@ -12,7 +12,9 @@ interface MainLayoutProps {
 const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
   const { user, loading, checkSession } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const currentYear = new Date().getFullYear();
+  const isCallbackPage = location.pathname === '/podio-callback';
 
   // Check session validity periodically
   useEffect(() => {
@@ -36,6 +38,29 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
         text="Loading..."
         subtext="Please wait while we set things up for you"
       />
+    );
+  }
+
+  // Special case for the callback page - don't redirect
+  if (isCallbackPage) {
+    return (
+      <>
+        <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-muted/20">
+          <main className="flex-grow">
+            {children}
+          </main>
+          <footer className="border-t py-5 bg-white shadow-sm mt-10">
+            <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
+              <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
+                &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Customer Portal v1.0
+              </p>
+            </div>
+          </footer>
+        </div>
+      </>
     );
   }
 
