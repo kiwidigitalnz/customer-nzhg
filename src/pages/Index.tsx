@@ -7,7 +7,9 @@ import {
   ensureInitialPodioAuth, 
   isPodioConfigured, 
   clearPodioTokens,
-  isRateLimited
+  isRateLimited,
+  getPodioClientId,
+  getPodioClientSecret
 } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
@@ -18,7 +20,7 @@ const Index = () => {
   const [podioAuthError, setPodioAuthError] = useState<string | null>(null);
   
   useEffect(() => {
-    // In production, try to automatically authenticate with Podio (now using Password Flow)
+    // In production and development, try to automatically authenticate with Podio (using Password Flow)
     if (!isAttemptingAuth) {
       setIsAttemptingAuth(true);
       
@@ -26,6 +28,18 @@ const Index = () => {
       console.log('Checking Podio configuration');
       const configured = isPodioConfigured();
       console.log('Podio configured:', configured);
+      
+      // For debugging, log where credentials are coming from
+      if (import.meta.env.DEV) {
+        const clientId = getPodioClientId();
+        const clientSecret = getPodioClientSecret();
+        console.log('Using Podio client ID from:', 
+          import.meta.env.VITE_PODIO_CLIENT_ID ? 'environment variable' : 'localStorage');
+        console.log('Using Podio client secret from:', 
+          import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'environment variable' : 'localStorage');
+        console.log('Client ID available:', !!clientId);
+        console.log('Client secret available:', !!clientSecret);
+      }
       
       if (configured) {
         // First check if we're rate limited
