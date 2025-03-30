@@ -81,22 +81,35 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id}`);
       
       // Update the status with the correct Podio status values
-      await updatePackingSpecStatus(
+      const success = await updatePackingSpecStatus(
         specId,
         type === 'approve' ? 'approved-by-customer' : 'changes-requested',
         notes,
         type === 'approve' ? { approvedByName: name, signature } : undefined
       );
 
-      toast({
-        title: type === 'approve' ? "Specification Approved" : "Changes Requested",
-        description: type === 'approve' 
-          ? "You have successfully approved this specification." 
-          : "Your change request has been submitted.",
-      });
+      if (success) {
+        toast({
+          title: type === 'approve' ? "Specification Approved" : "Changes Requested",
+          description: type === 'approve' 
+            ? "You have successfully approved this specification." 
+            : "Your change request has been submitted.",
+        });
 
-      setOpen(false);
-      onStatusUpdated();
+        // Close the dialog and trigger the status update in parent component
+        setOpen(false);
+        
+        // Reset form fields
+        setName('');
+        setNotes('');
+        setSignature(null);
+        setChecklistCompleted(false);
+        
+        // Call the onStatusUpdated callback to refresh the badge status in the UI
+        onStatusUpdated();
+      } else {
+        throw new Error(`Failed to ${type === 'approve' ? 'approve' : 'request changes for'} specification`);
+      }
     } catch (error) {
       console.error(`Error ${type === 'approve' ? 'approving' : 'rejecting'} specification:`, error);
       toast({

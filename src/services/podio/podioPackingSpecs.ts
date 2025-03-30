@@ -391,6 +391,6 @@ export const updatePackingSpecStatus = async (
     return true;
   } catch (error) {
     console.error('Error updating packing spec:', error);
-    throw new Error('Failed to update packing specification status in Podio');
+    throw error; // Re-throw the error so we can handle it in the calling component
   }
 };
