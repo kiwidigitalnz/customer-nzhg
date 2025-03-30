@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -111,7 +112,7 @@ interface FileUploadResponse {
 }
 
 // Helper function to check if we have valid Podio tokens
-const hasValidPodioTokens = (): boolean => {
+export const hasValidPodioTokens = (): boolean => {
   const accessToken = localStorage.getItem('podio_access_token');
   const tokenExpiry = localStorage.getItem('podio_token_expiry');
   
@@ -125,7 +126,7 @@ const hasValidPodioTokens = (): boolean => {
 };
 
 // Helper function to refresh the access token if needed
-const refreshPodioToken = async (): Promise<boolean> => {
+export const refreshPodioToken = async (): Promise<boolean> => {
   const refreshToken = localStorage.getItem('podio_refresh_token');
   const clientId = localStorage.getItem('podio_client_id');
   const clientSecret = localStorage.getItem('podio_client_secret');
@@ -162,7 +163,7 @@ const refreshPodioToken = async (): Promise<boolean> => {
 };
 
 // Helper function to make authenticated API calls to Podio
-const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check if we have a valid token, try to refresh if not
   if (!hasValidPodioTokens() && !await refreshPodioToken()) {
     throw new Error('Not authenticated with Podio');

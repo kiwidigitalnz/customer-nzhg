@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
-import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle, Image } from 'lucide-react';
+import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import EnhancedImageViewer from './EnhancedImageViewer';
 import { Button } from '@/components/ui/button';
+import { extractPodioFileId } from '@/services/imageProxy';
 
 interface ImageGalleryProps {
   images: any[];
@@ -23,37 +24,34 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [hasImageErrors, setHasImageErrors] = useState(false);
   const [alternativeUrls, setAlternativeUrls] = useState<Record<number, string[]>>({});
   const [currentUrlIndices, setCurrentUrlIndices] = useState<Record<number, number>>({});
+  const [isLoading, setIsLoading] = useState<Record<number, boolean>>({});
   
   useEffect(() => {
     console.log(`ImageGallery "${title}" received images:`, images);
     
-    // Debug log to see what's in each image object
+    // Reset loading state for all images
+    const loadingState: Record<number, boolean> = {};
+    
+    // Generate alternative URLs for each image
+    const altUrls: Record<number, string[]> = {};
+    
     if (images && images.length > 0) {
       images.forEach((img, idx) => {
-        console.log(`Image ${idx} details:`, img);
         const url = getImageUrl(img);
-        console.log(`Image ${idx} URL:`, url);
+        loadingState[idx] = !!url; // Set loading to true if URL exists
         
         if (url) {
-          // Generate alternative URLs for each image
+          // Generate alternative URLs
           const alternatives = getPodioImageAlternatives(url);
-          setAlternativeUrls(prev => ({
-            ...prev,
-            [idx]: alternatives
-          }));
-        }
-        
-        if (typeof img === 'object') {
-          console.log(`Image ${idx} properties:`, Object.keys(img));
-          
-          // Check for file_id which is what we need for Podio
-          if (img.file_id) {
-            console.log(`Found file_id: ${img.file_id} for image ${idx}`);
-            console.log(`Constructed URL: https://files.podio.com/d/${img.file_id}`);
-          }
+          altUrls[idx] = alternatives;
         }
       });
     }
+    
+    setIsLoading(loadingState);
+    setAlternativeUrls(altUrls);
+    setHasImageErrors(false);
+    setCurrentUrlIndices({});
   }, [images, title]);
   
   // Filter out invalid images - only include those we can get a URL for
@@ -102,26 +100,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     setCurrentIndex(prev => (prev - 1 + validImages.length) % validImages.length);
   };
   
-  // Debug function to show raw image data
-  const debugImage = (index: number) => {
-    console.log(`Debug data for ${title} image ${index}:`, validImages[index]);
-    
-    if (typeof validImages[index] === 'object') {
-      console.log('Properties:', Object.keys(validImages[index]));
-      
-      if (validImages[index].file_id) {
-        console.log('File ID:', validImages[index].file_id);
-        console.log('URL constructed:', `https://files.podio.com/d/${validImages[index].file_id}`);
-      }
-    }
+  const handleImageLoad = (idx: number) => {
+    setIsLoading(prev => ({
+      ...prev,
+      [idx]: false
+    }));
   };
-  
-  useEffect(() => {
-    // Debug the current image when it changes
-    if (validImages.length > 0) {
-      debugImage(currentIndex);
-    }
-  }, [currentIndex, validImages]);
   
   const handleImageError = (idx: number) => {
     console.error(`Thumbnail ${idx} failed to load:`, getCurrentUrl(idx));
@@ -140,7 +124,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       // If we've tried all alternatives, mark as error
       setHasImageErrors(true);
     }
+    
+    setIsLoading(prev => ({
+      ...prev,
+      [idx]: false
+    }));
   };
+  
+  // Extract file ID for current image for debugging
+  const currentFileId = getCurrentUrl(currentIndex) ? extractPodioFileId(getCurrentUrl(currentIndex) || '') : null;
   
   return (
     <div className="space-y-3">
@@ -154,15 +146,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       </div>
       
       <div className="relative group">
-        {/* Debug button */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80"
-          onClick={() => debugImage(currentIndex)}
-        >
-          Debug
-        </Button>
+        {/* Debug info */}
+        {currentFileId && (
+          <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-white/80 rounded px-2 py-1 text-xs text-gray-600">
+              ID: {currentFileId}
+            </div>
+          </div>
+        )}
         
         <EnhancedImageViewer 
           image={validImages[currentIndex]} 
@@ -205,11 +196,18 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               }`}
               onClick={() => setCurrentIndex(idx)}
             >
+              {isLoading[idx] && (
+                <div className="w-full h-full flex items-center justify-center bg-muted/30">
+                  <RefreshCw className="h-4 w-4 text-primary/60 animate-spin" />
+                </div>
+              )}
               <img 
                 src={getCurrentUrl(idx)} 
                 alt={`Thumbnail ${idx + 1}`}
                 className="w-full h-full object-cover"
                 onError={() => handleImageError(idx)}
+                onLoad={() => handleImageLoad(idx)}
+                style={{ display: isLoading[idx] ? 'none' : 'block' }}
               />
             </button>
           ))}
