@@ -862,3 +862,149 @@ const PackingSpecDetails = () => {
                       <CardTitle className="text-lg flex items-center">
                         <Truck className="mr-2 h-5 w-5 text-primary/80" />
                         Shipping Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Method</h4>
+                            <p className="font-medium">{spec.details.shippingMethod || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Time</h4>
+                            <p className="font-medium">{spec.details.shippingTime || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Cost</h4>
+                            <p className="font-medium">{spec.details.shippingCost || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipping Notes</h4>
+                            <p>{spec.details.shippingNotes ? 
+                              formatTextContent(spec.details.shippingNotes) : 
+                              "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                {/* Approvals Tab */}
+                <TabsContent value="approvals" className="space-y-6 animate-in fade-in-50">
+                  <Card className="shadow-sm border-muted">
+                    <CardHeader className="pb-2 bg-muted/30">
+                      <CardTitle className="text-lg flex items-center">
+                        <Check className="mr-2 h-5 w-5 text-primary/80" />
+                        Approvals
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Approval Date</h4>
+                            <p className="font-medium">{spec.details.approvalDate || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Approved By</h4>
+                            <p className="font-medium">{spec.details.approvedByName || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Approval Status</h4>
+                            <p className="font-medium">{spec.details.approvalStatus || "N/A"}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Approval Comments</h4>
+                            <p>{spec.details.approvalComments ? 
+                              formatTextContent(spec.details.approvalComments) : 
+                              "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                {/* Comments Tab */}
+                <TabsContent value="comments" className="space-y-6 animate-in fade-in-50">
+                  <Card className="shadow-sm border-muted">
+                    <CardHeader className="pb-2 bg-muted/30">
+                      <CardTitle className="text-lg flex items-center">
+                        <MessageSquare className="mr-2 h-5 w-5 text-primary/80" />
+                        Comments
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <CommentsList comments={spec.comments || []} />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Right sidebar */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
+            <CardHeader className="pb-3 bg-card/95">
+              <div className="flex flex-wrap justify-between items-start gap-2">
+                <div>
+                  <CardTitle className="text-2xl">Actions</CardTitle>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <StatusBadge status={spec.status} showIcon={false} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" onClick={handleGoBack} className="mb-6">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="outline" onClick={handleApprove} disabled={isSubmitting}>
+                      <Check className="mr-2 h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button variant="outline" onClick={handleReject} disabled={isSubmitting}>
+                      <X className="mr-2 h-4 w-4" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <Button variant="outline" onClick={handleAddComment} disabled={isAddingComment}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Add Comment
+                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="outline" onClick={handleSignatureSave} disabled={isSubmitting}>
+                      <Pen className="mr-2 h-4 w-4" />
+                      Sign
+                    </Button>
+                    <Button variant="outline" onClick={handleGoBack} className="mb-6">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PackingSpecDetails;
