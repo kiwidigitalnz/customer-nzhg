@@ -48,8 +48,16 @@ export const hasValue = (value: any): boolean => {
 export const getImageUrl = (image: any): string | null => {
   if (!image) return null;
   
+  console.log('Getting image URL for:', image);
+  
   // Direct URL as string
-  if (typeof image === 'string') return image;
+  if (typeof image === 'string') {
+    // Check if it's a Podio file ID without the proper path
+    if (/^\d+$/.test(image)) {
+      return `https://files.podio.com/d/${image}`;
+    }
+    return image;
+  }
   
   // Handle arrays - extract first valid image
   if (Array.isArray(image)) {
@@ -62,6 +70,15 @@ export const getImageUrl = (image: any): string | null => {
   
   // Object with url property
   if (typeof image === 'object') {
+    // Extract file ID and use a consistent format
+    const fileId = image.file_id || image.id || 
+                  (image.hosted_by === 'podio' && image.hosted_by_id) ||
+                  (image.value && image.value.file_id);
+    
+    if (fileId) {
+      return `https://files.podio.com/d/${fileId}`;
+    }
+    
     // Check for standard URL property
     if (image.url) return image.url;
     
@@ -70,24 +87,6 @@ export const getImageUrl = (image: any): string | null => {
     
     // Check for embedded link property
     if (image.link) return image.link;
-    
-    // Check for hosted_by and hosted_by_id (Podio format)
-    if (image.hosted_by === 'podio' && image.hosted_by_id) {
-      return `https://files.podio.com/d/${image.hosted_by_id}`;
-    }
-    
-    // Check for file_id which needs to be constructed into a proper Podio URL
-    if (image.file_id) {
-      // Construct a proper URL for Podio files that works with their download service
-      // According to Podio API docs, file download URL needs to include /d/ in the path
-      return `https://files.podio.com/d/${image.file_id}`;
-    }
-    
-    // Check if it's a Podio reference with ID
-    if (image.id) {
-      // For Podio embedded files
-      return `https://files.podio.com/d/${image.id}`;
-    }
     
     // Check for values array with file data (common in Podio API responses)
     if (image.values && Array.isArray(image.values) && image.values.length > 0) {
@@ -107,6 +106,30 @@ export const getImageUrl = (image: any): string | null => {
   }
   
   return null;
+};
+
+/**
+ * Generate alternative Podio URLs to try if the main one fails
+ * Sometimes Podio URLs need different formats to work
+ */
+export const getPodioImageAlternatives = (primaryUrl: string | null): string[] => {
+  if (!primaryUrl) return [];
+  
+  const alternatives: string[] = [];
+  
+  // Extract file ID from the primary URL if it matches Podio format
+  const fileIdMatch = primaryUrl.match(/\/d\/(\d+)$/) || primaryUrl.match(/\/(\d+)$/);
+  if (fileIdMatch && fileIdMatch[1]) {
+    const fileId = fileIdMatch[1];
+    
+    // Add alternatives with different path formats
+    alternatives.push(`https://files.podio.com/${fileId}`);
+    alternatives.push(`https://files.podio.com/d/${fileId}`);
+    alternatives.push(`https://files.podio.com/get/${fileId}`);
+    alternatives.push(`https://podio.com/file/${fileId}`);
+  }
+  
+  return alternatives.filter(url => url !== primaryUrl);
 };
 
 /**

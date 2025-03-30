@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { getImageUrl } from '@/utils/formatters';
-import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
+import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle, Image } from 'lucide-react';
 import EnhancedImageViewer from './EnhancedImageViewer';
 import { Button } from '@/components/ui/button';
 
@@ -21,6 +21,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasImageErrors, setHasImageErrors] = useState(false);
+  const [alternativeUrls, setAlternativeUrls] = useState<Record<number, string[]>>({});
+  const [currentUrlIndices, setCurrentUrlIndices] = useState<Record<number, number>>({});
   
   useEffect(() => {
     console.log(`ImageGallery "${title}" received images:`, images);
@@ -31,6 +33,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         console.log(`Image ${idx} details:`, img);
         const url = getImageUrl(img);
         console.log(`Image ${idx} URL:`, url);
+        
+        if (url) {
+          // Generate alternative URLs for each image
+          const alternatives = getPodioImageAlternatives(url);
+          setAlternativeUrls(prev => ({
+            ...prev,
+            [idx]: alternatives
+          }));
+        }
         
         if (typeof img === 'object') {
           console.log(`Image ${idx} properties:`, Object.keys(img));
@@ -53,6 +64,17 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   useEffect(() => {
     console.log(`Found ${validImages.length} valid images out of ${images?.length || 0} total for "${title}"`);
   }, [validImages, images, title]);
+  
+  // Get the current URL for a specific image
+  const getCurrentUrl = (imageIndex: number) => {
+    const primaryUrl = getImageUrl(validImages[imageIndex]);
+    const urlIndex = currentUrlIndices[imageIndex] || -1;
+    
+    if (urlIndex === -1) return primaryUrl;
+    
+    const alternatives = alternativeUrls[imageIndex] || [];
+    return alternatives[urlIndex] || primaryUrl;
+  };
   
   // If no valid images, show placeholder
   if (!validImages || validImages.length === 0) {
@@ -100,6 +122,25 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       debugImage(currentIndex);
     }
   }, [currentIndex, validImages]);
+  
+  const handleImageError = (idx: number) => {
+    console.error(`Thumbnail ${idx} failed to load:`, getCurrentUrl(idx));
+    
+    // Try the next alternative URL if available
+    const alternatives = alternativeUrls[idx] || [];
+    const currentUrlIndex = currentUrlIndices[idx] || -1;
+    
+    if (currentUrlIndex < alternatives.length - 1) {
+      setCurrentUrlIndices(prev => ({
+        ...prev,
+        [idx]: (prev[idx] || -1) + 1
+      }));
+      console.log(`Trying alternative URL for image ${idx}:`, alternatives[currentUrlIndex + 1]);
+    } else {
+      // If we've tried all alternatives, mark as error
+      setHasImageErrors(true);
+    }
+  };
   
   return (
     <div className="space-y-3">
@@ -165,13 +206,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               onClick={() => setCurrentIndex(idx)}
             >
               <img 
-                src={getImageUrl(img)} 
+                src={getCurrentUrl(idx)} 
                 alt={`Thumbnail ${idx + 1}`}
                 className="w-full h-full object-cover"
-                onError={() => {
-                  console.error(`Thumbnail ${idx} failed to load:`, getImageUrl(img));
-                  setHasImageErrors(true);
-                }}
+                onError={() => handleImageError(idx)}
               />
             </button>
           ))}
