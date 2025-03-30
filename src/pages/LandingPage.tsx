@@ -42,8 +42,8 @@ const LandingPage = () => {
             </div>
             <div className="flex-1 relative">
               <img 
-                src="https://dl.dropbox.com/scl/fi/jzfwk0tz6y49mzqc8bpn2/honey-jar-packaging-transparent.png?rlkey=0h3nwxddpnx5n6b5k6wj4f20t"
-                alt="Honey Packaging"
+                src="https://dl.dropbox.com/scl/fi/ykiy0l58sn2vrhblkvjq6/packingline-image.png?rlkey=ykyx6mfgbq973urelb28lhqgq"
+                alt="Honey Packaging Line"
                 className="max-w-full h-auto" 
                 onError={(e) => {
                   e.currentTarget.onerror = null;
