@@ -97,14 +97,14 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
         <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
             <Container className="mr-2 h-5 w-5 text-primary/80" />
-            Shipping Packaging
+            Carton Packaging
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Size</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Carton Size</h4>
                 <p className="font-medium">{details.shipperSize || "N/A"}</p>
               </div>
               <div>
