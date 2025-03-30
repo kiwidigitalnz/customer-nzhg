@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -40,7 +39,8 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   // Skip if we already have valid tokens
   if (hasValidPodioTokens()) {
     console.log('Already have valid Podio tokens');
-    return true;
+    // Force re-authentication to ensure token is actually valid
+    return await getClientCredentialsToken(getPodioClientId() || '', getPodioClientSecret() || '');
   }
   
   // Only auto-authenticate in production
@@ -55,45 +55,7 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
     
     console.log('Starting client credential authentication with Podio...');
     
-    try {
-      // Get client credentials token
-      const response = await fetch('https://podio.com/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: clientId,
-          client_secret: clientSecret,
-        }).toString(),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to get initial Podio token:', errorData);
-        return false;
-      }
-      
-      const data = await response.json();
-      
-      localStorage.setItem('podio_access_token', data.access_token);
-      
-      // Use refresh token if available, otherwise we'll need to refresh using client credentials again
-      if (data.refresh_token) {
-        localStorage.setItem('podio_refresh_token', data.refresh_token);
-      }
-      
-      // Set expiry to 1 hour less than actual to ensure we refresh in time
-      const safeExpiryTime = Date.now() + ((data.expires_in - 3600) * 1000);
-      localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
-      
-      console.log('Successfully authenticated with Podio using client credentials');
-      return true;
-    } catch (error) {
-      console.error('Error getting initial Podio token:', error);
-      return false;
-    }
+    return await getClientCredentialsToken(clientId, clientSecret);
   }
   
   return false;
@@ -172,7 +134,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 // Helper function to get a token using client credentials
 const getClientCredentialsToken = async (clientId: string, clientSecret: string): Promise<boolean> => {
   try {
-    console.log('Getting client credentials token');
+    console.log('Getting client credentials token with ID:', clientId.substring(0, 5) + '...');
     
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
@@ -187,12 +149,19 @@ const getClientCredentialsToken = async (clientId: string, clientSecret: string)
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: errorText };
+      }
       console.error('Failed to get client credentials token:', errorData);
       return false;
     }
     
     const data = await response.json();
+    console.log('Successfully obtained client credentials token');
     
     localStorage.setItem('podio_access_token', data.access_token);
     
@@ -243,7 +212,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     });
     
     // If token is expired, try refreshing it once and retry the call
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
+      console.log(`API call returned ${response.status}, attempting to refresh token`);
       const refreshed = await refreshPodioToken();
       if (refreshed) {
         // Retry the API call with the new token
@@ -333,8 +303,8 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     console.log('Authenticating with Podio...', credentials.username);
     
     // In production, ensure we're authenticated with Podio first
-    if (import.meta.env.PROD && !hasValidPodioTokens()) {
-      console.log('No valid tokens, attempting to authenticate with Podio');
+    if (import.meta.env.PROD) {
+      console.log('Production environment, attempting to authenticate with Podio');
       const authenticated = await ensureInitialPodioAuth();
       if (!authenticated) {
         console.error('Failed to authenticate with Podio');

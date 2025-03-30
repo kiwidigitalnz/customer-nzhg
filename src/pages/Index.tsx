@@ -23,24 +23,35 @@ const Index = () => {
       
       if (configured) {
         console.log('Attempting initial Podio authentication');
+        
+        // Clear any existing tokens to ensure fresh authentication
+        if (localStorage.getItem('podio_access_token')) {
+          console.log('Clearing existing Podio tokens to force fresh authentication');
+          localStorage.removeItem('podio_access_token');
+          localStorage.removeItem('podio_refresh_token');
+          localStorage.removeItem('podio_token_expiry');
+        }
+        
         ensureInitialPodioAuth()
           .then(success => {
             console.log('Initial Podio authentication result:', success ? 'Success' : 'Failed');
             if (!success) {
               console.error('Could not automatically authenticate with Podio');
+              toast({
+                title: "Connection Error",
+                description: "Could not connect to the service. Please try again later.",
+                duration: 5000,
+              });
             }
           })
           .catch(err => {
             console.error('Error during automatic Podio authentication:', err);
             
-            // Only show errors in development
-            if (import.meta.env.DEV) {
-              toast({
-                title: "Podio Authentication Error",
-                description: err instanceof Error ? err.message : "Could not connect to Podio",
-                duration: 5000,
-              });
-            }
+            toast({
+              title: "Connection Error",
+              description: "Could not connect to the service. Please try again later.",
+              duration: 5000,
+            });
           });
       } else {
         console.error('Podio not properly configured. Check environment variables.');
