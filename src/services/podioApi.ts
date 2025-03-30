@@ -706,9 +706,9 @@ const addCommentToPodio = async (
     const userInfo = localStorage.getItem('user_info');
     const companyName = userInfo ? JSON.parse(userInfo).name : (userName || 'Customer Portal User');
     
-    // Prepare the comment data - no change to the actual API call
+    // Prepare the comment data - prepend with company name
     const commentData = {
-      value: comment,
+      value: `[${companyName}] ${comment}`,
       external_id: `customer_comment_${Date.now()}`,
     };
     

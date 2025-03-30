@@ -43,8 +43,24 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
           comment.createdBy === "Customer Portal User" ||
           comment.createdBy.includes(authUsername || '');
         
-        // Use company name for current user's comments, otherwise show original author
-        const displayName = isCurrentUserComment ? companyName : comment.createdBy;
+        // Parse the comment text to extract the company name if it's in the format [CompanyName] Comment
+        let displayName = comment.createdBy;
+        let commentText = comment.text;
+        
+        // Check if the comment starts with [Company] format
+        const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
+        if (companyMatch && companyMatch.length > 2) {
+          // If it's not the current user's comment, use the company name from the comment
+          if (!isCurrentUserComment) {
+            displayName = companyMatch[1]; // Company name inside brackets
+          }
+          commentText = companyMatch[2]; // The rest of the comment after the company name
+        }
+        
+        // For current user's comment, always use their company name from local storage
+        if (isCurrentUserComment && companyName) {
+          displayName = companyName;
+        }
         
         return (
           <div key={comment.id} className="bg-card rounded-md p-4 border">
@@ -58,7 +74,7 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
                 {formatDate(comment.createdAt)}
               </div>
             </div>
-            <p className="mt-2 whitespace-pre-line break-words">{comment.text}</p>
+            <p className="mt-2 whitespace-pre-line break-words">{commentText}</p>
           </div>
         );
       })}
