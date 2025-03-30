@@ -44,7 +44,7 @@ import {
   Info, ShieldCheck, Factory, Box, AlertCircle, Award, 
   MessageSquare, Send, ChevronDown, ChevronUp, Clock,
   ExternalLink, Pen, Save, ImageIcon, LinkIcon, ThumbsUp, Truck, 
-  Clipboard, Book, Globe
+  Clipboard, Book, Globe, User, Tag, Hash, RefreshCw
 } from 'lucide-react';
 
 // Types
@@ -447,7 +447,7 @@ const PackingSpecDetails = () => {
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <StatusBadge status={spec.status} />
+                  <StatusBadge status={spec.status} showIcon={false} />
                 </div>
               </div>
             </CardHeader>
@@ -1159,16 +1159,77 @@ const PackingSpecDetails = () => {
         </div>
         
         <div className="space-y-6">
-          {/* Sidebar cards can go here */}
+          {/* General Information Card */}
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Quick Information</CardTitle>
+              <CardTitle className="text-lg flex items-center">
+                <Info className="mr-2 h-5 w-5 text-primary/80" />
+                General Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
-                  <StatusBadge status={spec.status} showIcon />
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <Package className="mr-1.5 h-4 w-4" />
+                    Product Name
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.product || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <User className="mr-1.5 h-4 w-4" />
+                    Customer
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.customer || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <Tag className="mr-1.5 h-4 w-4" />
+                    Product Code
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.productCode || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <Hash className="mr-1.5 h-4 w-4" />
+                    Version Number
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.versionNumber || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <User className="mr-1.5 h-4 w-4" />
+                    Specification Updated By
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.specificationUpdatedBy || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                    <Calendar className="mr-1.5 h-4 w-4" />
+                    Date Last Reviewed
+                  </h4>
+                  <p className="text-sm font-medium">{spec.details.dateReviewed ? formatDate(spec.details.dateReviewed) : "N/A"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Status Card */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Status</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Current Status</h4>
+                  <StatusBadge status={spec.status} showIcon={true} />
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Created Date</h4>
