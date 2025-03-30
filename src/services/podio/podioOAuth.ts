@@ -36,8 +36,21 @@ export const getPodioClientSecret = (): string | null => {
 
 // Get the redirect URI based on the current environment
 export const getPodioRedirectUri = (): string => {
-  // Use the production URL for both environments to ensure consistency
+  // In development, use localhost
+  if (import.meta.env.DEV) {
+    const port = window.location.port;
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}${port ? ':' + port : ''}/podio-callback`;
+  }
+  
+  // In production, use the production URL
   return 'https://customer.nzhg.com/podio-callback';
+};
+
+// Get the base domain for API calls
+export const getPodioApiDomain = (): string => {
+  return 'api.podio.com';
 };
 
 // Rate limit handling

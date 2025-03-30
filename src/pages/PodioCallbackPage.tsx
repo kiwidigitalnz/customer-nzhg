@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import MainLayout from '../components/MainLayout';
-import { exchangeCodeForToken } from '../services/podio/podioOAuth';
+import { exchangeCodeForToken, getPodioRedirectUri } from '../services/podio/podioOAuth';
 
 const PodioCallbackPage = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -59,7 +59,7 @@ const PodioCallbackPage = () => {
     localStorage.removeItem('podio_auth_state');
     
     // Exchange the code for tokens
-    const redirectUri = 'https://customer.nzhg.com/podio-callback';
+    const redirectUri = getPodioRedirectUri();
     exchangeCodeForToken(code, redirectUri);
   }, [location.search, navigate]);
 

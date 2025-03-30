@@ -11,7 +11,8 @@ import {
   startPodioOAuthFlow,
   isRateLimited,
   setRateLimit,
-  clearRateLimit
+  clearRateLimit,
+  getPodioApiDomain
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import bcrypt from 'bcryptjs';
@@ -111,7 +112,8 @@ export const validatePodioToken = async (): Promise<boolean> => {
     
     // Use an endpoint that works with app authentication instead of user authentication
     // The /app/ endpoint requires only app authorization
-    const response = await fetch(`https://api.podio.com/app/${PODIO_CONTACTS_APP_ID}`, {
+    const apiDomain = getPodioApiDomain();
+    const response = await fetch(`https://${apiDomain}/app/${PODIO_CONTACTS_APP_ID}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -255,7 +257,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   };
   
   try {
-    const response = await fetch(`https://api.podio.com/${endpoint}`, {
+    const apiDomain = getPodioApiDomain();
+    const response = await fetch(`https://${apiDomain}/${endpoint}`, {
       ...options,
       headers,
     });
