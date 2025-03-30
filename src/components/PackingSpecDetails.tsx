@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,7 +103,8 @@ const PackingSpecDetails = () => {
   }, [specId, user, navigate]);
 
   const handleGoBack = () => {
-    navigate('/dashboard');
+    // Navigate back to dashboard with replace to force a refresh
+    navigate('/dashboard', { replace: true });
   };
 
   const handleTabChange = (value: string) => {

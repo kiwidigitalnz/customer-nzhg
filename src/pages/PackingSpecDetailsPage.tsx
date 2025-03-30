@@ -38,7 +38,7 @@ const PackingSpecDetailsPage = () => {
           </div>
         </div>
       ) : (
-        <PackingSpecDetails onBackToDashboard={handleBackToDashboard} />
+        <PackingSpecDetails />
       )}
     </MainLayout>
   );
