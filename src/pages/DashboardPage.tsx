@@ -23,7 +23,7 @@ const DashboardPage = () => {
         <div className="flex justify-center items-center h-[80vh]">
           <LoadingSpinner 
             size="lg" 
-            icon={<LayoutDashboard />}
+            icon={<LayoutDashboard className="text-primary/70" />}
             text="Loading dashboard..."
             subtext="This may take a moment"
           />

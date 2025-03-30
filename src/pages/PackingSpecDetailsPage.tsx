@@ -31,7 +31,7 @@ const PackingSpecDetailsPage = () => {
         <div className="flex justify-center items-center h-[80vh]">
           <LoadingSpinner 
             size="lg" 
-            icon={<Package />}
+            icon={<Package className="text-primary/70" />}
             text="Loading specification details..."
             subtext="This may take a moment"
           />

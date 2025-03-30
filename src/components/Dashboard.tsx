@@ -5,10 +5,10 @@ import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioA
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PackageCheck, LogOut, Building, AlertTriangle } from 'lucide-react';
+import { PackageCheck, LogOut, Building, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -126,10 +126,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 border-2 border-primary/20">
+          <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
             {user?.logoUrl ? (
               <AvatarImage 
                 src={user.logoUrl} 
@@ -139,22 +139,26 @@ const Dashboard = () => {
                 }}
               />
             ) : null}
-            <AvatarFallback className="text-xl bg-primary/10 text-primary">
+            <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-3xl font-bold">{user?.name}</h1>
+            <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
             <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
           </div>
         </div>
-        <Button variant="outline" onClick={logout}>
+        <Button 
+          variant="outline" 
+          onClick={logout}
+          className="transition-all hover:-translate-y-1 hover:shadow-md"
+        >
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
 
       {!specs.length && !loading && (
-        <Card className="mb-8 bg-amber-50">
+        <Card className="mb-8 bg-amber-50 border border-amber-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-6 w-6 text-amber-600" />
@@ -170,53 +174,75 @@ const Dashboard = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+        <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Pending Approval</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <PackageCheck className="h-5 w-5 text-amber-600" /> Pending Approval
+            </CardTitle>
             <CardDescription>Specs awaiting your review</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-amber-600">
-              <PackageCheck className="mr-2" />
               {pendingSpecs.length}
+              <span className="text-sm ml-2 font-normal text-amber-700/70">
+                {pendingSpecs.length === 1 ? 'specification' : 'specifications'}
+              </span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-gradient-to-br from-card to-green-50/50 shadow-sm border-green-100 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Approved</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" /> Approved
+            </CardTitle>
             <CardDescription>Specs you've approved</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-green-600">
               {approvedSpecs.length}
+              <span className="text-sm ml-2 font-normal text-green-700/70">
+                {approvedSpecs.length === 1 ? 'specification' : 'specifications'}
+              </span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="bg-gradient-to-br from-card to-red-50/50 shadow-sm border-red-100 hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Changes Requested</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" /> Changes Requested
+            </CardTitle>
             <CardDescription>Specs with changes requested</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-red-600">
               {changesRequestedSpecs.length}
+              <span className="text-sm ml-2 font-normal text-red-700/70">
+                {changesRequestedSpecs.length === 1 ? 'specification' : 'specifications'}
+              </span>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="pending">Pending ({pendingSpecs.length})</TabsTrigger>
-          <TabsTrigger value="approved">Approved ({approvedSpecs.length})</TabsTrigger>
-          <TabsTrigger value="changes">Changes Requested ({changesRequestedSpecs.length})</TabsTrigger>
-          <TabsTrigger value="all">All Specifications ({specs.length})</TabsTrigger>
+        <TabsList className="mb-4 bg-muted/70 p-1 rounded-lg">
+          <TabsTrigger value="pending" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            Pending ({pendingSpecs.length})
+          </TabsTrigger>
+          <TabsTrigger value="approved" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            Approved ({approvedSpecs.length})
+          </TabsTrigger>
+          <TabsTrigger value="changes" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            Changes Requested ({changesRequestedSpecs.length})
+          </TabsTrigger>
+          <TabsTrigger value="all" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            All Specifications ({specs.length})
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="pending">
+        <TabsContent value="pending" className="focus-visible:outline-none focus-visible:ring-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="md" text="Loading pending specifications..." />
@@ -229,7 +255,7 @@ const Dashboard = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="approved">
+        <TabsContent value="approved" className="focus-visible:outline-none focus-visible:ring-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="md" text="Loading approved specifications..." />
@@ -243,7 +269,7 @@ const Dashboard = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="changes">
+        <TabsContent value="changes" className="focus-visible:outline-none focus-visible:ring-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="md" text="Loading specifications with requested changes..." />
@@ -257,7 +283,7 @@ const Dashboard = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="all">
+        <TabsContent value="all" className="focus-visible:outline-none focus-visible:ring-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="md" text="Loading all specifications..." />

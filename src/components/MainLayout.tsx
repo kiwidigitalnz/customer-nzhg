@@ -35,11 +35,11 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-muted/20">
         <main className="flex-grow">
           {children}
         </main>
-        <footer className="border-t py-6 bg-muted/30">
+        <footer className="border-t py-5 bg-white shadow-sm mt-10">
           <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
             <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
               &copy; {new Date().getFullYear()} NZ Honey Group Ltd. All rights reserved.
