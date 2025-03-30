@@ -16,10 +16,11 @@ import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
 import { updatePackingSpecStatus, PODIO_CATEGORIES } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, LoaderCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
 import { SpecStatus } from '../packing-spec/StatusBadge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface EnhancedApprovalDialogProps {
   specId: number;
@@ -182,68 +183,81 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
           </Alert>
         )}
 
-        {type === 'approve' && (
-          <ApprovalChecklist onComplete={setChecklistCompleted} />
-        )}
-
-        {type === 'approve' && checklistCompleted && (
-          <>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Your Name
-                </label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="col-span-3"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">
-                  Your Signature
-                </label>
-                <ResponsiveSignaturePad onSigned={handleSignatureCapture} name={name} />
-              </div>
-              
-              <div className="grid gap-2">
-                <label htmlFor="notes" className="text-sm font-medium">
-                  Additional Notes (Optional)
-                </label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any additional notes or comments"
-                  className="col-span-3"
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {type === 'reject' && (
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label htmlFor="notes" className="text-sm font-medium">
-                Comments *
-              </label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Please explain what changes are needed"
-                className="col-span-3"
-                required
-              />
-              <p className="text-xs text-gray-500">
-                Please provide specific details about what needs to be changed.
-              </p>
-            </div>
+        {loading && (
+          <div className="flex justify-center py-4">
+            <LoadingSpinner 
+              size="sm" 
+              text={type === 'approve' ? 'Processing approval...' : 'Submitting changes...'}
+            />
           </div>
+        )}
+
+        {!loading && (
+          <>
+            {type === 'approve' && (
+              <ApprovalChecklist onComplete={setChecklistCompleted} />
+            )}
+
+            {type === 'approve' && checklistCompleted && (
+              <>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <label htmlFor="name" className="text-sm font-medium">
+                      Your Name
+                    </label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="col-span-3"
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <label className="text-sm font-medium">
+                      Your Signature
+                    </label>
+                    <ResponsiveSignaturePad onSigned={handleSignatureCapture} name={name} />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <label htmlFor="notes" className="text-sm font-medium">
+                      Additional Notes (Optional)
+                    </label>
+                    <Textarea
+                      id="notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Add any additional notes or comments"
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {type === 'reject' && (
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <label htmlFor="notes" className="text-sm font-medium">
+                    Comments *
+                  </label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Please explain what changes are needed"
+                    className="col-span-3"
+                    required
+                  />
+                  <p className="text-xs text-gray-500">
+                    Please provide specific details about what needs to be changed.
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <DialogFooter>
@@ -256,10 +270,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
             className={type === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}
           >
             {loading ? (
-              <>
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                {type === 'approve' ? 'Approving...' : 'Submitting...'}
-              </>
+              type === 'approve' ? 'Approving...' : 'Submitting...'
             ) : (
               type === 'approve' ? 'Approve Specification' : 'Submit Change Request'
             )}

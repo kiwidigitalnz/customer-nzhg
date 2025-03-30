@@ -5,12 +5,13 @@ import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioA
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PackageCheck, LogOut, Loader2, Building, AlertTriangle } from 'lucide-react';
+import { PackageCheck, LogOut, Building, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import PackingSpecList from './PackingSpecList';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface PackingSpec {
   id: number;
@@ -98,10 +99,10 @@ const Dashboard = () => {
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground">Loading...</p>
-        </div>
+        <LoadingSpinner 
+          size="lg" 
+          text="Loading..."
+        />
       </div>
     );
   }
@@ -218,7 +219,7 @@ const Dashboard = () => {
         <TabsContent value="pending">
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <LoadingSpinner size="md" text="Loading pending specifications..." />
             </div>
           ) : (
             <PackingSpecList 
@@ -231,7 +232,7 @@ const Dashboard = () => {
         <TabsContent value="approved">
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <LoadingSpinner size="md" text="Loading approved specifications..." />
             </div>
           ) : (
             <PackingSpecList 
@@ -245,7 +246,7 @@ const Dashboard = () => {
         <TabsContent value="changes">
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <LoadingSpinner size="md" text="Loading specifications with requested changes..." />
             </div>
           ) : (
             <PackingSpecList 
@@ -259,7 +260,7 @@ const Dashboard = () => {
         <TabsContent value="all">
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <LoadingSpinner size="md" text="Loading all specifications..." />
             </div>
           ) : (
             <PackingSpecList 

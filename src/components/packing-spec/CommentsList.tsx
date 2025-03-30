@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface Comment {
   id: number;
@@ -107,6 +108,12 @@ const CommentsList: React.FC<CommentsListProps> = ({
           </Button>
         )}
         
+        {isLoading && (
+          <div className="mt-4 flex justify-center">
+            <LoadingSpinner size="sm" text="Checking for comments..." />
+          </div>
+        )}
+        
         {error && (
           <Alert variant="destructive" className="mt-4 mx-auto max-w-md">
             <AlertCircle className="h-4 w-4" />
@@ -160,6 +167,12 @@ const CommentsList: React.FC<CommentsListProps> = ({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+      
+      {isLoading && comments.length === 0 && (
+        <div className="flex justify-center py-4">
+          <LoadingSpinner size="sm" text="Loading comments..." />
+        </div>
       )}
       
       {sortedComments.map(comment => {

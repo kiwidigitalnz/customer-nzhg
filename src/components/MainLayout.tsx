@@ -2,7 +2,7 @@
 import { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { LoadingSpinner } from './ui/loading-spinner';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,10 +14,12 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
+      <LoadingSpinner 
+        fullscreen 
+        size="lg" 
+        text="Loading..."
+        subtext="Please wait while we set things up for you"
+      />
     );
   }
 
