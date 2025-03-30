@@ -46,90 +46,82 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
   return (
     <div className="space-y-6">
       {/* Overview Card */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-white border-t-2 border-t-primary/60">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center">
-            <Info className="mr-2 h-5 w-5 text-primary/80" />
+            <Info className="mr-2 h-5 w-5 text-primary" />
             Overview
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
-          <div className="space-y-4">
+        <CardContent className="pt-2 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <Package className="mr-1.5 h-4 w-4" />
+              <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
+                <Package className="mr-1.5 h-3.5 w-3.5" />
                 Product Name
               </h4>
               <p className="text-sm font-medium">{details.product || "N/A"}</p>
             </div>
             
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <User className="mr-1.5 h-4 w-4" />
-                Company Name
+              <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
+                <User className="mr-1.5 h-3.5 w-3.5" />
+                Customer
               </h4>
               <p className="text-sm font-medium">{details.customer || "N/A"}</p>
             </div>
             
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <Tag className="mr-1.5 h-4 w-4" />
+              <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
+                <Tag className="mr-1.5 h-3.5 w-3.5" />
                 Product Code
               </h4>
               <p className="text-sm font-medium">{details.productCode || "N/A"}</p>
             </div>
             
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <Hash className="mr-1.5 h-4 w-4" />
+              <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
+                <Hash className="mr-1.5 h-3.5 w-3.5" />
                 Version Number
               </h4>
               <p className="text-sm font-medium">{formatVersion(details.versionNumber)}</p>
             </div>
             
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <User className="mr-1.5 h-4 w-4" />
+            <div className="col-span-2">
+              <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
+                <User className="mr-1.5 h-3.5 w-3.5" />
                 Specification Updated By
               </h4>
               <p className="text-sm font-medium">{details.specificationUpdatedBy || "N/A"}</p>
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                <Calendar className="mr-1.5 h-4 w-4" />
-                Date Last Reviewed
-              </h4>
-              <p className="text-sm font-medium">{details.dateReviewed ? formatDate(details.dateReviewed) : "N/A"}</p>
             </div>
           </div>
         </CardContent>
       </Card>
       
       {/* Status Card */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm bg-white border-t-2 border-t-primary/60">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Status</CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
-          <div className="space-y-4">
+        <CardContent className="pt-2">
+          <div className="space-y-3">
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Current Status</h4>
+              <h4 className="text-xs font-medium text-muted-foreground mb-1">Current Status</h4>
               <StatusBadge status={status} showIcon={true} />
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Created Date</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Created Date</h4>
                 <p className="text-sm">{formatDate(createdAt)}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Last Reviewed</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Last Reviewed</h4>
                 <p className="text-sm">{details.dateReviewed ? formatDate(details.dateReviewed) : "N/A"}</p>
               </div>
             </div>
             {details.contactPerson && (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Contact Person</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Contact Person</h4>
                 <p className="text-sm">{details.contactPerson}</p>
               </div>
             )}

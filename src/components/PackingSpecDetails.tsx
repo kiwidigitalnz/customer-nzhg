@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -72,7 +71,6 @@ const PackingSpecDetails = () => {
   const navigate = useNavigate();
   const [newCommentsCount, setNewCommentsCount] = useState<number>(0);
 
-  // Fetch spec details
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -108,7 +106,6 @@ const PackingSpecDetails = () => {
     fetchSpecDetails();
   }, [specId, user, navigate]);
 
-  // Handlers
   const handleGoBack = () => {
     navigate('/dashboard');
   };
@@ -117,7 +114,6 @@ const PackingSpecDetails = () => {
     setActiveTab(value);
   };
 
-  // Approval and rejection handlers
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
     if (!spec) return;
     
@@ -295,7 +291,6 @@ const PackingSpecDetails = () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center">
@@ -307,7 +302,6 @@ const PackingSpecDetails = () => {
     );
   }
 
-  // Error state
   if (error || !spec) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -329,7 +323,6 @@ const PackingSpecDetails = () => {
     );
   }
 
-  // Main rendering
   return (
     <div className="container mx-auto px-4 py-8">
       <Button variant="outline" onClick={handleGoBack} className="mb-6">
@@ -348,34 +341,28 @@ const PackingSpecDetails = () => {
             />
             <CardContent>
               <Tabs defaultValue="overview" className="w-full" onValueChange={handleTabChange}>
-                <TabsNavigation newCommentsCount={newCommentsCount} hideApprovalsTab={true} />
+                <TabsNavigation newCommentsCount={newCommentsCount} />
                 
-                {/* Honey Specification Tab */}
                 <TabsContent value="overview">
                   <HoneySpecificationTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Requirements Tab */}
                 <TabsContent value="requirements">
                   <RequirementsTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Packaging Tab */}
                 <TabsContent value="packaging">
                   <PackagingTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Label Tab */}
                 <TabsContent value="label">
                   <LabelingTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Shipping Tab */}
                 <TabsContent value="shipping">
                   <ShippingTab details={spec.details} />
                 </TabsContent>
                 
-                {/* Comments Tab */}
                 <TabsContent value="comments">
                   <CommentsTab 
                     spec={spec}
