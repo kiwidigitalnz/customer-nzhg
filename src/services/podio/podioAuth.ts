@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 
 interface PodioCredentials {
@@ -58,7 +57,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 };
 
 // Helper function to make authenticated API calls to Podio
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+export const callPodioApi = async (endpoint: string, method: string = 'GET', body?: any): Promise<any> => {
   // Check if we have a valid token, try to refresh if not
   if (!hasValidPodioTokens() && !await refreshPodioToken()) {
     throw new Error('Not authenticated with Podio');
@@ -66,18 +65,22 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   
   const accessToken = localStorage.getItem('podio_access_token');
   
-  // Merge the authorization header with the provided options
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-    ...options.headers,
+  // Prepare request options
+  const options: RequestInit = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    }
   };
   
+  // Add body if provided
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  
   try {
-    const response = await fetch(`https://api.podio.com/${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(`https://api.podio.com/${endpoint}`, options);
     
     if (!response.ok) {
       const errorData = await response.json();

@@ -68,7 +68,7 @@ export const addCommentToPackingSpec = async (
     // Prepend the user's name to the comment for better visibility
     const formattedComment = `${userDisplayName}: ${commentText}`;
     
-    // Fix: Only pass two arguments to addCommentToPodio as per its definition
+    // Only pass two arguments to addCommentToPodio as per its definition
     return await addCommentToPodio(specId, formattedComment);
   } catch (error) {
     console.error('Error adding comment to packing spec:', error);
