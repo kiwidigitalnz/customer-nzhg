@@ -10,6 +10,7 @@ const Index = () => {
   const { user, checkSession } = useAuth();
   const { toast } = useToast();
   const [isAttemptingAuth, setIsAttemptingAuth] = useState(false);
+  const [podioAuthError, setPodioAuthError] = useState<string | null>(null);
   
   useEffect(() => {
     // In production, try to automatically authenticate with Podio
@@ -24,8 +25,8 @@ const Index = () => {
       if (configured) {
         console.log('Attempting initial Podio authentication');
         
-        // Clear existing tokens if they don't pass validation
-        // The ensureInitialPodioAuth function will now handle token validation
+        // Clear any previous errors
+        setPodioAuthError(null);
         
         ensureInitialPodioAuth()
           .then(success => {
@@ -34,6 +35,8 @@ const Index = () => {
               console.error('Could not automatically authenticate with Podio');
               // Clear tokens on authentication failure
               clearPodioTokens();
+              
+              setPodioAuthError('Could not connect to the service');
               
               toast({
                 title: "Connection Error",
@@ -47,14 +50,18 @@ const Index = () => {
             // Clear tokens on authentication error
             clearPodioTokens();
             
+            const errorMessage = err?.message || 'Could not connect to the service';
+            setPodioAuthError(errorMessage);
+            
             toast({
               title: "Connection Error",
-              description: "Could not connect to the service. Please try again later.",
+              description: errorMessage,
               duration: 5000,
             });
           });
       } else {
         console.error('Podio not properly configured. Check environment variables.');
+        setPodioAuthError('Podio API is not properly configured');
       }
     }
     
@@ -74,7 +81,7 @@ const Index = () => {
   }
   
   // For everyone else, show the landing page
-  return <LandingPage />;
+  return <LandingPage podioAuthError={podioAuthError} />;
 };
 
 export default Index;
