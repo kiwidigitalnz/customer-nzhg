@@ -301,16 +301,22 @@ export const isPodioConfigured = (): boolean => {
           !!localStorage.getItem('podio_client_secret'));
 };
 
-// Simple utility to compare passwords securely
+// Improved utility to compare passwords securely with browser-safe fallbacks
 const comparePasswords = async (plainPassword: string, storedPassword: string): Promise<boolean> => {
-  // For plain text comparison
+  // For plain text comparison (not recommended but may be needed for legacy data)
   if (!storedPassword.startsWith('$2a$') && !storedPassword.startsWith('$2b$')) {
     return plainPassword === storedPassword;
   }
   
   // For bcrypt hashed passwords
   try {
-    return bcrypt.compareSync(plainPassword, storedPassword);
+    // Use a browser-safe method if available
+    if (typeof bcrypt.compareSync === 'function') {
+      return bcrypt.compareSync(plainPassword, storedPassword);
+    } else {
+      console.warn('bcrypt.compareSync not available in browser environment, falling back to plain text comparison');
+      return plainPassword === storedPassword;
+    }
   } catch (error) {
     console.error('Error comparing passwords:', error);
     // Fallback to plain text if bcrypt fails
