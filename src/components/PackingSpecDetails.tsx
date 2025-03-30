@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,6 +85,7 @@ const PackingSpecDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeAccordionItems, setActiveAccordionItems] = useState<string[]>([]);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -158,6 +158,10 @@ const PackingSpecDetails = () => {
         ? prev.filter(item => item !== value) 
         : [...prev, value]
     );
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
   };
 
   // Render value based on field type
@@ -328,6 +332,23 @@ const PackingSpecDetails = () => {
         });
         
         setNewComment('');
+        
+        setTimeout(async () => {
+          try {
+            const updatedComments = await getCommentsFromPodio(spec.id);
+            if (updatedComments && updatedComments.length > 0) {
+              setSpec(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  comments: updatedComments
+                };
+              });
+            }
+          } catch (error) {
+            console.error('Error refreshing comments after adding a new one:', error);
+          }
+        }, 1000);
       } else {
         toast({
           title: 'Error',
@@ -405,7 +426,7 @@ const PackingSpecDetails = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="overview" className="w-full">
+              <Tabs defaultValue="overview" className="w-full" onValueChange={handleTabChange}>
                 <TabsList className="mb-4 w-full justify-start overflow-x-auto">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="packaging">Packaging</TabsTrigger>
@@ -918,7 +939,11 @@ const PackingSpecDetails = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <CommentsList comments={spec.comments || []} />
+                      <CommentsList 
+                        comments={spec.comments || []} 
+                        specId={spec.id}
+                        isActive={activeTab === 'comments'}
+                      />
                       
                       <div className="pt-4">
                         <div className="flex items-start space-x-2">

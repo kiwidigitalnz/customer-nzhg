@@ -1,4 +1,3 @@
-
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -140,7 +139,7 @@ const MOCK_SPECS: PackingSpec[] = [
     title: 'Clover Honey 500g Squeeze Bottle',
     description: 'Clover Honey new packaging design',
     status: 'pending',
-    createdAt: '2023-11-20',
+0    createdAt: '2023-11-20',
     details: {
       product: 'Pure Clover Honey',
       batchSize: '2,500 units',
@@ -649,7 +648,7 @@ const isPodioConfigured = (): boolean => {
   return hasValidPodioTokens();
 };
 
-// Function to get comments from Podio for a specific item
+// Get comments from Podio for a specific item
 const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
     console.log('Fetching comments for item ID:', itemId);
@@ -971,5 +970,6 @@ export {
   getPackingSpecDetails,
   updatePackingSpecStatus,
   isPodioConfigured,
-  addCommentToPackingSpec
+  addCommentToPackingSpec,
+  getCommentsFromPodio
 };

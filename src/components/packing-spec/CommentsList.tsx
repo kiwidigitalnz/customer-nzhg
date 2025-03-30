@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { MessageSquare, Clock, User } from 'lucide-react';
+import { MessageSquare, Clock, User, RefreshCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCommentPolling } from '@/hooks/useCommentPolling';
+import { Button } from '@/components/ui/button';
 
 interface Comment {
   id: number;
@@ -13,16 +15,50 @@ interface Comment {
 
 interface CommentsListProps {
   comments: Comment[];
+  specId?: number;
+  isActive?: boolean;
 }
 
-const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
+const CommentsList: React.FC<CommentsListProps> = ({ 
+  comments: initialComments, 
+  specId, 
+  isActive = true 
+}) => {
   const { user } = useAuth();
+  
+  // Use our custom polling hook if we have a specId
+  const {
+    comments: polledComments,
+    isLoading,
+    error,
+    refreshComments,
+    lastPolled
+  } = useCommentPolling(
+    specId || 0,
+    initialComments,
+    isActive && !!specId
+  );
+  
+  // Use polled comments if available, otherwise use passed in comments
+  const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
   
   if (!comments || comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
         <p>No comments yet</p>
+        {specId && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="mt-4" 
+            onClick={refreshComments} 
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Check for new comments
+          </Button>
+        )}
       </div>
     );
   }
@@ -38,6 +74,23 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
   
   return (
     <div className="space-y-4">
+      {specId && (
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-xs text-muted-foreground">
+            {isLoading ? 'Checking for new comments...' : `Last updated: ${formatDate(new Date(lastPolled).toISOString())}`}
+          </p>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={refreshComments} 
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      )}
+      
       {sortedComments.map(comment => {
         // Check if the comment was created by the current user
         const isCurrentUserComment = 
@@ -80,6 +133,12 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
           </div>
         );
       })}
+      
+      {error && (
+        <div className="p-3 text-sm bg-red-50 text-red-800 rounded-md">
+          {error}
+        </div>
+      )}
     </div>
   );
 };
