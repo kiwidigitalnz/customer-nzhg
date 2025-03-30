@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -247,7 +248,7 @@ const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promis
 };
 
 // This function authenticates a user by checking the Podio contacts app
-export const authenticateUser = async (credentials: PodioCredentials): Promise<ContactData | null> => {
+const authenticateUser = async (credentials: PodioCredentials): Promise<ContactData | null> => {
   try {
     console.log('Authenticating with Podio...', credentials.username);
     
@@ -380,7 +381,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<C
 };
 
 // Get packing specs for a specific contact from Podio
-export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
+const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
     console.log('Fetching packing specs for contact ID:', contactId);
     
@@ -644,12 +645,12 @@ export const updatePackingSpecStatus = async (
 };
 
 // Function to check if Podio API is configured
-export const isPodioConfigured = (): boolean => {
+const isPodioConfigured = (): boolean => {
   return hasValidPodioTokens();
 };
 
 // Get packing spec details for a specific spec ID
-export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
+const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
   try {
     console.log('Fetching details for packing spec ID:', specId);
     
@@ -804,7 +805,7 @@ const getCommentsFromPodio = (fields: any[]): CommentItem[] | null => {
 };
 
 // Add a comment to a packing spec in Podio
-export const addCommentToPackingSpec = async (
+const addCommentToPackingSpec = async (
   specId: number,
   commentText: string
 ): Promise<boolean> => {
@@ -945,5 +946,7 @@ export {
   getPackingSpecsForContact,
   getPackingSpecDetails,
   addCommentToPackingSpec,
-  isPodioConfigured 
+  isPodioConfigured,
+  updatePackingSpecStatus
 };
+
