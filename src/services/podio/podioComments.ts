@@ -1,8 +1,9 @@
 
-// This module handles interactions with Podio comments
+// This module handles Podio comments operations
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken } from './podioAuth';
 
+// Types
 export interface CommentItem {
   id: number;
   text: string;
@@ -10,110 +11,66 @@ export interface CommentItem {
   createdAt: string;
 }
 
-// Get comments from Podio for a specific item
+// Get comments for a specific Podio item
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    console.log('Fetching comments for item ID:', itemId);
-    
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       throw new Error('Not authenticated with Podio API');
     }
     
-    // Call Podio API to get comments
-    const endpoint = `comment/item/${itemId}`;
-    
-    const response = await callPodioApi(endpoint);
+    const response = await callPodioApi(`/comment/item/${itemId}`);
     
     if (!response || !Array.isArray(response)) {
-      console.log('No comments found or invalid response');
       return [];
     }
     
-    // Transform Podio comments into our CommentItem format
-    const comments: CommentItem[] = response.map((comment: any) => ({
+    // Map Podio comments to our app format
+    return response.map((comment: any) => ({
       id: comment.comment_id,
       text: comment.value,
-      createdBy: comment.created_by.name || 'Podio User',
+      createdBy: comment.created_by?.name || 'Unknown User',
       createdAt: comment.created_on
     }));
-    
-    console.log(`Found ${comments.length} comments for item ID ${itemId}`);
-    return comments;
   } catch (error) {
-    console.error('Error fetching comments from Podio:', error);
-    throw new Error('Failed to fetch comments from Podio');
+    console.error('Error fetching comments:', error);
+    return [];
   }
 };
 
-// Function to add a comment to a Podio item
+// Add a comment to a Podio item
 export const addCommentToPodio = async (
-  itemId: number,
-  comment: string,
-  userName?: string
+  itemId: number, 
+  commentText: string
 ): Promise<boolean> => {
   try {
-    console.log(`Adding comment to Podio item ${itemId}: ${comment}`);
-    
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       throw new Error('Not authenticated with Podio API');
     }
     
-    // Get user info from localStorage for company name
-    const userInfo = localStorage.getItem('user_info');
-    const companyName = userInfo ? JSON.parse(userInfo).name : (userName || 'Customer Portal User');
-    
-    // Prepare the comment data - prepend with company name
-    const commentData = {
-      value: `[${companyName}] ${comment}`,
-      external_id: `customer_comment_${Date.now()}`,
-    };
-    
-    // Post the comment to Podio
-    const endpoint = `comment/item/${itemId}`;
-    
-    await callPodioApi(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(commentData),
+    await callPodioApi(`/comment/item/${itemId}`, 'POST', {
+      value: commentText
     });
     
     return true;
   } catch (error) {
-    console.error('Error adding comment to Podio:', error);
-    throw new Error('Failed to add comment to Podio');
+    console.error('Error adding comment:', error);
+    return false;
   }
 };
 
-// Function to add a comment to a packing spec
+// Add a comment to a packing spec
 export const addCommentToPackingSpec = async (
-  specId: number,
-  comment: string,
-  userName: string
+  specId: number, 
+  commentText: string,
+  userDisplayName: string
 ): Promise<boolean> => {
   try {
-    console.log(`Adding comment to packing spec ${specId}: ${comment}`);
+    // Prepend the user's name to the comment for better visibility
+    const formattedComment = `${userDisplayName}: ${commentText}`;
     
-    // Store user information in localStorage to identify comments made by the current user
-    const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
-      // We already have this information stored when the user logs in
-      console.log('User info already stored in localStorage');
-    } else {
-      // If not stored yet for some reason, add basic info
-      localStorage.setItem('user_info', JSON.stringify({
-        username: userName,
-        name: 'Your Company' // Default fallback
-      }));
-    }
-    
-    const success = await addCommentToPodio(specId, comment, userName);
-    
-    if (!success) {
-      throw new Error('Failed to add comment to Podio');
-    }
-    
-    return true;
+    return await addCommentToPodio(specId, formattedComment);
   } catch (error) {
     console.error('Error adding comment to packing spec:', error);
-    throw new Error('Failed to add comment to packing specification');
+    return false;
   }
 };
