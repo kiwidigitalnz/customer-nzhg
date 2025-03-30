@@ -4,17 +4,15 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
-  Check, MessageSquare 
+  MessageSquare 
 } from 'lucide-react';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
-  hideApprovalsTab?: boolean;
 }
 
 const TabsNavigation: React.FC<TabsNavigationProps> = ({ 
-  newCommentsCount = 0,
-  hideApprovalsTab = false
+  newCommentsCount = 0
 }) => {
   return (
     <TabsList className="mb-6 w-full flex overflow-x-auto justify-start p-1 bg-muted/70 rounded-md">
@@ -38,12 +36,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <Truck className="mr-1.5 h-4 w-4" />
         <span>Shipping</span>
       </TabsTrigger>
-      {!hideApprovalsTab && (
-        <TabsTrigger value="approvals" className="flex items-center">
-          <Check className="mr-1.5 h-4 w-4" />
-          <span>Approvals</span>
-        </TabsTrigger>
-      )}
       <TabsTrigger value="comments" className="flex items-center relative">
         <MessageSquare className="mr-1.5 h-4 w-4" />
         <span>Comments</span>
