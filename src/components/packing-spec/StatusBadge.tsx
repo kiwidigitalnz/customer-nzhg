@@ -23,14 +23,14 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, showIcon = false }) =
       return (
         <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
           {showIcon && <CheckCircle2 className="mr-1.5 h-3 w-3" />}
-          Approved
+          Approved by Customer
         </Badge>
       );
     case 'rejected':
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
           {showIcon && <AlertTriangle className="mr-1.5 h-3 w-3" />}
-          Rejected
+          Changes Requested
         </Badge>
       );
     default:
