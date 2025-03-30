@@ -1,11 +1,13 @@
 
 import React from 'react';
 import { hasValue } from '@/utils/formatters';
+import CategoryDisplay from './CategoryDisplay';
+import { CountryFlagsList } from './CountryFlag';
 
 interface AttributeDefinition {
   key: string;
   label: string;
-  fieldType?: 'text' | 'date' | 'html' | 'image' | 'link';
+  fieldType?: 'text' | 'date' | 'html' | 'image' | 'link' | 'category' | 'country';
 }
 
 interface SpecSectionProps {
@@ -34,6 +36,20 @@ const SpecSection: React.FC<SpecSectionProps> = ({
   // If no attributes have values, don't render the section
   if (attributesWithValues.length === 0) return null;
   
+  // Default renderer if not provided
+  const defaultRenderValue = (value: any, fieldType?: string) => {
+    if (value === undefined || value === null) return null;
+    
+    switch (fieldType) {
+      case 'category':
+        return <CategoryDisplay categories={value} />;
+      case 'country':
+        return <CountryFlagsList countries={value} />;
+      default:
+        return typeof value === 'string' ? value : JSON.stringify(value);
+    }
+  };
+  
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-medium flex items-center">
@@ -48,7 +64,7 @@ const SpecSection: React.FC<SpecSectionProps> = ({
             <div key={key} className="flex flex-col">
               <span className="text-sm text-muted-foreground">{label}</span>
               <span className="font-medium">
-                {renderValue ? renderValue(value, fieldType) : value}
+                {renderValue ? renderValue(value, fieldType) : defaultRenderValue(value, fieldType)}
               </span>
             </div>
           );

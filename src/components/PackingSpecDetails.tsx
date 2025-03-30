@@ -35,6 +35,8 @@ import StatusBadge from './packing-spec/StatusBadge';
 import SpecSection from './packing-spec/SpecSection';
 import ImagePreview from './packing-spec/ImagePreview';
 import CommentsList from './packing-spec/CommentsList';
+import CategoryDisplay from './packing-spec/CategoryDisplay';
+import { CountryFlagsList } from './packing-spec/CountryFlag';
 
 // Icons
 import { 
@@ -187,6 +189,10 @@ const PackingSpecDetails = () => {
             {value} <ExternalLink className="h-3 w-3 ml-1" />
           </a>
         );
+      case 'category':
+        return <CategoryDisplay categories={value} />;
+      case 'country':
+        return <CountryFlagsList countries={value} />;
       default:
         return typeof value === 'string' ? value : JSON.stringify(value);
     }
@@ -524,11 +530,31 @@ const PackingSpecDetails = () => {
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Allergen Type</h4>
-                            <p className="font-medium">{spec.details.allergenType || "N/A"}</p>
+                            <div className="mt-1">
+                              {spec.details.allergenType ? (
+                                <CategoryDisplay 
+                                  categories={spec.details.allergenType} 
+                                  variant="outline"
+                                  bgColor="bg-red-50"
+                                />
+                              ) : (
+                                <span className="text-muted-foreground italic">N/A</span>
+                              )}
+                            </div>
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Ingredient Type</h4>
-                            <p className="font-medium">{spec.details.ingredientType || "N/A"}</p>
+                            <div className="mt-1">
+                              {spec.details.ingredientType ? (
+                                <CategoryDisplay 
+                                  categories={spec.details.ingredientType} 
+                                  variant="outline"
+                                  bgColor="bg-green-50"
+                                />
+                              ) : (
+                                <span className="text-muted-foreground italic">N/A</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -582,14 +608,11 @@ const PackingSpecDetails = () => {
                             </h4>
                             <div className="flex flex-wrap gap-2">
                               {spec.details.countryOfEligibility ? (
-                                (Array.isArray(spec.details.countryOfEligibility) ? 
-                                  spec.details.countryOfEligibility : 
-                                  [spec.details.countryOfEligibility]
-                                ).map((country, index) => (
-                                  <Badge key={index} variant="outline" className="bg-blue-50">
-                                    {country}
-                                  </Badge>
-                                ))
+                                <CountryFlagsList 
+                                  countries={spec.details.countryOfEligibility} 
+                                  variant="outline"
+                                  bgColor="bg-blue-50"
+                                />
                               ) : (
                                 <span className="text-muted-foreground italic">Not specified</span>
                               )}
@@ -603,14 +626,11 @@ const PackingSpecDetails = () => {
                             </h4>
                             <div className="flex flex-wrap gap-2">
                               {spec.details.otherMarkets ? (
-                                (Array.isArray(spec.details.otherMarkets) ? 
-                                  spec.details.otherMarkets : 
-                                  [spec.details.otherMarkets]
-                                ).map((market, index) => (
-                                  <Badge key={index} variant="outline" className="bg-green-50">
-                                    {market}
-                                  </Badge>
-                                ))
+                                <CountryFlagsList 
+                                  countries={spec.details.otherMarkets} 
+                                  variant="outline"
+                                  bgColor="bg-green-50"
+                                />
                               ) : (
                                 <span className="text-muted-foreground italic">Not specified</span>
                               )}
@@ -627,7 +647,13 @@ const PackingSpecDetails = () => {
                           </h4>
                           <div className="bg-muted/20 p-3 rounded-md">
                             {spec.details.testingRequirements ? (
-                              <p>{formatTextContent(spec.details.testingRequirements)}</p>
+                              <div className="mt-1">
+                                <CategoryDisplay 
+                                  categories={spec.details.testingRequirements} 
+                                  variant="secondary"
+                                  bgColor="bg-violet-50"
+                                />
+                              </div>
                             ) : (
                               <p className="text-muted-foreground italic">No specific testing requirements provided</p>
                             )}
@@ -641,7 +667,13 @@ const PackingSpecDetails = () => {
                           </h4>
                           <div className="bg-muted/20 p-3 rounded-md">
                             {spec.details.regulatoryRequirements ? (
-                              <p>{formatTextContent(spec.details.regulatoryRequirements)}</p>
+                              <div className="mt-1">
+                                <CategoryDisplay 
+                                  categories={spec.details.regulatoryRequirements} 
+                                  variant="secondary"
+                                  bgColor="bg-amber-50"
+                                />
+                              </div>
                             ) : (
                               <p className="text-muted-foreground italic">No specific regulatory requirements provided</p>
                             )}
