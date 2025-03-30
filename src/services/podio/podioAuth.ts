@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 
 interface PodioCredentials {
@@ -137,10 +138,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     // Make the API call
     let searchResponse;
     try {
-      searchResponse = await callPodioApi(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(filters),
-      });
+      searchResponse = await callPodioApi(endpoint, 'POST', filters);
     } catch (error) {
       console.error('Error during contact search:', error);
       
@@ -156,10 +154,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
         };
         console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
         
-        searchResponse = await callPodioApi(endpoint, {
-          method: 'POST',
-          body: JSON.stringify(alternativeFilters),
-        });
+        searchResponse = await callPodioApi(endpoint, 'POST', alternativeFilters);
       } catch (secondError) {
         console.error('Alternative filter also failed:', secondError);
         throw new Error('Failed to search for user in Podio contacts');
