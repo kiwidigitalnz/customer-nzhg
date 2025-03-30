@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -228,10 +229,10 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
+      // Updated to pass only 2 arguments as per the new function signature
       const success = await addCommentToPackingSpec(
         spec.id, 
-        newComment, 
-        user?.name || 'Anonymous User'
+        newComment
       );
       
       if (success) {
