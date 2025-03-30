@@ -68,7 +68,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
                 <User className="mr-1.5 h-3.5 w-3.5" />
                 Customer
               </h4>
-              <p className="text-sm font-medium">{details.customer || "N/A"}</p>
+              <p className="text-sm font-medium">{user?.name || details.customer || "N/A"}</p>
             </div>
             
             <div>
