@@ -18,17 +18,17 @@ export {
   getPackingSpecsForContact,
   getPackingSpecDetails,
   updatePackingSpecStatus,
-  PackingSpec,
   PACKING_SPEC_FIELD_IDS
 } from './podio/podioPackingSpecs';
+export type { PackingSpec } from './podio/podioPackingSpecs';
 
 // Export comment-related functions and types
 export {
   getCommentsFromPodio,
   addCommentToPodio,
   addCommentToPackingSpec,
-  CommentItem
 } from './podio/podioComments';
+export type { CommentItem } from './podio/podioComments';
 
 // Export file upload related functions
 export {
