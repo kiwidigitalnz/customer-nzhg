@@ -15,6 +15,26 @@ interface PodioCredentials {
   password: string;
 }
 
+// Helper function to validate if token is actually working with Podio
+export const validatePodioToken = async (): Promise<boolean> => {
+  try {
+    const accessToken = localStorage.getItem('podio_access_token');
+    if (!accessToken) return false;
+    
+    // Try a simple API call to validate the token
+    const response = await fetch('https://api.podio.com/user/status', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Error validating Podio token:', error);
+    return false;
+  }
+};
+
 // Helper function to check if we have valid Podio tokens
 export const hasValidPodioTokens = (): boolean => {
   const accessToken = localStorage.getItem('podio_access_token');
@@ -30,17 +50,33 @@ export const hasValidPodioTokens = (): boolean => {
   return expiryTime > (now + 300000);
 };
 
+// Function to clear invalid Podio tokens
+export const clearPodioTokens = (): void => {
+  localStorage.removeItem('podio_access_token');
+  localStorage.removeItem('podio_refresh_token');
+  localStorage.removeItem('podio_token_expiry');
+  console.log('Cleared Podio tokens');
+};
+
 // Function to initially authenticate with Podio in production
 export const ensureInitialPodioAuth = async (): Promise<boolean> => {
-  // Skip if we already have valid tokens
+  // First validate any existing tokens
   if (hasValidPodioTokens()) {
-    console.log('Already have valid Podio tokens');
-    return true;
+    console.log('Found valid Podio tokens, validating...');
+    const isValid = await validatePodioToken();
+    
+    if (isValid) {
+      console.log('Existing tokens are valid');
+      return true;
+    } else {
+      console.log('Existing tokens are invalid, clearing and getting new ones');
+      clearPodioTokens();
+    }
   }
   
   console.log('Starting OAuth flow for Podio authentication...');
   
-  // Use the OAuth flow for authentication
+  // Always use the OAuth flow for authentication
   return await startPodioOAuthFlow();
 };
 
@@ -78,6 +114,9 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         const errorData = await response.json().catch(() => ({}));
         console.error('Failed to refresh token using refresh token:', errorData);
         
+        // Clear invalid tokens
+        clearPodioTokens();
+        
         // If refresh token failed, start OAuth flow again
         return startPodioOAuthFlow();
       }
@@ -91,9 +130,20 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       const safeExpiryTime = Date.now() + ((data.expires_in - 3600) * 1000);
       localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
       
+      // Validate the new token
+      const isValid = await validatePodioToken();
+      if (!isValid) {
+        console.error('Refreshed token validation failed, starting OAuth flow');
+        clearPodioTokens();
+        return startPodioOAuthFlow();
+      }
+      
       return true;
     } catch (error) {
       console.error('Error refreshing Podio token:', error);
+      
+      // Clear invalid tokens
+      clearPodioTokens();
       
       // Start OAuth flow again
       return startPodioOAuthFlow();
@@ -104,62 +154,16 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
 };
 
-// Helper function to get a token using client credentials
-const getClientCredentialsToken = async (clientId: string, clientSecret: string): Promise<boolean> => {
-  try {
-    console.log('Getting client credentials token with ID:', clientId.substring(0, 5) + '...');
-    
-    const response = await fetch('https://podio.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-      }).toString(),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData = {};
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { error: errorText };
-      }
-      console.error('Failed to get client credentials token:', errorData);
-      return false;
-    }
-    
-    const data = await response.json();
-    console.log('Successfully obtained client credentials token');
-    
-    localStorage.setItem('podio_access_token', data.access_token);
-    
-    // May not have refresh token with client credentials
-    if (data.refresh_token) {
-      localStorage.setItem('podio_refresh_token', data.refresh_token);
-    }
-    
-    // Set expiry to 1 hour less than actual to ensure we refresh in time
-    const safeExpiryTime = Date.now() + ((data.expires_in - 3600) * 1000);
-    localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
-    
-    return true;
-  } catch (error) {
-    console.error('Error getting client credentials token:', error);
-    return false;
-  }
-};
+// Improved function to make authenticated API calls to Podio with retry limits
+let retryCount = 0;
+const MAX_RETRIES = 2;
 
-// Improved function to make authenticated API calls to Podio
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // First, ensure we have a valid token
   const tokenValid = await ensureValidToken();
   
   if (!tokenValid) {
+    retryCount = 0; // Reset retry count
     const error = createAuthError(
       AuthErrorType.TOKEN,
       'Not authenticated with Podio',
@@ -184,21 +188,43 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       headers,
     });
     
-    // If token is expired, try refreshing it once and retry the call
+    // If token is expired or invalid, try refreshing it once and retry the call
     if (response.status === 401 || response.status === 403) {
       console.log(`API call returned ${response.status}, attempting to refresh token`);
-      const refreshed = await refreshPodioToken();
-      if (refreshed) {
-        // Retry the API call with the new token
-        return callPodioApi(endpoint, options);
+      
+      // Check if we've already retried too many times
+      if (retryCount >= MAX_RETRIES) {
+        console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
+        retryCount = 0; // Reset for next time
+        clearPodioTokens();
+        const refreshed = await startPodioOAuthFlow();
+        if (!refreshed) {
+          throw createAuthError(
+            AuthErrorType.AUTHENTICATION,
+            'Failed to authenticate with Podio after multiple attempts',
+            false
+          );
+        }
       } else {
-        throw createAuthError(
-          AuthErrorType.TOKEN,
-          'Failed to refresh Podio token',
-          false
-        );
+        retryCount++;
+        console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
+        const refreshed = await refreshPodioToken();
+        if (!refreshed) {
+          retryCount = 0; // Reset for next time
+          throw createAuthError(
+            AuthErrorType.TOKEN,
+            'Failed to refresh Podio token',
+            false
+          );
+        }
       }
+      
+      // Retry the API call with the new token
+      return callPodioApi(endpoint, options);
     }
+    
+    // Reset retry count on successful call
+    retryCount = 0;
     
     if (!response.ok) {
       let errorMessage = 'Podio API error';
@@ -233,6 +259,9 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     if (import.meta.env.DEV) {
       console.error('Podio API call error:', error);
     }
+    
+    // Reset retry count on error
+    retryCount = 0;
     
     // If it's already an AuthError, just rethrow it
     if (error && typeof error === 'object' && 'type' in error) {

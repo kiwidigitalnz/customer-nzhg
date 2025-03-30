@@ -45,7 +45,8 @@ export const startPodioOAuthFlow = (): Promise<boolean> => {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      state: state
+      state: state,
+      scope: 'global' // Request full access scope
     });
     
     const authUrl = `https://podio.com/oauth/authorize?${params.toString()}`;
@@ -65,6 +66,8 @@ export const startPodioOAuthFlow = (): Promise<boolean> => {
     
     if (!popup) {
       console.error('Popup blocked by browser');
+      // Try alternative approach - direct user to auth page
+      window.location.href = authUrl;
       resolve(false);
       return;
     }

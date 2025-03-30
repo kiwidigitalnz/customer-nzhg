@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { ensureInitialPodioAuth, isPodioConfigured } from '../services/podioApi';
+import { ensureInitialPodioAuth, isPodioConfigured, clearPodioTokens } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
 const Index = () => {
@@ -24,18 +24,17 @@ const Index = () => {
       if (configured) {
         console.log('Attempting initial Podio authentication');
         
-        // Only clear tokens if we don't already have valid ones
-        if (!localStorage.getItem('podio_access_token')) {
-          console.log('No existing Podio tokens found, initiating new authentication');
-        } else {
-          console.log('Using existing Podio tokens');
-        }
+        // Clear existing tokens if they don't pass validation
+        // The ensureInitialPodioAuth function will now handle token validation
         
         ensureInitialPodioAuth()
           .then(success => {
             console.log('Initial Podio authentication result:', success ? 'Success' : 'Failed');
             if (!success) {
               console.error('Could not automatically authenticate with Podio');
+              // Clear tokens on authentication failure
+              clearPodioTokens();
+              
               toast({
                 title: "Connection Error",
                 description: "Could not connect to the service. Please try again later.",
@@ -45,6 +44,8 @@ const Index = () => {
           })
           .catch(err => {
             console.error('Error during automatic Podio authentication:', err);
+            // Clear tokens on authentication error
+            clearPodioTokens();
             
             toast({
               title: "Connection Error",

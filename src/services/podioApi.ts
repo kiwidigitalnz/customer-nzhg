@@ -9,6 +9,8 @@ export {
   refreshPodioToken,
   callPodioApi,
   ensureInitialPodioAuth,
+  validatePodioToken,
+  clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
   CONTACT_FIELD_IDS
