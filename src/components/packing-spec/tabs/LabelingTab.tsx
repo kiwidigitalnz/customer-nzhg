@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tag, Printer, Sticker } from 'lucide-react';
-import { formatTextContent } from '@/utils/formatters';
+import { formatTextContent, getImageUrl } from '@/utils/formatters';
 import ImageGallery from '../ImageGallery';
 
 interface LabelingTabProps {
@@ -10,15 +10,15 @@ interface LabelingTabProps {
 }
 
 const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
-  // Convert single label to array for consistency
+  // Extract label and shipper sticker images
   const labelImages = details.label ? (Array.isArray(details.label) ? details.label : [details.label]) : [];
   const shipperStickerImages = details.shipperSticker ? (Array.isArray(details.shipperSticker) ? details.shipperSticker : [details.shipperSticker]) : [];
   
   return (
     <div className="space-y-6 animate-in fade-in-50">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Product Label Information */}
-        <Card className="shadow-sm border-muted md:col-span-2">
+        <Card className="shadow-sm border-muted">
           <CardHeader className="pb-2 bg-muted/30">
             <CardTitle className="text-lg flex items-center">
               <Tag className="mr-2 h-5 w-5 text-primary/80" />
@@ -60,6 +60,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
               </div>
               
               <div className="md:col-span-2 mt-4">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Label Images</h4>
                 <ImageGallery 
                   images={labelImages} 
                   title="Label" 
@@ -72,7 +73,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
         </Card>
         
         {/* Printing Information */}
-        <Card className="shadow-sm border-muted md:col-span-2">
+        <Card className="shadow-sm border-muted">
           <CardHeader className="pb-2 bg-muted/30">
             <CardTitle className="text-lg flex items-center">
               <Printer className="mr-2 h-5 w-5 text-primary/80" />
@@ -90,10 +91,6 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Colour</h4>
                   <p className="font-medium">{details.printingColour || "N/A"}</p>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Information Required</h4>
-                  <p className="font-medium">{details.printingInfoRequired || "N/A"}</p>
-                </div>
               </div>
               <div className="space-y-4">
                 <div>
@@ -110,7 +107,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
         </Card>
         
         {/* Shipper Sticker Information */}
-        <Card className="shadow-sm border-muted md:col-span-2">
+        <Card className="shadow-sm border-muted">
           <CardHeader className="pb-2 bg-muted/30">
             <CardTitle className="text-lg flex items-center">
               <Sticker className="mr-2 h-5 w-5 text-primary/80" />
@@ -127,6 +124,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
               </div>
               
               <div className="md:col-span-2 mt-4">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Shipper Sticker Images</h4>
                 <ImageGallery 
                   images={shipperStickerImages} 
                   title="Shipper Sticker" 

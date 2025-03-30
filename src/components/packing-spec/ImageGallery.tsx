@@ -21,9 +21,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Filter out invalid images
-  const validImages = images && Array.isArray(images) ? images.filter(img => getImageUrl(img)) : [];
+  // Filter out invalid images - only include those we can get a URL for
+  const validImages = (images && Array.isArray(images)) 
+    ? images.filter(img => getImageUrl(img))
+    : [];
   
+  // If no valid images, show placeholder
   if (!validImages || validImages.length === 0) {
     return (
       <div className="bg-muted/20 rounded-md p-8 flex flex-col items-center justify-center text-muted-foreground">
