@@ -14,7 +14,6 @@ import { Info, AlertCircle } from 'lucide-react';
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [debugMode, setDebugMode] = useState(false);
   const [loginAttempted, setLoginAttempted] = useState(false);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
@@ -64,10 +63,6 @@ const LoginForm = () => {
       });
       console.error('Login failed. Error:', error);
     }
-  };
-
-  const toggleDebugMode = () => {
-    setDebugMode(!debugMode);
   };
 
   return (
@@ -140,40 +135,6 @@ const LoginForm = () => {
           >
             {loading ? 'Logging in...' : 'Login'}
           </Button>
-          
-          {/* Debug mode toggle - always visible for troubleshooting */}
-          <div className="mt-4 text-center">
-            <button 
-              type="button" 
-              onClick={toggleDebugMode}
-              className="text-xs text-muted-foreground underline"
-            >
-              {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
-            </button>
-            
-            {debugMode && (
-              <div className="mt-2 p-2 bg-muted text-left rounded text-xs">
-                <p>Podio configured: {podioConfigured ? 'Yes' : 'No'}</p>
-                <p>Username: {username}</p>
-                <p>Password: {password ? '********' : '(empty)'}</p>
-                <p>Login state: {loading ? 'Loading' : error ? 'Error' : 'Ready'}</p>
-                {error && <p>Error: {error}</p>}
-                <p className="mt-2 font-semibold">Field IDs used:</p>
-                <p>Username field: customer-portal-username</p>
-                <p>Password field: customer-portal-password</p>
-                <p>Title field: title</p>
-                <p className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/podio-setup')}
-                    className="text-blue-500 underline"
-                  >
-                    Go to Podio Setup
-                  </button>
-                </p>
-              </div>
-            )}
-          </div>
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">
