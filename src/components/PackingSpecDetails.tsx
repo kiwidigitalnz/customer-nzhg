@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -93,14 +92,12 @@ interface CommentItem {
   createdAt: string;
 }
 
-// Form schema for approval
 const approvalFormSchema = z.object({
   approvedByName: z.string().min(2, { message: "Please enter your name" }),
   comments: z.string().optional(),
   signature: z.string().min(1, { message: "Signature is required" }),
 });
 
-// Form schema for rejection
 const rejectionFormSchema = z.object({
   customerRequestedChanges: z.string().min(10, { message: "Please provide detailed feedback on why you're rejecting this specification" })
 });
@@ -121,7 +118,6 @@ const PackingSpecDetails = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Forms for approval and rejection
   const approvalForm = useForm<z.infer<typeof approvalFormSchema>>({
     resolver: zodResolver(approvalFormSchema),
     defaultValues: {
@@ -139,7 +135,6 @@ const PackingSpecDetails = () => {
   });
 
   useEffect(() => {
-    // Redirect to login if no user
     if (!user) {
       navigate('/login');
       return;
@@ -157,8 +152,6 @@ const PackingSpecDetails = () => {
           return;
         }
         
-        // Verify this spec belongs to the logged in user
-        // This check should also be done on the backend/API level
         if (data.details.customerId && data.details.customerId !== user.id) {
           setError('You do not have permission to view this specification');
           return;
@@ -200,15 +193,13 @@ const PackingSpecDetails = () => {
     setIsSubmitting(true);
     
     try {
-      // Prepare approval data
       const approvalData = {
         approvedByName: data.approvedByName,
         comments: data.comments || '',
         signature: data.signature,
-        status: 'approve-specification' // This should match Podio category option value
+        status: 'approve-specification'
       };
       
-      // We'll send both the approval status and the name
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
       
       const success = await updatePackingSpecStatus(
@@ -225,7 +216,6 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        // Update local state to reflect the new status
         setSpec(prev => prev ? {
           ...prev, 
           status: 'approved',
@@ -260,10 +250,9 @@ const PackingSpecDetails = () => {
     setIsSubmitting(true);
     
     try {
-      // Prepare rejection data
       const rejectionData = {
         customerRequestedChanges: data.customerRequestedChanges,
-        status: 'request-changes' // This should match Podio category option value
+        status: 'request-changes'
       };
       
       const success = await updatePackingSpecStatus(
@@ -280,7 +269,6 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        // Update local state to reflect the new status
         setSpec(prev => prev ? {
           ...prev, 
           status: 'rejected',
@@ -313,7 +301,7 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
-      const success = await addCommentToPackingSpec(spec.id, newComment);
+      const success = await addCommentToPackingSpec(spec.id, newComment, user?.name || 'Anonymous User');
       
       if (success) {
         toast({
@@ -321,9 +309,8 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        // Update local state with the new comment
         const newCommentItem: CommentItem = {
-          id: Date.now(), // Temporary ID
+          id: Date.now(),
           text: newComment,
           createdBy: user?.name || 'You',
           createdAt: new Date().toISOString()
@@ -377,9 +364,7 @@ const PackingSpecDetails = () => {
     );
   };
 
-  // Function to render attributes as a section
   const renderAttributeSection = (title: string, attributes: Array<{ key: string, label: string, fieldType?: string }>) => {
-    // Skip sections where all values are empty
     const hasValues = attributes.some(attr => 
       spec?.details[attr.key] && spec.details[attr.key] !== ''
     );
@@ -394,7 +379,6 @@ const PackingSpecDetails = () => {
             const value = spec?.details[key];
             if (!value) return null;
 
-            // Special rendering for dates
             if (fieldType === 'date') {
               return (
                 <div key={key} className="flex flex-col">
@@ -404,7 +388,6 @@ const PackingSpecDetails = () => {
               );
             }
             
-            // Default rendering
             return (
               <div key={key} className="flex flex-col">
                 <span className="text-sm text-muted-foreground">{label}</span>
@@ -456,7 +439,6 @@ const PackingSpecDetails = () => {
       </Button>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="overflow-hidden border-t-4 border-t-primary">
             <CardHeader className="pb-3 bg-card/95">
@@ -616,7 +598,6 @@ const PackingSpecDetails = () => {
                           { key: 'labelLink', label: 'Label Link' }
                         ])}
                         
-                        {/* Display label image if available */}
                         {spec.details.label && (
                           <div className="mt-6">
                             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
@@ -981,9 +962,7 @@ const PackingSpecDetails = () => {
           </Card>
         </div>
         
-        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status card */}
           <Card className="border-t-4 border-t-primary shadow-md">
             <CardHeader>
               <CardTitle className="text-lg flex items-center">
@@ -1027,7 +1006,6 @@ const PackingSpecDetails = () => {
             </CardContent>
           </Card>
           
-          {/* Details card */}
           <Card className="border shadow-md">
             <CardHeader>
               <CardTitle className="text-lg flex items-center">
