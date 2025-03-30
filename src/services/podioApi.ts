@@ -1,3 +1,4 @@
+
 // This file handles all interactions with the Podio API
 
 // Podio App IDs
@@ -66,7 +67,7 @@ const PACKING_SPEC_FIELD_IDS = {
   signature: 265959139,
   emailForApproval: 265959429,
   action: 265959430,
-  comments: 267538001  // New field ID for comments
+  comments: 267538001  // Field ID for comments
 };
 
 interface PodioCredentials {
@@ -109,57 +110,6 @@ export interface PackingSpec {
 interface FileUploadResponse {
   file_id: number;
 }
-
-// Mock data for development - will be replaced with actual API calls
-const MOCK_CONTACTS: ContactData[] = [
-  { 
-    id: 1, 
-    name: 'Test Customer', 
-    email: 'test@example.com',
-    username: 'test'
-  }
-];
-
-const MOCK_SPECS: PackingSpec[] = [
-  {
-    id: 101,
-    title: 'Manuka Honey 250g Jars',
-    description: 'Premium Manuka Honey packaging specification',
-    status: 'pending',
-    createdAt: '2023-11-15',
-    details: {
-      product: 'UMF 10+ Manuka Honey',
-      batchSize: '1,000 units',
-      packagingType: 'Glass jar with tamper-evident seal',
-      specialRequirements: 'UMF certification label required'
-    }
-  },
-  {
-    id: 102,
-    title: 'Clover Honey 500g Squeeze Bottle',
-    description: 'Clover Honey new packaging design',
-    status: 'pending',
-    createdAt: '2023-11-20',
-    details: {
-      product: 'Pure Clover Honey',
-      batchSize: '2,500 units',
-      packagingType: 'BPA-free plastic squeeze bottle',
-    }
-  },
-  {
-    id: 103,
-    title: 'Honey Gift Box - Premium Selection',
-    description: 'Holiday season gift box with 3 honey varieties',
-    status: 'approved',
-    createdAt: '2023-10-25',
-    details: {
-      product: 'Assorted Honey Selection',
-      batchSize: '500 units',
-      packagingType: 'Cardboard gift box with plastic inserts',
-      specialRequirements: 'Festive design with gold foil accents'
-    }
-  }
-];
 
 // Helper function to check if we have valid Podio tokens
 const hasValidPodioTokens = (): boolean => {
@@ -253,7 +203,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
     
     if (!hasValidPodioTokens() && !await refreshPodioToken()) {
       console.error('No valid Podio tokens available for authentication');
-      return null;
+      throw new Error('Not authenticated with Podio API');
     }
     
     // First, test to see if we can get the app details to verify our connection
@@ -262,7 +212,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
       console.log('Podio app details retrieved successfully:', appDetails.app_id);
     } catch (error) {
       console.error('Failed to retrieve app details:', error);
-      return null;
+      throw new Error('Could not connect to Podio. Please check your credentials.');
     }
 
     // Use a simpler approach to find items by field value
@@ -309,7 +259,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
         });
       } catch (secondError) {
         console.error('Alternative filter also failed:', secondError);
-        return null;
+        throw new Error('Failed to search for user in Podio contacts');
       }
     }
     
@@ -318,7 +268,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
     // Check if we found any matches
     if (!searchResponse.items || searchResponse.items.length === 0) {
       console.log('No contact found with username:', credentials.username);
-      return null;
+      throw new Error('No user found with that username');
     }
     
     // Get the first contact that matches
@@ -345,7 +295,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
     // Check if the password matches
     if (!passwordField || !passwordField.values || !passwordField.values.length) {
       console.log('Password field not found or empty');
-      return null;
+      throw new Error('Password field not found for this user');
     }
     
     // Compare the password
@@ -358,7 +308,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
     
     if (savedPassword !== credentials.password) {
       console.log('Password does not match');
-      return null;
+      throw new Error('Invalid password');
     }
     
     // Create the contact data object
@@ -375,7 +325,7 @@ const authenticateUser = async (credentials: PodioCredentials): Promise<ContactD
     
   } catch (error) {
     console.error('Authentication error:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -441,11 +391,7 @@ const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec
     return packingSpecs;
   } catch (error) {
     console.error('Error fetching packing specs:', error);
-    
-    // For development, return mock data as fallback
-    console.log('Falling back to mock data for packing specs');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    return MOCK_SPECS;
+    throw new Error('Failed to fetch packing specifications from Podio');
   }
 };
 
@@ -505,20 +451,9 @@ const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise
     
     console.log(`Preparing to upload file: ${fileName}`);
     
-    // For development, simulate a successful upload with a mock file ID
-    console.log('Simulating file upload for development');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    
-    // Generate a random file ID for development
-    const mockFileId = Math.floor(Math.random() * 9000000) + 1000000;
-    console.log(`Mock file uploaded with ID: ${mockFileId}`);
-    
-    return mockFileId;
-    
-    // In production, we would implement actual file upload like this:
-    /*
     // Convert data URL to blob
-    const blob = await (await fetch(fileDataUrl)).blob();
+    const response = await fetch(fileDataUrl);
+    const blob = await response.blob();
     
     // Create FormData object
     const formData = new FormData();
@@ -539,10 +474,9 @@ const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise
     
     const fileData = await uploadResponse.json() as FileUploadResponse;
     return fileData.file_id;
-    */
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
-    return null;
+    throw new Error('Failed to upload file to Podio');
   }
 };
 
@@ -635,11 +569,7 @@ const updatePackingSpecStatus = async (
     return true;
   } catch (error) {
     console.error('Error updating packing spec:', error);
-    
-    // For development, simulate a successful update
-    console.log('Simulating successful update for development');
-    await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
-    return true;
+    throw new Error('Failed to update packing specification status in Podio');
   }
 };
 
@@ -679,12 +609,7 @@ const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
     return comments;
   } catch (error) {
     console.error('Error fetching comments from Podio:', error);
-    
-    // For development, return mock data as fallback
-    console.log('Falling back to mock data for comments');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    
-    return getMockComments(itemId);
+    throw new Error('Failed to fetch comments from Podio');
   }
 };
 
@@ -722,11 +647,7 @@ const addCommentToPodio = async (
     return true;
   } catch (error) {
     console.error('Error adding comment to Podio:', error);
-    
-    // For development, simulate a successful update
-    console.log('Simulating successful comment addition for development');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    return true;
+    throw new Error('Failed to add comment to Podio');
   }
 };
 
@@ -819,35 +740,7 @@ const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null
     return packingSpec;
   } catch (error) {
     console.error('Error fetching packing spec details:', error);
-    
-    // For development, return mock data as fallback
-    console.log('Falling back to mock data for packing spec details');
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-    
-    // Find mock spec by ID
-    const mockSpec = MOCK_SPECS.find(spec => spec.id === specId);
-    
-    // Add more detailed fields to the mock data
-    if (mockSpec) {
-      mockSpec.details = {
-        ...mockSpec.details,
-        customerId: 1, // Default to test customer ID for mock data
-        jarShape: 'Round',
-        palletType: 'Standard',
-        cartonsPerLayer: '12',
-        numberOfLayers: '5',
-        dateReviewed: '2023-10-20',
-        approvalDate: mockSpec.status === 'approved' ? '2023-10-22' : '',
-        approvedByName: mockSpec.status === 'approved' ? 'John Smith' : '',
-        versionNumber: '1.2',
-        countryOfEligibility: 'New Zealand, Australia',
-        regulatoryRequirements: 'MPI Compliance',
-        labelCode: 'NZHG-2023-001',
-        labelSpecification: 'Standard Label with UMF Logo'
-      };
-    }
-    
-    return mockSpec || null;
+    throw new Error('Failed to fetch packing specification details from Podio');
   }
 };
 
@@ -900,34 +793,6 @@ const getDateFieldValue = (fields: any[], externalId: string): string | null => 
   return null;
 };
 
-// Get mock comments for development
-const getMockComments = (specId: number): CommentItem[] => {
-  if (specId === 103) {
-    return [
-      {
-        id: 1,
-        text: 'Please ensure the honey gift box has proper labeling for allergens.',
-        createdBy: 'Sarah Johnson',
-        createdAt: '2023-10-15T14:23:00Z'
-      },
-      {
-        id: 2,
-        text: 'Updated packaging to include allergen warnings on all sides.',
-        createdBy: 'Mark Wilson',
-        createdAt: '2023-10-18T09:45:00Z'
-      },
-      {
-        id: 3,
-        text: 'Approved the final design. Great work team!',
-        createdBy: 'John Smith',
-        createdAt: '2023-10-22T16:30:00Z'
-      }
-    ];
-  }
-  
-  return [];
-};
-
 // Function to add a comment to a packing spec
 const addCommentToPackingSpec = async (
   specId: number,
@@ -959,7 +824,7 @@ const addCommentToPackingSpec = async (
     return true;
   } catch (error) {
     console.error('Error adding comment to packing spec:', error);
-    return false;
+    throw new Error('Failed to add comment to packing specification');
   }
 };
 

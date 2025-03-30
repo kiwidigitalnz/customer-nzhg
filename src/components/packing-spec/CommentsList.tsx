@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { MessageSquare, Clock, User, RefreshCcw } from 'lucide-react';
+import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface Comment {
   id: number;
@@ -25,6 +27,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
   isActive = true 
 }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   
   // Use our custom polling hook if we have a specId
   const {
@@ -42,6 +45,15 @@ const CommentsList: React.FC<CommentsListProps> = ({
   // Use polled comments if available, otherwise use passed in comments
   const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
   
+  const handleRefresh = () => {
+    refreshComments();
+    toast({
+      title: "Refreshing comments",
+      description: "Checking for the latest comments from Podio...",
+      duration: 2000
+    });
+  };
+  
   if (!comments || comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -52,12 +64,19 @@ const CommentsList: React.FC<CommentsListProps> = ({
             variant="ghost" 
             size="sm" 
             className="mt-4" 
-            onClick={refreshComments} 
+            onClick={handleRefresh} 
             disabled={isLoading}
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Check for new comments
           </Button>
+        )}
+        
+        {error && (
+          <Alert variant="destructive" className="mt-4 mx-auto max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
       </div>
     );
@@ -82,13 +101,20 @@ const CommentsList: React.FC<CommentsListProps> = ({
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={refreshComments} 
+            onClick={handleRefresh} 
             disabled={isLoading}
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
+      )}
+      
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       
       {sortedComments.map(comment => {
@@ -133,12 +159,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
           </div>
         );
       })}
-      
-      {error && (
-        <div className="p-3 text-sm bg-red-50 text-red-800 rounded-md">
-          {error}
-        </div>
-      )}
     </div>
   );
 };

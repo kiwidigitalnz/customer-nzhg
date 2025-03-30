@@ -26,6 +26,7 @@ export const useCommentPolling = (
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastPollTimeRef = useRef<number>(Date.now());
+  const pollingIntervalRef = useRef<number | null>(null);
 
   // Function to fetch comments
   const fetchComments = async () => {
@@ -35,7 +36,6 @@ export const useCommentPolling = (
     setError(null);
     
     try {
-      // Only fetch new comments
       const fetchedComments = await getCommentsFromPodio(itemId);
       
       // Check if we have new comments
@@ -57,7 +57,7 @@ export const useCommentPolling = (
       lastPollTimeRef.current = Date.now();
     } catch (err) {
       console.error('Error polling for comments:', err);
-      setError('Failed to fetch new comments');
+      setError('Failed to fetch comments from Podio');
     } finally {
       setIsLoading(false);
     }
@@ -68,18 +68,28 @@ export const useCommentPolling = (
     fetchComments();
   };
 
-  // Setup polling
+  // Setup polling when component becomes active
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      // Clear interval if component becomes inactive
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
     
     // Initial fetch on mount or when becoming active
     fetchComments();
     
     // Set up polling interval
-    const intervalId = setInterval(fetchComments, pollingInterval);
+    pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
     
     return () => {
-      clearInterval(intervalId);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     };
   }, [itemId, isActive, pollingInterval]);
 
