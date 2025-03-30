@@ -66,6 +66,7 @@ const PackingSpecDetails = () => {
   const [newCommentsCount, setNewCommentsCount] = useState<number>(0);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [isApprovalPending, setIsApprovalPending] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -118,6 +119,7 @@ const PackingSpecDetails = () => {
     
     setIsSubmitting(true);
     setIsApprovalPending(true);
+    setIsUpdatingStatus(true);
     
     try {
       const approvalData = {
@@ -143,16 +145,19 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        setSpec(prev => prev ? {
-          ...prev, 
-          status: 'approved-by-customer',
-          details: {
-            ...prev.details,
-            approvedByName: data.approvedByName,
-            approvalDate: new Date().toISOString(),
-            signature: data.signature
-          }
-        } : null);
+        // Update state after a brief delay to avoid UI conflicts
+        setTimeout(() => {
+          setSpec(prev => prev ? {
+            ...prev, 
+            status: 'approved-by-customer',
+            details: {
+              ...prev.details,
+              approvedByName: data.approvedByName,
+              approvalDate: new Date().toISOString(),
+              signature: data.signature
+            }
+          } : null);
+        }, 300);
       } else {
         toast({
           title: 'Error',
@@ -168,8 +173,12 @@ const PackingSpecDetails = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
-      setIsApprovalPending(false);
+      // Use a timeout to ensure all state updates settle
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setIsApprovalPending(false);
+        setIsUpdatingStatus(false);
+      }, 300);
     }
   };
 
@@ -178,6 +187,7 @@ const PackingSpecDetails = () => {
     console.log('Rejecting with data:', data);
     
     setIsSubmitting(true);
+    setIsUpdatingStatus(true);
     
     try {
       const rejectionData = {
@@ -199,14 +209,17 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        setSpec(prev => prev ? {
-          ...prev, 
-          status: 'changes-requested',
-          details: {
-            ...prev.details,
-            customerRequestedChanges: data.customerRequestedChanges
-          }
-        } : null);
+        // Update state after a brief delay to avoid UI conflicts
+        setTimeout(() => {
+          setSpec(prev => prev ? {
+            ...prev, 
+            status: 'changes-requested',
+            details: {
+              ...prev.details,
+              customerRequestedChanges: data.customerRequestedChanges
+            }
+          } : null);
+        }, 300);
       } else {
         toast({
           title: 'Error',
@@ -222,7 +235,11 @@ const PackingSpecDetails = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      // Use a timeout to ensure all state updates settle
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setIsUpdatingStatus(false);
+      }, 300);
     }
   };
 
@@ -421,7 +438,7 @@ const PackingSpecDetails = () => {
             user={user}
             onApprove={handleApprove}
             onReject={handleReject}
-            isSubmitting={isSubmitting}
+            isSubmitting={isSubmitting || isUpdatingStatus}
             onOpenApproval={handleOpenApproval}
           />
         </div>
@@ -434,7 +451,7 @@ const PackingSpecDetails = () => {
         onReject={handleReject}
         title="Review Packing Specification"
         description="Please review all details carefully before approving or requesting changes."
-        isSubmitting={isSubmitting}
+        isSubmitting={isSubmitting || isUpdatingStatus}
         defaultName={user?.name || ''}
         itemPreview={approvalPreview}
       />

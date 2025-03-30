@@ -58,6 +58,7 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationData, setConfirmationData] = useState<ApprovalFormData | RejectionFormData | null>(null);
   const [confirmationType, setConfirmationType] = useState<'approve' | 'reject'>('approve');
+  const [internalDialogOpen, setInternalDialogOpen] = useState(isOpen);
   const { toast } = useToast();
 
   // Form setup
@@ -76,6 +77,11 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
       customerRequestedChanges: ''
     }
   });
+
+  // Update internal state when prop changes
+  React.useEffect(() => {
+    setInternalDialogOpen(isOpen);
+  }, [isOpen]);
 
   const handleSignatureCapture = (dataUrl: string) => {
     setSignature(dataUrl);
@@ -102,14 +108,23 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
         await onReject(confirmationData as RejectionFormData);
       }
       
+      // Close confirmation dialog first
       setShowConfirmation(false);
-      onOpenChange(false);
       
-      // Reset forms
-      approvalForm.reset();
-      rejectionForm.reset();
-      setSignature(null);
-      setChecklistCompleted(false);
+      // Use a timeout to ensure state updates are processed before closing the main dialog
+      setTimeout(() => {
+        // Close the main dialog
+        setInternalDialogOpen(false);
+        onOpenChange(false);
+        
+        // Reset forms after a delay to prevent state conflicts
+        setTimeout(() => {
+          approvalForm.reset();
+          rejectionForm.reset();
+          setSignature(null);
+          setChecklistCompleted(false);
+        }, 100);
+      }, 300);
     } catch (error) {
       console.error(`Error during ${confirmationType}:`, error);
       toast({
@@ -121,19 +136,27 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
     }
   };
 
+  // Handle dialog open/close with proper state management
+  const handleOpenChange = (open: boolean) => {
+    if (isSubmitting) return; // Don't allow closing during submission
+    
+    setInternalDialogOpen(open);
+    onOpenChange(open);
+    
+    // Reset forms when closing the dialog, but after a delay
+    if (!open) {
+      setTimeout(() => {
+        approvalForm.reset();
+        rejectionForm.reset();
+        setSignature(null);
+        setChecklistCompleted(false);
+      }, 100);
+    }
+  };
+
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!isSubmitting) {
-          onOpenChange(open);
-          if (!open) {
-            approvalForm.reset();
-            rejectionForm.reset();
-            setSignature(null);
-            setChecklistCompleted(false);
-          }
-        }
-      }}>
+      <Dialog open={internalDialogOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
@@ -217,7 +240,7 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => onOpenChange(false)}
+                        onClick={() => handleOpenChange(false)}
                         disabled={isSubmitting}
                       >
                         Cancel
@@ -260,7 +283,7 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => onOpenChange(false)}
+                      onClick={() => handleOpenChange(false)}
                       disabled={isSubmitting}
                     >
                       Cancel

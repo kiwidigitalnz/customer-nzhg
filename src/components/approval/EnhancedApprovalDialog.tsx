@@ -38,6 +38,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   buttonClassName = '',
 }) => {
   const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
@@ -115,9 +116,14 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         
         // Then close the dialog and reset form with a slight delay to avoid state conflicts
         setTimeout(() => {
+          setInternalOpen(false);
           setOpen(false);
-          resetForm();
-        }, 100);
+          
+          // Reset form after another delay to ensure UI updates cleanly
+          setTimeout(() => {
+            resetForm();
+          }, 100);
+        }, 300);
       } else {
         throw new Error(`Failed to ${type === 'approve' ? 'approve' : 'request changes for'} specification`);
       }
@@ -141,20 +147,27 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     }
   };
 
-  const handleClose = () => {
-    if (!loading) {
-      setOpen(false);
-      resetForm();
+  const handleOpenChange = (isOpen: boolean) => {
+    if (loading) return; // Don't allow closing during loading
+    
+    setInternalOpen(isOpen);
+    setOpen(isOpen);
+    
+    if (!isOpen) {
+      // Use a timeout to ensure all state updates have processed
+      setTimeout(() => {
+        resetForm();
+      }, 100);
     }
   };
 
+  // Sync internal state with open prop
+  React.useEffect(() => {
+    setInternalOpen(open);
+  }, [open]);
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!loading) {
-        setOpen(isOpen);
-        if (!isOpen) resetForm();
-      }
-    }}>
+    <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button 
           className={buttonClassName}
@@ -261,7 +274,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
           <Button 
