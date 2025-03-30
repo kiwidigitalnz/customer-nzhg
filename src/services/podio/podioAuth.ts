@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -25,12 +24,18 @@ export const validatePodioToken = async (): Promise<boolean> => {
     const accessToken = localStorage.getItem('podio_access_token');
     if (!accessToken) return false;
     
-    // Try a simple API call to validate the token
-    const response = await fetch('https://api.podio.com/user/status', {
+    // Use an endpoint that works with app authentication instead of user authentication
+    // The /app/ endpoint requires only app authorization
+    const response = await fetch(`https://api.podio.com/app/${PODIO_CONTACTS_APP_ID}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
+    
+    if (response.status === 403) {
+      console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
+      return false;
+    }
     
     return response.ok;
   } catch (error) {
@@ -125,16 +130,36 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       headers,
     });
     
+    // Handle 403 Forbidden specifically - this could mean the app doesn't have permission
+    if (response.status === 403) {
+      console.error(`API call returned 403 Forbidden for endpoint ${endpoint}. The app may not have sufficient permissions.`);
+      
+      // Getting a 403 after successful token acquisition likely means permission issues,
+      // not token issues. Don't keep retrying with the same credentials.
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { error_description: "Forbidden - Insufficient permissions" };
+      }
+      
+      throw createAuthError(
+        AuthErrorType.AUTHENTICATION,
+        `Permission error: ${errorData.error_description || 'The app lacks permission to access this resource'}`,
+        false
+      );
+    }
+    
     // If token is expired or invalid, try refreshing it once and retry the call
-    if (response.status === 401 || response.status === 403) {
-      console.log(`API call returned ${response.status}, attempting to refresh token`);
+    if (response.status === 401) {
+      console.log(`API call returned 401, attempting to refresh token`);
       
       // Check if we've already retried too many times
       if (retryCount >= MAX_RETRIES) {
         console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
         retryCount = 0; // Reset for next time
         clearPodioTokens();
-        const refreshed = await startPodioOAuthFlow();
+        const refreshed = await authenticateWithPasswordFlow(); // Changed from startPodioOAuthFlow to use password flow consistently
         if (!refreshed) {
           throw createAuthError(
             AuthErrorType.AUTHENTICATION,
@@ -307,6 +332,15 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     } catch (error) {
       console.error('Failed to retrieve app details:', error);
       
+      // If we get a 403, it means we don't have access to this app
+      if (error && typeof error === 'object' && 'type' in error && error.type === AuthErrorType.AUTHENTICATION) {
+        throw createAuthError(
+          AuthErrorType.CONFIGURATION,
+          'The app does not have permission to access the Contacts app. Please check Podio API permissions.',
+          false
+        );
+      }
+      
       // Try to refresh the token and try again
       const refreshed = await refreshPodioToken();
       if (refreshed) {
@@ -318,7 +352,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
           console.error('Failed to retrieve app details after token refresh:', retryError);
           throw createAuthError(
             AuthErrorType.CONFIGURATION,
-            'Could not connect to Podio. Please check your credentials.',
+            'Could not connect to Podio. Please check your credentials and app permissions.',
             false
           );
         }

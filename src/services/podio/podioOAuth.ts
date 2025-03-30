@@ -75,9 +75,9 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
   }
 };
 
-// Start the OAuth flow in a popup window - kept for backward compatibility
+// Start the OAuth flow - always use password flow for better consistency
 export const startPodioOAuthFlow = (): Promise<boolean> => {
-  // Instead of using OAuth flow, we'll use password flow which is more suitable for this app
+  console.log('Using Password Flow instead of OAuth flow for consistency');
   return authenticateWithPasswordFlow();
 };
 
