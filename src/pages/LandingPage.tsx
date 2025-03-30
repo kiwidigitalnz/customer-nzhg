@@ -3,11 +3,27 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
-import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart } from 'lucide-react';
+import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart, AlertTriangle } from 'lucide-react';
 
-const LandingPage = () => {
+interface LandingPageProps {
+  podioAuthError: string | null;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
   return (
     <MainLayout>
+      {/* Display error banner if there's a Podio auth error */}
+      {podioAuthError && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-500 mr-3" />
+            <p className="text-sm text-red-700">
+              <span className="font-medium">Connection Error:</span> {podioAuthError}
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Hero Section - Modern design with gradient background */}
       <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50">
         <div className="absolute inset-0">
