@@ -34,6 +34,19 @@
     --ring: 215 100% 50%;
 
     --radius: 0.5rem;
+
+    /* Status Badge Colors */
+    --status-pending-bg: 45 100% 96%;
+    --status-pending-text: 45 100% 35%;
+    --status-pending-border: 45 100% 85%;
+    
+    --status-approved-bg: 142 76% 96%;
+    --status-approved-text: 142 76% 35%;
+    --status-approved-border: 142 76% 85%;
+    
+    --status-rejected-bg: 0 84% 96%;
+    --status-rejected-text: 0 84% 35%;
+    --status-rejected-border: 0 84% 85%;
   }
 
   .dark {
@@ -120,4 +133,21 @@
 
 .btn-transition:hover {
   transform: translateY(-2px);
+}
+
+/* Status badge styles */
+.status-badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors shadow-sm;
+}
+
+.status-badge-pending {
+  @apply bg-amber-50 text-amber-800 border border-amber-200;
+}
+
+.status-badge-approved {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+}
+
+.status-badge-rejected {
+  @apply bg-rose-50 text-rose-700 border border-rose-200;
 }
