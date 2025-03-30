@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -971,30 +972,182 @@ const PackingSpecDetails = () => {
                   <Button variant="outline" onClick={handleGoBack} className="mb-6">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
                   </Button>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" onClick={handleApprove} disabled={isSubmitting}>
-                      <Check className="mr-2 h-4 w-4" />
-                      Approve
-                    </Button>
-                    <Button variant="outline" onClick={handleReject} disabled={isSubmitting}>
-                      <X className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
-                  </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <Button variant="outline" onClick={handleAddComment} disabled={isAddingComment}>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Add Comment
-                  </Button>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" onClick={handleSignatureSave} disabled={isSubmitting}>
-                      <Pen className="mr-2 h-4 w-4" />
-                      Sign
-                    </Button>
-                    <Button variant="outline" onClick={handleGoBack} className="mb-6">
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                <div>
+                  {/* Approval Dialog */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="default" className="w-full mb-3" disabled={isSubmitting}>
+                        <Check className="mr-2 h-4 w-4" /> Approve Specification
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-md">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Approve Specification</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Please confirm your approval and add your signature below.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      
+                      <Form {...approvalForm}>
+                        <form onSubmit={approvalForm.handleSubmit(handleApprove)} className="space-y-4">
+                          <FormField
+                            control={approvalForm.control}
+                            name="approvedByName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Your Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter your full name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={approvalForm.control}
+                            name="comments"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Comments (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea placeholder="Add any comments about your approval" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={approvalForm.control}
+                            name="signature"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Signature</FormLabel>
+                                <FormControl>
+                                  <SignaturePad onSave={handleSignatureSave} defaultName={approvalForm.getValues().approvedByName} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <AlertDialogFooter className="mt-6">
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                              <Button type="submit" disabled={isSubmitting || !approvalForm.formState.isValid}>
+                                {isSubmitting ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Approve
+                                  </>
+                                )}
+                              </Button>
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </form>
+                      </Form>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  
+                  {/* Rejection Dialog */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full" disabled={isSubmitting}>
+                        <X className="mr-2 h-4 w-4" /> Request Changes
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-md">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Request Changes</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Please provide detailed feedback about what changes are needed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      
+                      <Form {...rejectionForm}>
+                        <form onSubmit={rejectionForm.handleSubmit(handleReject)} className="space-y-4">
+                          <FormField
+                            control={rejectionForm.control}
+                            name="customerRequestedChanges"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Your Feedback</FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    placeholder="Please specify what changes are needed to approve this specification" 
+                                    className="min-h-[150px]"
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <AlertDialogFooter className="mt-6">
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                              <Button 
+                                type="submit" 
+                                variant="outline"
+                                disabled={isSubmitting || !rejectionForm.formState.isValid}
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <X className="mr-2 h-4 w-4" />
+                                    Submit Feedback
+                                  </>
+                                )}
+                              </Button>
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </form>
+                      </Form>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+                
+                <Separator />
+                
+                {/* Comments section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Add a Comment</h3>
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Write your comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={isAddingComment || !newComment.trim()}
+                      className="w-full"
+                    >
+                      {isAddingComment ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Posting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          Post Comment
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -1008,3 +1161,4 @@ const PackingSpecDetails = () => {
 };
 
 export default PackingSpecDetails;
+
