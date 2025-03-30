@@ -12,10 +12,10 @@ interface HoneySpecificationTabProps {
 const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }) => {
   return (
     <div className="space-y-6 animate-in fade-in-50">
-      <Card className="shadow-sm border border-primary/10 bg-gradient-to-br from-primary/5 to-background rounded-lg overflow-hidden">
-        <CardHeader className="pb-2 bg-primary/10">
+      <Card className="shadow-sm border-muted">
+        <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
-            <Package className="mr-2 h-5 w-5 text-primary" />
+            <Package className="mr-2 h-5 w-5 text-primary/80" />
             Honey Details
           </CardTitle>
         </CardHeader>
