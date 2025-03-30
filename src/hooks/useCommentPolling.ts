@@ -32,6 +32,7 @@ export const useCommentPolling = (
   const pollingIntervalRef = useRef<number | null>(null);
   const seenCommentsRef = useRef<Set<number>>(new Set());
   const newCommentsTimeoutRef = useRef<number | null>(null);
+  const hasViewedTabRef = useRef<boolean>(false);
   
   // Initialize seen comments with initial comments
   useEffect(() => {
@@ -55,7 +56,11 @@ export const useCommentPolling = (
       const newComments = fetchedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
       
       if (newComments.length > 0) {
-        setNewCommentsCount(newComments.length);
+        setNewCommentsCount(prevCount => {
+          // Only add to count if the tab is not currently active or has not been viewed yet
+          return isActive && hasViewedTabRef.current ? 0 : newComments.length;
+        });
+        
         // Track which comments are new for highlighting
         setNewCommentIds(new Set(newComments.map(comment => comment.id)));
       }
@@ -88,11 +93,7 @@ export const useCommentPolling = (
   const refreshComments = () => {
     fetchComments();
     // Mark all as seen when manually refreshed
-    comments.forEach(comment => {
-      seenCommentsRef.current.add(comment.id);
-    });
-    setNewCommentsCount(0);
-    setNewCommentIds(new Set());
+    markAllAsSeen();
   };
 
   // Mark comments as seen
@@ -102,14 +103,19 @@ export const useCommentPolling = (
       window.clearTimeout(newCommentsTimeoutRef.current);
     }
     
-    // Set a timeout to clear new comments after 5 seconds
-    newCommentsTimeoutRef.current = window.setTimeout(() => {
-      comments.forEach(comment => {
-        seenCommentsRef.current.add(comment.id);
-      });
-      setNewCommentsCount(0);
-      setNewCommentIds(new Set());
-    }, 5000);
+    // If the tab is currently active, mark all comments as seen after 5 seconds
+    if (isActive) {
+      hasViewedTabRef.current = true;
+      
+      // Set a timeout to clear new comments after 5 seconds
+      newCommentsTimeoutRef.current = window.setTimeout(() => {
+        comments.forEach(comment => {
+          seenCommentsRef.current.add(comment.id);
+        });
+        setNewCommentsCount(0);
+        setNewCommentIds(new Set());
+      }, 5000);
+    }
   };
 
   // Setup polling when component becomes active
@@ -120,6 +126,7 @@ export const useCommentPolling = (
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      hasViewedTabRef.current = false;
       return;
     }
     
