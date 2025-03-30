@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -467,7 +468,7 @@ const PackingSpecDetails = () => {
                 <TabsList className="mb-6 w-full flex overflow-x-auto justify-start p-1 bg-muted/70 rounded-md">
                   <TabsTrigger value="overview" className="flex items-center">
                     <Info className="mr-1.5 h-4 w-4" />
-                    <span>Overview</span>
+                    <span>Honey Specification</span>
                   </TabsTrigger>
                   <TabsTrigger value="requirements" className="flex items-center">
                     <ShieldCheck className="mr-1.5 h-4 w-4" />
@@ -498,7 +499,7 @@ const PackingSpecDetails = () => {
                   </TabsTrigger>
                 </TabsList>
                 
-                {/* Overview Tab */}
+                {/* Honey Specification Tab (previously Overview Tab) */}
                 <TabsContent value="overview" className="space-y-6 animate-in fade-in-50">
                   <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mb-6">
                     <h3 className="font-medium flex items-center text-blue-800 mb-2">
@@ -512,7 +513,7 @@ const PackingSpecDetails = () => {
                     <CardHeader className="pb-2 bg-muted/30">
                       <CardTitle className="text-lg flex items-center">
                         <Package className="mr-2 h-5 w-5 text-primary/80" />
-                        Product Information
+                        Honey Specification
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
@@ -528,7 +529,7 @@ const PackingSpecDetails = () => {
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Version</h4>
-                            <p className="font-medium">{spec.details.versionNumber || "N/A"}</p>
+                            <p className="font-medium">{formatVersion(spec.details.versionNumber)}</p>
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Type</h4>
@@ -1170,12 +1171,12 @@ const PackingSpecDetails = () => {
         </div>
         
         <div className="space-y-6">
-          {/* General Information Card */}
+          {/* Overview Card (previously General Information Card) */}
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center">
                 <Info className="mr-2 h-5 w-5 text-primary/80" />
-                General Information
+                Overview
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
