@@ -36,11 +36,11 @@ const Index = () => {
               // Clear tokens on authentication failure
               clearPodioTokens();
               
-              setPodioAuthError('Could not connect to the service');
+              setPodioAuthError('Could not connect to the service. Please check that your Podio app has the correct permissions.');
               
               toast({
                 title: "Connection Error",
-                description: "Could not connect to the service. Please try again later.",
+                description: "Could not connect to the service. Please check Podio permissions and try again.",
                 duration: 5000,
               });
             }
@@ -50,7 +50,7 @@ const Index = () => {
             // Clear tokens on authentication error
             clearPodioTokens();
             
-            const errorMessage = err?.message || 'Could not connect to the service';
+            const errorMessage = err?.message || 'Could not connect to the service. Possible Podio scope issue.';
             setPodioAuthError(errorMessage);
             
             toast({
@@ -61,7 +61,7 @@ const Index = () => {
           });
       } else {
         console.error('Podio not properly configured. Check environment variables.');
-        setPodioAuthError('Podio API is not properly configured');
+        setPodioAuthError('Podio API is not properly configured. Please check your client credentials.');
       }
     }
     

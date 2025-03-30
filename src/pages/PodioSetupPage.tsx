@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +70,8 @@ const PodioSetupPage = () => {
       client_id: storedClientId,
       redirect_uri: `https://customer.nzhg.com/podio-callback`,
       response_type: 'code',
-      state: state
+      state: state,
+      scope: 'app' // Ensure we're using the correct scope
     });
     
     const authUrl = `https://podio.com/oauth/authorize?${params.toString()}`;
