@@ -4,20 +4,16 @@ import {
   createAuthError, 
   ensureValidToken 
 } from '../auth/authService';
+import {
+  startPodioOAuthFlow,
+  getPodioClientId,
+  getPodioClientSecret
+} from './podioOAuth';
 
 interface PodioCredentials {
   username: string;
   password: string;
 }
-
-// Use environment variables for credentials in production
-const getPodioClientId = (): string | null => {
-  return import.meta.env.VITE_PODIO_CLIENT_ID || localStorage.getItem('podio_client_id');
-};
-
-const getPodioClientSecret = (): string | null => {
-  return import.meta.env.VITE_PODIO_CLIENT_SECRET || localStorage.getItem('podio_client_secret');
-};
 
 // Helper function to check if we have valid Podio tokens
 export const hasValidPodioTokens = (): boolean => {
@@ -39,26 +35,13 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   // Skip if we already have valid tokens
   if (hasValidPodioTokens()) {
     console.log('Already have valid Podio tokens');
-    // Force re-authentication to ensure token is actually valid
-    return await getClientCredentialsToken(getPodioClientId() || '', getPodioClientSecret() || '');
+    return true;
   }
   
-  // Only auto-authenticate in production
-  if (import.meta.env.PROD) {
-    const clientId = getPodioClientId();
-    const clientSecret = getPodioClientSecret();
-    
-    if (!clientId || !clientSecret) {
-      console.error('Missing Podio client credentials in environment variables');
-      return false;
-    }
-    
-    console.log('Starting client credential authentication with Podio...');
-    
-    return await getClientCredentialsToken(clientId, clientSecret);
-  }
+  console.log('Starting OAuth flow for Podio authentication...');
   
-  return false;
+  // Use the OAuth flow for authentication
+  return await startPodioOAuthFlow();
 };
 
 // Enhanced function to refresh the access token if needed
@@ -95,12 +78,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         const errorData = await response.json().catch(() => ({}));
         console.error('Failed to refresh token using refresh token:', errorData);
         
-        // If refresh token failed, fall back to client credentials in production
-        if (import.meta.env.PROD) {
-          return getClientCredentialsToken(clientId, clientSecret);
-        }
-        
-        return false;
+        // If refresh token failed, start OAuth flow again
+        return startPodioOAuthFlow();
       }
       
       const data = await response.json();
@@ -116,19 +95,13 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     } catch (error) {
       console.error('Error refreshing Podio token:', error);
       
-      // Fall back to client credentials in production
-      if (import.meta.env.PROD) {
-        return getClientCredentialsToken(clientId, clientSecret);
-      }
-      
-      return false;
+      // Start OAuth flow again
+      return startPodioOAuthFlow();
     }
-  } else if (import.meta.env.PROD) {
-    // No refresh token, use client credentials in production
-    return getClientCredentialsToken(clientId, clientSecret);
+  } else {
+    // No refresh token, use OAuth flow
+    return startPodioOAuthFlow();
   }
-  
-  return false;
 };
 
 // Helper function to get a token using client credentials

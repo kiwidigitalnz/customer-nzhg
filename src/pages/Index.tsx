@@ -24,12 +24,11 @@ const Index = () => {
       if (configured) {
         console.log('Attempting initial Podio authentication');
         
-        // Clear any existing tokens to ensure fresh authentication
-        if (localStorage.getItem('podio_access_token')) {
-          console.log('Clearing existing Podio tokens to force fresh authentication');
-          localStorage.removeItem('podio_access_token');
-          localStorage.removeItem('podio_refresh_token');
-          localStorage.removeItem('podio_token_expiry');
+        // Only clear tokens if we don't already have valid ones
+        if (!localStorage.getItem('podio_access_token')) {
+          console.log('No existing Podio tokens found, initiating new authentication');
+        } else {
+          console.log('Using existing Podio tokens');
         }
         
         ensureInitialPodioAuth()

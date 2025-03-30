@@ -14,6 +14,16 @@ export {
   CONTACT_FIELD_IDS
 } from './podio/podioAuth';
 
+// Export OAuth-related functions
+export {
+  startPodioOAuthFlow,
+  exchangeCodeForToken,
+  getPodioClientId,
+  getPodioClientSecret,
+  getPodioRedirectUri,
+  generatePodioAuthState
+} from './podio/podioOAuth';
+
 // Export packing spec related functions and types
 export {
   getPackingSpecsForContact,

@@ -43,17 +43,18 @@ const App = () => {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/packing-spec/:id" element={<PackingSpecDetailsPage />} />
               
+              {/* Allow PodioCallbackPage in production for OAuth flow */}
+              <Route path="/podio-callback" element={<PodioCallbackPage />} />
+              
               {/* Admin routes - only accessible in development mode */}
               {isDevelopment ? (
                 <>
                   <Route path="/podio-setup" element={<PodioSetupPage />} />
-                  <Route path="/podio-callback" element={<PodioCallbackPage />} />
                   <Route path="/admin/*" element={<AdminRoute />} />
                 </>
               ) : (
                 <>
                   <Route path="/podio-setup" element={<Navigate to="/" replace />} />
-                  <Route path="/podio-callback" element={<Navigate to="/" replace />} />
                   <Route path="/admin/*" element={<Navigate to="/" replace />} />
                 </>
               )}
