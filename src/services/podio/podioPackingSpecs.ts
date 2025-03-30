@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
@@ -322,12 +321,12 @@ export const updatePackingSpecStatus = async (
     if (status === 'approved-by-customer') {
       // Set customer approval status to "approve-specification"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
-        { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id } }
+        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id }
       ];
       
       // Set approval status to "Approved by Customer"
       updateData.fields[PACKING_SPEC_FIELD_IDS.approvalStatus] = [
-        { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id } }
+        { value: PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id }
       ];
       
       // Set approved by name
@@ -352,12 +351,12 @@ export const updatePackingSpecStatus = async (
     } else if (status === 'changes-requested') {
       // Set customer approval status to "request-changes"
       updateData.fields[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = [
-        { value: { id: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id } }
+        { value: PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id }
       ];
       
       // Set approval status to "Changes Requested" - using the correct category ID
       updateData.fields[PACKING_SPEC_FIELD_IDS.approvalStatus] = [
-        { value: { id: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id } }
+        { value: PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id }
       ];
       
       console.log('Setting approval status to CHANGES_REQUESTED with ID:', PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id);

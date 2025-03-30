@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,6 +76,9 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
 
       // Log the status being updated
       console.log(`Updating status to: ${type === 'approve' ? 'approved-by-customer' : 'changes-requested'}`);
+      console.log(`Using Category ID: ${type === 'approve' ? 
+        PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id : 
+        PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id}`);
       
       // Update the status with the correct Podio status values
       await updatePackingSpecStatus(
