@@ -17,13 +17,13 @@ export const handlePodioImageRequest = async (req: Request): Promise<Response> =
     console.log(`Handling proxy request for file ID: ${fileId}`);
     
     // Get file from Podio
-    const fileUrl = await getFileFromPodio(fileId);
+    const imageData = await getFileFromPodio(fileId);
     
-    // Redirect to the blob URL
-    return new Response(null, {
-      status: 302,
+    // Return the image data directly with appropriate headers
+    return new Response(imageData.blob, {
+      status: 200,
       headers: {
-        'Location': fileUrl,
+        'Content-Type': imageData.contentType || 'image/jpeg',
         'Cache-Control': 'max-age=3600'
       }
     });

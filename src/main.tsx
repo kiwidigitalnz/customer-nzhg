@@ -9,19 +9,36 @@ const url = new URL(window.location.href);
 if (url.pathname.startsWith('/api/podio-image/')) {
   handlePodioImageRequest(new Request(url.href))
     .then(response => {
-      // Handle redirect
-      if (response.status === 302) {
-        const location = response.headers.get('Location');
-        if (location) {
-          window.location.href = location;
-        }
+      // Handle the response - directly display the image
+      if (response.status === 200) {
+        response.blob().then(blob => {
+          const contentType = response.headers.get('Content-Type') || 'image/jpeg';
+          
+          // Create an img element and set its source
+          document.body.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.style.maxWidth = '100%';
+          document.body.appendChild(img);
+          
+          // Set content type
+          document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', contentType);
+        });
       } else {
         // Handle error
-        console.error('Podio image proxy error:', response.status);
+        document.body.innerHTML = `<div style="color: red; padding: 20px;">
+          <h1>Error Loading Image</h1>
+          <p>Status: ${response.status}</p>
+          <p>Please try again later</p>
+        </div>`;
       }
     })
     .catch(error => {
       console.error('Podio image proxy error:', error);
+      document.body.innerHTML = `<div style="color: red; padding: 20px;">
+        <h1>Error Loading Image</h1>
+        <p>${error.message}</p>
+      </div>`;
     });
 } else {
   // Normal app rendering

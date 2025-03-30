@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 import { extractPodioFileId, createProxyImageUrl } from '../services/imageProxy';
 
@@ -131,7 +130,9 @@ export const getImageUrl = (image: any): string | null => {
   
   // If we have a file ID, create proxy URL
   if (fileId) {
-    return createProxyImageUrl(fileId);
+    const proxyUrl = createProxyImageUrl(fileId);
+    console.log(`Created proxy URL for file ID ${fileId}:`, proxyUrl);
+    return proxyUrl;
   }
   
   return null;
@@ -139,7 +140,6 @@ export const getImageUrl = (image: any): string | null => {
 
 /**
  * Generate alternative Podio URLs to try if the main one fails
- * Now generates proxy URLs for different ways to interpret the file ID
  */
 export const getPodioImageAlternatives = (primaryUrl: string | null): string[] => {
   if (!primaryUrl) return [];

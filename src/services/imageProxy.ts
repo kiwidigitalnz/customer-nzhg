@@ -6,11 +6,16 @@
 
 import { callPodioApi, hasValidPodioTokens, refreshPodioToken } from './podioApi';
 
+interface ImageData {
+  blob: Blob;
+  contentType: string;
+}
+
 /**
  * Fetches a file from Podio by its ID
- * Returns the file data as a blob URL that can be displayed in the UI
+ * Returns the file data as a blob that can be displayed directly
  */
-export const getFileFromPodio = async (fileId: string | number): Promise<string> => {
+export const getFileFromPodio = async (fileId: string | number): Promise<ImageData> => {
   if (!fileId) {
     throw new Error('File ID is required');
   }
@@ -23,7 +28,7 @@ export const getFileFromPodio = async (fileId: string | number): Promise<string>
   }
   
   try {
-    // Use the official Podio API to get the file (not a direct URL request)
+    // Use the official Podio API to get the file
     const accessToken = localStorage.getItem('podio_access_token');
     
     // Direct fetch with proper authorization
@@ -37,9 +42,12 @@ export const getFileFromPodio = async (fileId: string | number): Promise<string>
       throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
     }
     
-    // Get file as blob and create a URL
+    // Get content type for proper header
+    const contentType = response.headers.get('Content-Type') || 'image/jpeg';
+    
+    // Get file as blob and return it
     const blob = await response.blob();
-    return URL.createObjectURL(blob);
+    return { blob, contentType };
   } catch (error) {
     console.error('Error fetching file from Podio:', error);
     throw error;
