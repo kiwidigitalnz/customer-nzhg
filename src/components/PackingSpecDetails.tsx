@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -501,46 +500,26 @@ const PackingSpecDetails = () => {
                 
                 {/* Honey Specification Tab (previously Overview Tab) */}
                 <TabsContent value="overview" className="space-y-6 animate-in fade-in-50">
-                  <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mb-6">
-                    <h3 className="font-medium flex items-center text-blue-800 mb-2">
-                      <Info className="mr-2 h-4 w-4 text-blue-600" />
-                      Product Summary
-                    </h3>
-                    <p className="text-blue-700 text-sm">{spec.description || "Detailed product specification for approval and implementation."}</p>
-                  </div>
-                  
-                  <Card className="shadow-sm border-muted">
-                    <CardHeader className="pb-2 bg-muted/30">
+                  <Card className="shadow-sm border border-primary/10 bg-gradient-to-br from-primary/5 to-background rounded-lg overflow-hidden">
+                    <CardHeader className="pb-2 bg-primary/10">
                       <CardTitle className="text-lg flex items-center">
-                        <Package className="mr-2 h-5 w-5 text-primary/80" />
-                        Honey Specification
+                        <Package className="mr-2 h-5 w-5 text-primary" />
+                        Honey Details
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                           <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Product Name</h4>
-                            <p className="font-medium">{spec.details.product || "N/A"}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Product Code</h4>
-                            <p className="font-medium">{spec.details.productCode || "N/A"}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-muted-foreground mb-1">Version</h4>
-                            <p className="font-medium">{formatVersion(spec.details.versionNumber)}</p>
-                          </div>
-                          <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Type</h4>
                             <p className="font-medium">{spec.details.honeyType || "N/A"}</p>
                           </div>
-                        </div>
-                        <div className="space-y-4">
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">UMF/MGO</h4>
                             <p className="font-medium">{spec.details.umfMgo || "N/A"}</p>
                           </div>
+                        </div>
+                        <div className="space-y-4">
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-1">Allergen Type</h4>
                             <div className="mt-1">
@@ -1119,7 +1098,7 @@ const PackingSpecDetails = () => {
                   <Card className="shadow-sm border-muted">
                     <CardHeader className="pb-2 bg-muted/30">
                       <CardTitle className="text-lg flex items-center">
-                        <MessageSquare className="mr-2 h-5 w-5 text-primary/80" />
+                        <MessageSquare className="mr-2 h-5 w-4 text-primary/80" />
                         Comments & Discussion
                       </CardTitle>
                       <CardDescription>
