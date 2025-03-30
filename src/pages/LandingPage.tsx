@@ -1,49 +1,46 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart } from 'lucide-react';
-
 const LandingPage = () => {
-  return (
-    <MainLayout>
-      {/* Hero Section - Modern design with gradient background */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50">
-        <div className="absolute inset-0">
-          <div className="absolute top-10 right-10 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply blur-3xl opacity-30 animate-blob"></div>
-          <div className="absolute bottom-10 left-10 w-80 h-80 bg-blue-100 rounded-full mix-blend-multiply blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-1/2 left-1/3 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+  return <MainLayout>
+      {/* Hero Section - With honey packing image */}
+      <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full blur-3xl"></div>
+          <div className="absolute top-60 -left-20 w-72 h-72 bg-blue-100 rounded-full blur-3xl"></div>
         </div>
-        
-        <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <img 
-              src="https://dl.dropbox.com/scl/fi/ln475joiipgz6wb0vqos8/NZHG-Logo.png?rlkey=yh8katmkzr3h2lnd7mvswilul" 
-              alt="NZ Honey Group" 
-              className="h-24 md:h-28 mx-auto"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = 'https://placehold.co/320x120/F0F8FF/0078D7?text=NZ+Honey+Group';
-              }}
-            />
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 leading-tight">
-              Premium Honey <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">Customer Portal</span>
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Your gateway to streamlined product approvals, specifications, and collaboration with our team through our intuitive customer portal.
-            </p>
-            <div className="pt-6">
-              <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
-                <Link to="/login" className="gap-2">
-                  Sign In <ArrowRight className="h-5 w-5" />
-                </Link>
-              </Button>
+        <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-1 space-y-8">
+              <img src="https://dl.dropbox.com/scl/fi/ln475joiipgz6wb0vqos8/NZHG-Logo.png?rlkey=yh8katmkzr3h2lnd7mvswilul" alt="NZ Honey Group" className="h-24 md:h-28" onError={e => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = 'https://placehold.co/320x120/F0F8FF/0078D7?text=NZ+Honey+Group';
+            }} />
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 leading-tight">
+                Premium Honey <span className="text-blue-600">Welcome to your Customer Portal</span>
+              </h1>
+              <p className="text-xl text-gray-600 max-w-2xl">
+                Your gateway to streamlined product approvals, specifications, and collaboration with our team through our intuitive customer portal.
+              </p>
+              <div className="pt-4">
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Link to="/login" className="gap-2">
+                    Sign In <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 relative">
+              <img src="https://dl.dropbox.com/scl/fi/jzfwk0tz6y49mzqc8bpn2/honey-jar-packaging-transparent.png?rlkey=0h3nwxddpnx5n6b5k6wj4f20t" alt="Honey Packaging" className="max-w-full h-auto" onError={e => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = 'https://placehold.co/600x400/F0F8FF/0078D7?text=Honey+Packaging';
+            }} />
             </div>
           </div>
         </div>
-        
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-white"></div>
       </div>
 
       {/* Features Section - More organic and flowing design */}
@@ -117,8 +114,6 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default LandingPage;
