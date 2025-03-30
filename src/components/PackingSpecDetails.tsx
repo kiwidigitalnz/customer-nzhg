@@ -1,78 +1,48 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getPackingSpecDetails, updatePackingSpecStatus, addCommentToPackingSpec } from '../services/podioApi';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from '@/components/ui/accordion';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { useToast } from '@/hooks/use-toast';
-import { 
-  ArrowLeft, 
-  Check, 
-  X, 
-  Loader2, 
-  Calendar, 
-  Package, 
-  FileText, 
-  Info, 
-  ShieldCheck, 
-  Factory, 
-  Box, 
-  AlertCircle, 
-  Award, 
-  MessageSquare, 
-  Send,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  ExternalLink,
-  Pen,
-  Save,
-  ImageIcon,
-  LinkIcon,
-  ThumbsUp,
-  Truck
-} from 'lucide-react';
-import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import SignaturePad from './SignaturePad';
+import { formatDate, formatTextContent, hasValue } from '@/utils/formatters';
 
+// UI Components
+import { 
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 
+} from '@/components/ui/card';
+import { 
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger 
+} from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+// Custom Components
+import SignaturePad from './SignaturePad';
+import StatusBadge from './packing-spec/StatusBadge';
+import SpecSection from './packing-spec/SpecSection';
+import ImagePreview from './packing-spec/ImagePreview';
+import CommentsList from './packing-spec/CommentsList';
+
+// Icons
+import { 
+  ArrowLeft, Check, X, Loader2, Calendar, Package, FileText, 
+  Info, ShieldCheck, Factory, Box, AlertCircle, Award, 
+  MessageSquare, Send, ChevronDown, ChevronUp, Clock,
+  ExternalLink, Pen, Save, ImageIcon, LinkIcon, ThumbsUp, Truck
+} from 'lucide-react';
+
+// Types
 interface PackingSpec {
   id: number;
   title: string;
@@ -92,6 +62,7 @@ interface CommentItem {
   createdAt: string;
 }
 
+// Form Schemas
 const approvalFormSchema = z.object({
   approvedByName: z.string().min(2, { message: "Please enter your name" }),
   comments: z.string().optional(),
@@ -113,11 +84,11 @@ const PackingSpecDetails = () => {
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeAccordionItems, setActiveAccordionItems] = useState<string[]>([]);
-  const [editMode, setEditMode] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Form setup
   const approvalForm = useForm<z.infer<typeof approvalFormSchema>>({
     resolver: zodResolver(approvalFormSchema),
     defaultValues: {
@@ -134,6 +105,7 @@ const PackingSpecDetails = () => {
     }
   });
 
+  // Fetch spec details
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -169,17 +141,9 @@ const PackingSpecDetails = () => {
     fetchSpecDetails();
   }, [specId, user, navigate]);
 
+  // Handlers
   const handleGoBack = () => {
     navigate('/dashboard');
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Not specified';
-    try {
-      return format(new Date(dateString), 'PPP');
-    } catch (e) {
-      return dateString;
-    }
   };
 
   const handleSignatureSave = (dataUrl: string) => {
@@ -187,6 +151,40 @@ const PackingSpecDetails = () => {
     approvalForm.setValue('signature', dataUrl);
   };
 
+  const toggleAccordionItem = (value: string) => {
+    setActiveAccordionItems(prev => 
+      prev.includes(value) 
+        ? prev.filter(item => item !== value) 
+        : [...prev, value]
+    );
+  };
+
+  // Render value based on field type
+  const renderFieldValue = (value: any, fieldType?: string) => {
+    if (value === undefined || value === null) return null;
+    
+    switch (fieldType) {
+      case 'date':
+        return formatDate(value);
+      case 'html':
+        return formatTextContent(value);
+      case 'link':
+        return (
+          <a 
+            href={value} 
+            className="text-primary hover:underline flex items-center" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            {value} <ExternalLink className="h-3 w-3 ml-1" />
+          </a>
+        );
+      default:
+        return typeof value === 'string' ? value : JSON.stringify(value);
+    }
+  };
+
+  // Approval and rejection handlers
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
     if (!spec) return;
     
@@ -301,7 +299,11 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
-      const success = await addCommentToPackingSpec(spec.id, newComment, user?.name || 'Anonymous User');
+      const success = await addCommentToPackingSpec(
+        spec.id, 
+        newComment, 
+        user?.name || 'Anonymous User'
+      );
       
       if (success) {
         toast({
@@ -343,63 +345,7 @@ const PackingSpecDetails = () => {
     }
   };
 
-  const getStatusBadge = (status: 'pending' | 'approved' | 'rejected') => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pending Approval</Badge>;
-      case 'approved':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
-      case 'rejected':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  const toggleAccordionItem = (value: string) => {
-    setActiveAccordionItems(prev => 
-      prev.includes(value) 
-        ? prev.filter(item => item !== value) 
-        : [...prev, value]
-    );
-  };
-
-  const renderAttributeSection = (title: string, attributes: Array<{ key: string, label: string, fieldType?: string }>) => {
-    const hasValues = attributes.some(attr => 
-      spec?.details[attr.key] && spec.details[attr.key] !== ''
-    );
-    
-    if (!hasValues) return null;
-    
-    return (
-      <div className="space-y-3">
-        <h3 className="text-lg font-medium">{title}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {attributes.map(({key, label, fieldType}) => {
-            const value = spec?.details[key];
-            if (!value) return null;
-
-            if (fieldType === 'date') {
-              return (
-                <div key={key} className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className="font-medium">{formatDate(value)}</span>
-                </div>
-              );
-            }
-            
-            return (
-              <div key={key} className="flex flex-col">
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <span className="font-medium">{value}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
+  // Loading state
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center">
@@ -411,6 +357,7 @@ const PackingSpecDetails = () => {
     );
   }
 
+  // Error state
   if (error || !spec) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -432,6 +379,7 @@ const PackingSpecDetails = () => {
     );
   }
 
+  // Main rendering
   return (
     <div className="container mx-auto px-4 py-8">
       <Button variant="outline" onClick={handleGoBack} className="mb-6">
@@ -451,7 +399,7 @@ const PackingSpecDetails = () => {
                   </CardDescription>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {getStatusBadge(spec.status)}
+                  <StatusBadge status={spec.status} />
                 </div>
               </div>
             </CardHeader>
@@ -471,6 +419,7 @@ const PackingSpecDetails = () => {
                   </TabsTrigger>
                 </TabsList>
                 
+                {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-6">
                   <Accordion type="multiple" value={activeAccordionItems} className="border rounded-md">
                     <AccordionItem value="product-info" className="border-0 border-b">
@@ -481,15 +430,20 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Product Details', [
-                          { key: 'product', label: 'Product Name' },
-                          { key: 'productCode', label: 'Product Code' },
-                          { key: 'umfMgo', label: 'UMF/MGO' },
-                          { key: 'honeyType', label: 'Honey Type' },
-                          { key: 'allergenType', label: 'Allergen Type' },
-                          { key: 'ingredientType', label: 'Ingredient Type' },
-                          { key: 'versionNumber', label: 'Version Number' }
-                        ])}
+                        <SpecSection 
+                          title="Product Details" 
+                          attributes={[
+                            { key: 'product', label: 'Product Name' },
+                            { key: 'productCode', label: 'Product Code' },
+                            { key: 'umfMgo', label: 'UMF/MGO' },
+                            { key: 'honeyType', label: 'Honey Type' },
+                            { key: 'allergenType', label: 'Allergen Type' },
+                            { key: 'ingredientType', label: 'Ingredient Type' },
+                            { key: 'versionNumber', label: 'Version Number' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                     
@@ -501,13 +455,19 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Market & Regulatory Requirements', [
-                          { key: 'customerRequirements', label: 'Customer Requirements' },
-                          { key: 'countryOfEligibility', label: 'Countries of Eligibility' },
-                          { key: 'otherMarkets', label: 'Other Markets' },
-                          { key: 'testingRequirements', label: 'Testing Requirements' },
-                          { key: 'regulatoryRequirements', label: 'Regulatory Requirements' }
-                        ])}
+                        <SpecSection 
+                          title="Market & Regulatory Requirements" 
+                          attributes={[
+                            { key: 'customerRequirements', label: 'Customer Requirements', fieldType: 'html' },
+                            { key: 'countryOfEligibility', label: 'Countries of Eligibility' },
+                            { key: 'otherMarkets', label: 'Other Markets' },
+                            { key: 'testingRequirements', label: 'Testing Requirements', fieldType: 'html' },
+                            { key: 'regulatoryRequirements', label: 'Regulatory Requirements', fieldType: 'html' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<ShieldCheck className="h-4 w-4" />}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                     
@@ -521,7 +481,7 @@ const PackingSpecDetails = () => {
                         </AccordionTrigger>
                         <AccordionContent className="px-6 pb-4">
                           <div className="bg-amber-50 p-4 rounded-md border border-amber-200">
-                            <p className="text-amber-800">{spec.details.customerRequestedChanges}</p>
+                            <p className="text-amber-800">{formatTextContent(spec.details.customerRequestedChanges)}</p>
                           </div>
                         </AccordionContent>
                       </AccordionItem>
@@ -529,6 +489,7 @@ const PackingSpecDetails = () => {
                   </Accordion>
                 </TabsContent>
                 
+                {/* Packaging Tab */}
                 <TabsContent value="packaging" className="space-y-6">
                   <Accordion type="multiple" value={activeAccordionItems} className="border rounded-md">
                     <AccordionItem value="jar-specs" className="border-0 border-b">
@@ -539,12 +500,18 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Jar Specifications', [
-                          { key: 'jarSize', label: 'Jar Size' },
-                          { key: 'jarColour', label: 'Jar Color' },
-                          { key: 'jarMaterial', label: 'Jar Material' },
-                          { key: 'jarShape', label: 'Jar Shape' }
-                        ])}
+                        <SpecSection 
+                          title="Jar Specifications" 
+                          attributes={[
+                            { key: 'jarSize', label: 'Jar Size' },
+                            { key: 'jarColour', label: 'Jar Color' },
+                            { key: 'jarMaterial', label: 'Jar Material' },
+                            { key: 'jarShape', label: 'Jar Shape' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<Package className="h-4 w-4" />}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                     
@@ -556,10 +523,15 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Lid Specifications', [
-                          { key: 'lidSize', label: 'Lid Size' },
-                          { key: 'lidColour', label: 'Lid Color' }
-                        ])}
+                        <SpecSection 
+                          title="Lid Specifications" 
+                          attributes={[
+                            { key: 'lidSize', label: 'Lid Size' },
+                            { key: 'lidColour', label: 'Lid Color' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                     
@@ -571,17 +543,24 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Other Packaging', [
-                          { key: 'onTheGoPackaging', label: 'On-The-Go Packaging' },
-                          { key: 'pouchSize', label: 'Pouch Size' },
-                          { key: 'sealInstructions', label: 'Seal Instructions' },
-                          { key: 'customisedCartonType', label: 'Customised Carton Type' }
-                        ])}
+                        <SpecSection 
+                          title="Other Packaging" 
+                          attributes={[
+                            { key: 'onTheGoPackaging', label: 'On-The-Go Packaging' },
+                            { key: 'pouchSize', label: 'Pouch Size' },
+                            { key: 'sealInstructions', label: 'Seal Instructions', fieldType: 'html' },
+                            { key: 'customisedCartonType', label: 'Customised Carton Type' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<Box className="h-4 w-4" />}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 </TabsContent>
                 
+                {/* Label Tab */}
                 <TabsContent value="label" className="space-y-6">
                   <Accordion type="multiple" value={activeAccordionItems} className="border rounded-md">
                     <AccordionItem value="label-info" className="border-0 border-b">
@@ -592,22 +571,22 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Label Information', [
-                          { key: 'labelCode', label: 'Label Code' },
-                          { key: 'labelSpecification', label: 'Label Specification' },
-                          { key: 'labelLink', label: 'Label Link' }
-                        ])}
+                        <SpecSection 
+                          title="Label Information" 
+                          attributes={[
+                            { key: 'labelCode', label: 'Label Code' },
+                            { key: 'labelSpecification', label: 'Label Specification', fieldType: 'html' },
+                            { key: 'labelLink', label: 'Label Link', fieldType: 'link' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<FileText className="h-4 w-4" />}
+                        />
                         
                         {spec.details.label && (
                           <div className="mt-6">
                             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Label Preview</h4>
-                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-                              <img 
-                                src={typeof spec.details.label === 'string' ? spec.details.label : spec.details.label.url} 
-                                alt="Label Preview" 
-                                className="max-h-80 rounded-md object-contain"
-                              />
-                            </div>
+                            <ImagePreview image={spec.details.label} alt="Label Preview" />
                           </div>
                         )}
                       </AccordionContent>
@@ -621,18 +600,25 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Printing Specifications', [
-                          { key: 'printingInfoLocated', label: 'Printing Info Location' },
-                          { key: 'printingColour', label: 'Printing Color' },
-                          { key: 'printingInfoRequired', label: 'Printing Info Required' },
-                          { key: 'requiredBestBeforeDate', label: 'Required Best Before Date' },
-                          { key: 'dateFormatting', label: 'Date Formatting' }
-                        ])}
+                        <SpecSection 
+                          title="Printing Specifications" 
+                          attributes={[
+                            { key: 'printingInfoLocated', label: 'Printing Info Location' },
+                            { key: 'printingColour', label: 'Printing Color' },
+                            { key: 'printingInfoRequired', label: 'Printing Info Required', fieldType: 'html' },
+                            { key: 'requiredBestBeforeDate', label: 'Required Best Before Date' },
+                            { key: 'dateFormatting', label: 'Date Formatting' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<Pen className="h-4 w-4" />}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 </TabsContent>
                 
+                {/* Shipping Tab */}
                 <TabsContent value="shipping" className="space-y-6">
                   <Accordion type="multiple" value={activeAccordionItems} className="border rounded-md">
                     <AccordionItem value="shipper-info" className="border-0 border-b">
@@ -643,21 +629,25 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Shipper Information', [
-                          { key: 'shipperSize', label: 'Shipper Size' },
-                          { key: 'shipperStickerCount', label: 'Shipper Sticker Count' }
-                        ])}
+                        <SpecSection 
+                          title="Shipper Information" 
+                          attributes={[
+                            { key: 'shipperSize', label: 'Shipper Size' },
+                            { key: 'shipperStickerCount', label: 'Shipper Sticker Count' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<Box className="h-4 w-4" />}
+                        />
                         
                         {spec.details.shipperSticker && (
                           <div className="mt-6">
                             <h4 className="font-medium mb-3 text-sm text-muted-foreground">Shipper Sticker Preview</h4>
-                            <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-                              <img 
-                                src={typeof spec.details.shipperSticker === 'string' ? spec.details.shipperSticker : spec.details.shipperSticker.url} 
-                                alt="Shipper Sticker" 
-                                className="max-h-60 rounded-md object-contain"
-                              />
-                            </div>
+                            <ImagePreview 
+                              image={spec.details.shipperSticker} 
+                              alt="Shipper Sticker" 
+                              maxHeight="max-h-60" 
+                            />
                           </div>
                         )}
                       </AccordionContent>
@@ -671,18 +661,25 @@ const PackingSpecDetails = () => {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-4">
-                        {renderAttributeSection('Pallet Information', [
-                          { key: 'palletType', label: 'Pallet Type' },
-                          { key: 'cartonsPerLayer', label: 'Cartons Per Layer' },
-                          { key: 'numberOfLayers', label: 'Number of Layers' },
-                          { key: 'palletSpecs', label: 'Pallet Specifications' },
-                          { key: 'palletDocuments', label: 'Pallet Documents' }
-                        ])}
+                        <SpecSection 
+                          title="Pallet Information" 
+                          attributes={[
+                            { key: 'palletType', label: 'Pallet Type' },
+                            { key: 'cartonsPerLayer', label: 'Cartons Per Layer' },
+                            { key: 'numberOfLayers', label: 'Number of Layers' },
+                            { key: 'palletSpecs', label: 'Pallet Specifications', fieldType: 'html' },
+                            { key: 'palletDocuments', label: 'Pallet Documents', fieldType: 'html' }
+                          ]}
+                          data={spec.details}
+                          renderValue={renderFieldValue}
+                          icon={<Truck className="h-4 w-4" />}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 </TabsContent>
                 
+                {/* Approvals Tab */}
                 <TabsContent value="approvals" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -711,10 +708,15 @@ const PackingSpecDetails = () => {
                       
                       {spec.status === 'approved' && (
                         <div className="space-y-4 p-4 bg-green-50 rounded-md border border-green-200">
-                          {renderAttributeSection('Approval Details', [
-                            { key: 'approvedByName', label: 'Approved By' },
-                            { key: 'approvalDate', label: 'Approval Date', fieldType: 'date' },
-                          ])}
+                          <SpecSection 
+                            title="Approval Details" 
+                            attributes={[
+                              { key: 'approvedByName', label: 'Approved By' },
+                              { key: 'approvalDate', label: 'Approval Date', fieldType: 'date' },
+                            ]}
+                            data={spec.details}
+                            renderValue={renderFieldValue}
+                          />
                           
                           {spec.details.signature && (
                             <div className="mt-4">
@@ -734,7 +736,7 @@ const PackingSpecDetails = () => {
                       {spec.status === 'rejected' && (
                         <div className="space-y-4 p-4 bg-red-50 rounded-md border border-red-200">
                           <h4 className="font-medium">Requested Changes</h4>
-                          <p className="text-red-800">{spec.details.customerRequestedChanges}</p>
+                          <p className="text-red-800">{formatTextContent(spec.details.customerRequestedChanges)}</p>
                         </div>
                       )}
                       
@@ -902,6 +904,7 @@ const PackingSpecDetails = () => {
                   </Card>
                 </TabsContent>
                 
+                {/* Comments Tab */}
                 <TabsContent value="comments" className="space-y-6">
                   <Card>
                     <CardHeader className="pb-3">
@@ -914,27 +917,7 @@ const PackingSpecDetails = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {spec.comments && spec.comments.length > 0 ? (
-                        <div className="space-y-4">
-                          {spec.comments.map(comment => (
-                            <div key={comment.id} className="bg-card rounded-md p-4 border">
-                              <div className="flex justify-between items-start">
-                                <p className="font-medium text-sm">{comment.createdBy}</p>
-                                <div className="flex items-center text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {formatDate(comment.createdAt)}
-                                </div>
-                              </div>
-                              <p className="mt-2">{comment.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>No comments yet</p>
-                        </div>
-                      )}
+                      <CommentsList comments={spec.comments || []} />
                       
                       <div className="pt-4">
                         <div className="flex items-start space-x-2">
@@ -962,6 +945,7 @@ const PackingSpecDetails = () => {
           </Card>
         </div>
         
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card className="border-t-4 border-t-primary shadow-md">
             <CardHeader>
@@ -1000,7 +984,7 @@ const PackingSpecDetails = () => {
               {spec.status === 'rejected' && spec.details.customerRequestedChanges && (
                 <div className="text-sm bg-red-50 p-3 rounded-md">
                   <p className="font-medium text-red-800">Feedback:</p>
-                  <p className="text-red-700 mt-1">{spec.details.customerRequestedChanges}</p>
+                  <p className="text-red-700 mt-1">{formatTextContent(spec.details.customerRequestedChanges)}</p>
                 </div>
               )}
             </CardContent>
