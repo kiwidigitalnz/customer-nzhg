@@ -101,11 +101,15 @@ export const isPodioConfigured = (): boolean => {
 };
 
 // Helper function to validate if token is actually working with Podio
-export const validatePodioToken = async (): Promise<boolean> => {
+export const validatePodioToken = async (accessToken: string): Promise<boolean> => {
+  if (!accessToken) {
+    if (import.meta.env.DEV) {
+      console.log('No token to validate');
+    }
+    return false;
+  }
+  
   try {
-    const accessToken = localStorage.getItem('podio_access_token');
-    if (!accessToken) return false;
-    
     if (import.meta.env.DEV) {
       console.log('Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
     }
@@ -119,20 +123,34 @@ export const validatePodioToken = async (): Promise<boolean> => {
       }
     });
     
-    if (response.status === 403) {
-      console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
+    if (import.meta.env.DEV) {
+      console.log(`Token validation: ${response.status} ${response.statusText}`);
       
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          console.log('Token validation error details:', errorData);
+        } catch (e) {
+          console.log('Could not parse error response');
+        }
+      }
+    }
+    
+    // Check more helpful message for 403 errors
+    if (response.status === 403) {
       if (import.meta.env.DEV) {
         console.log('This typically means the Podio app does not have the correct permissions.');
-        console.log('Ensure the Podio API client has access to the Contacts app (ID: 26969025)');
+        console.log(`Ensure the Podio API client has access to the Contacts app (ID: ${PODIO_CONTACTS_APP_ID})`);
+        console.log(`Client ID being used: ${getPodioClientId()}`);
       }
-      
       return false;
     }
     
     return response.ok;
   } catch (error) {
-    console.error('Error validating Podio token:', error);
+    if (import.meta.env.DEV) {
+      console.error('Error validating Podio token:', error);
+    }
     return false;
   }
 };
@@ -173,7 +191,7 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   // Then validate any existing tokens
   if (hasValidPodioTokens()) {
     console.log('Found valid Podio tokens, validating...');
-    const isValid = await validatePodioToken();
+    const isValid = await validatePodioToken(localStorage.getItem('podio_access_token'));
     
     if (isValid) {
       console.log('Existing tokens are valid');
@@ -209,47 +227,58 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 let retryCount = 0;
 const MAX_RETRIES = 2;
 
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  // Check if we're rate limited
+export const callPodioApi = async <T = any>(
+  endpoint: string, 
+  options: RequestInit = {},
+  retryCount = 0
+): Promise<T> => {
+  // Max 2 retries
+  if (retryCount > 2) {
+    throw createAuthError(
+      AuthErrorType.TOKEN,
+      'Maximum retry count exceeded for Podio API call'
+    );
+  }
+  
+  // Check if we're rate limited first
   if (isRateLimited()) {
     const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
     const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
     
     const error = createAuthError(
       AuthErrorType.NETWORK,
-      `Rate limited. Please wait ${waitSecs} seconds before trying again.`,
-      false
+      `Rate limited. Please wait ${waitSecs} seconds before trying again.`
     );
+    
     throw error;
   }
   
-  // Track API call rate
-  if (!trackApiCall()) {
-    const error = createAuthError(
-      AuthErrorType.NETWORK,
-      'Too many API calls. Please try again later.',
-      false
-    );
-    throw error;
-  }
-  
-  // First, ensure we have a valid token
-  const tokenValid = await ensureValidToken();
-  
-  if (!tokenValid) {
-    retryCount = 0; // Reset retry count
-    const error = createAuthError(
-      AuthErrorType.TOKEN,
-      'Not authenticated with Podio',
-      true,
-      refreshPodioToken
-    );
-    throw error;
+  // Ensure we have valid tokens
+  if (!hasValidPodioTokens()) {
+    if (import.meta.env.DEV) {
+      console.log('No valid tokens, attempting to refresh before API call');
+    }
+    
+    const refreshed = await refreshPodioToken();
+    
+    if (!refreshed) {
+      throw createAuthError(
+        AuthErrorType.TOKEN,
+        'Could not refresh token for API call'
+      );
+    }
   }
   
   const accessToken = localStorage.getItem('podio_access_token');
   
-  // Merge the authorization header with the provided options
+  if (!accessToken) {
+    throw createAuthError(
+      AuthErrorType.TOKEN,
+      'No access token available for API call'
+    );
+  }
+  
+  // Prepare headers
   const headers = {
     'Authorization': `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
@@ -258,143 +287,123 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   
   try {
     const apiDomain = getPodioApiDomain();
-    const response = await fetch(`https://${apiDomain}/${endpoint}`, {
+    const url = `https://${apiDomain}/${endpoint}`;
+    
+    if (import.meta.env.DEV) {
+      console.log(`Making API request to: ${url}`);
+      console.log(`Using token (first 10 chars): ${accessToken.substring(0, 10)}...`);
+    }
+    
+    const response = await fetch(url, {
       ...options,
       headers,
     });
     
-    // Handle rate limiting (420 or 429 status)
+    // Check if we need to handle rate limiting
     if (response.status === 420 || response.status === 429) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Rate limit reached:', errorData);
-      
-      // Extract retry-after information
-      const retryAfter = response.headers.get('Retry-After') || 
-                        errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1];
-      
+      // Handle rate limiting
+      const retryAfter = response.headers.get('Retry-After');
       if (retryAfter) {
         setRateLimit(parseInt(retryAfter, 10));
       } else {
-        // Default to 60 seconds
+        // Default to 60 seconds if no specific time given
         setRateLimit(60);
       }
       
       throw createAuthError(
         AuthErrorType.NETWORK,
-        `Rate limit reached. Please wait before trying again. ${errorData.error_description || ''}`,
-        false
+        `Rate limit reached. Please wait ${retryAfter || 60} seconds before trying again.`
       );
     }
     
-    // Handle 403 Forbidden specifically - this could mean the app doesn't have permission
-    if (response.status === 403) {
-      console.error(`API call returned 403 Forbidden for endpoint ${endpoint}. The app may not have sufficient permissions.`);
+    // If token is invalid, try to refresh and retry
+    if (response.status === 401 || response.status === 403) {
+      if (import.meta.env.DEV) {
+        console.log(`API call returned ${response.status} for endpoint ${endpoint}. Attempting token refresh.`);
+        
+        try {
+          const errorData = await response.clone().json();
+          console.log('API error details:', errorData);
+        } catch (e) {
+          console.log('Could not parse error response');
+        }
+      }
       
-      // Getting a 403 after successful token acquisition likely means permission issues,
-      // not token issues. Don't keep retrying with the same credentials.
+      // Clear tokens and try to refresh
+      clearPodioTokens();
+      
+      // Attempt to refresh the token
+      const refreshed = await refreshPodioToken();
+      
+      if (refreshed) {
+        // Retry the API call with the new token
+        return callPodioApi(endpoint, options, retryCount + 1);
+      } else {
+        throw createAuthError(
+          AuthErrorType.TOKEN,
+          'Could not refresh token after unauthorized response'
+        );
+      }
+    }
+    
+    // If we got a non-200 response that's not auth-related, log and throw an error
+    if (!response.ok) {
+      if (import.meta.env.DEV) {
+        console.error(`API call returned ${response.status} ${response.statusText} for endpoint ${endpoint}. The app may not have sufficient permissions.`);
+      }
+      
       let errorData;
       try {
         errorData = await response.json();
       } catch (e) {
-        errorData = { error_description: "Forbidden - Insufficient permissions" };
+        // Failed to parse JSON
+        errorData = { error: 'unknown', error_description: response.statusText };
+      }
+      
+      const error = createAuthError(
+        AuthErrorType.UNKNOWN,
+        errorData.error_description || `API call failed with status ${response.status}`
+      );
+      
+      throw error;
+    }
+    
+    // Handle empty responses
+    if (response.status === 204) {
+      return {} as T;
+    }
+    
+    // Parse the JSON response
+    try {
+      const data = await response.json();
+      return data as T;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error parsing API response:', error);
       }
       
       throw createAuthError(
-        AuthErrorType.AUTHENTICATION,
-        `Permission error: ${errorData.error_description || 'The app lacks permission to access this resource'}`,
-        false
+        AuthErrorType.UNKNOWN,
+        'Could not parse API response'
       );
     }
-    
-    // If token is expired or invalid, try refreshing it once and retry the call
-    if (response.status === 401) {
-      console.log(`API call returned 401, attempting to refresh token`);
-      
-      // Check if we've already retried too many times
-      if (retryCount >= MAX_RETRIES) {
-        console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
-        retryCount = 0; // Reset for next time
-        clearPodioTokens();
-        const refreshed = await authenticateWithPasswordFlow(); // Changed from startPodioOAuthFlow to use password flow consistently
-        if (!refreshed) {
-          throw createAuthError(
-            AuthErrorType.AUTHENTICATION,
-            'Failed to authenticate with Podio after multiple attempts',
-            false
-          );
-        }
-      } else {
-        retryCount++;
-        console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
-        const refreshed = await refreshPodioToken();
-        if (!refreshed) {
-          retryCount = 0; // Reset for next time
-          throw createAuthError(
-            AuthErrorType.TOKEN,
-            'Failed to refresh Podio token',
-            false
-          );
-        }
-      }
-      
-      // Retry the API call with the new token
-      return callPodioApi(endpoint, options);
-    }
-    
-    // Reset retry count on successful call
-    retryCount = 0;
-    
-    if (!response.ok) {
-      let errorMessage = 'Podio API error';
-      
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error_description || errorMessage;
-      } catch (e) {
-        // Cannot parse response as JSON, use status text
-        errorMessage = response.statusText || errorMessage;
-      }
-      
-      // Classify error type based on status code
-      let errorType = AuthErrorType.UNKNOWN;
-      if (response.status >= 500) {
-        errorType = AuthErrorType.NETWORK;
-      } else if (response.status === 403) {
-        errorType = AuthErrorType.AUTHENTICATION;
-      } else if (response.status === 401) {
-        errorType = AuthErrorType.TOKEN;
-      }
-      
-      throw createAuthError(
-        errorType,
-        `API error (${response.status}): ${errorMessage}`,
-        false
-      );
-    }
-    
-    // Clear rate limit on successful call
-    clearRateLimit();
-    
-    return await response.json();
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Podio API call error:', error);
-    }
-    
-    // Reset retry count on error
-    retryCount = 0;
-    
-    // If it's already an AuthError, just rethrow it
+    // Re-throw AuthErrors
     if (error && typeof error === 'object' && 'type' in error) {
       throw error;
     }
     
-    // Otherwise, create a new AuthError
-    throw createAuthError(
-      AuthErrorType.NETWORK,
-      error instanceof Error ? error.message : 'Network error during API call',
-      false
+    if (import.meta.env.DEV) {
+      console.error('Podio API call error:', error);
+    }
+    
+    // Create a new auth error
+    const authError = createAuthError(
+      AuthErrorType.UNKNOWN,
+      error instanceof Error ? error.message : 'Unknown error during API call'
     );
+    
+    throw authError;
   }
 };
 
@@ -446,192 +455,185 @@ const extractContactData = (item: any): any => {
 };
 
 // This function authenticates a user by checking the Podio contacts app
-export const authenticateUser = async (credentials: PodioCredentials): Promise<any | null> => {
-  try {
+export const authenticateUser = async (credentials: { username: string; password: string }): Promise<ContactData | null> => {
+  if (import.meta.env.DEV) {
     console.log('Authenticating with Podio...', credentials.username);
-    
-    // Check if we're rate limited first
-    if (isRateLimited()) {
-      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
-      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-      throw createAuthError(
-        AuthErrorType.NETWORK,
-        `Rate limited. Please wait ${waitSecs} seconds before trying again.`,
-        false
-      );
-    }
-    
-    // Ensure we're authenticated with Podio first using password flow
-    const authenticated = await ensureInitialPodioAuth();
-    if (!authenticated) {
-      console.error('Failed to authenticate with Podio');
-      throw createAuthError(
-        AuthErrorType.CONFIGURATION,
-        'Could not authenticate with Podio',
-        false
-      );
-    }
-    
-    // First, test to see if we can get the app details to verify our connection
-    try {
-      console.log(`Attempting to retrieve app details for app ${PODIO_CONTACTS_APP_ID}`);
-      const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
-      console.log('Podio app details retrieved successfully:', appDetails.app_id);
-    } catch (error) {
-      console.error('Failed to retrieve app details:', error);
+  }
+  
+  try {
+    // First ensure we have valid tokens for making API calls
+    if (!hasValidPodioTokens()) {
+      if (import.meta.env.DEV) {
+        console.log('No valid tokens, refreshing before authentication');
+      }
       
-      // If we get a 403, it means we don't have access to this app
-      if (error && typeof error === 'object' && 'type' in error && error.type === AuthErrorType.AUTHENTICATION) {
+      const refreshed = await refreshPodioToken();
+      
+      if (!refreshed) {
+        if (import.meta.env.DEV) {
+          console.error('Could not refresh token before authentication');
+        }
+        
+        throw createAuthError(
+          AuthErrorType.TOKEN,
+          'Could not connect to the service. Please try again later.'
+        );
+      }
+    }
+    
+    // Get the app details to verify we have access
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Attempting to retrieve app details for app ${PODIO_CONTACTS_APP_ID}`);
+      }
+      
+      // Manually construct the app info endpoint with retrying
+      try {
+        await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
+      } catch (appError) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to retrieve app details:', appError);
+        }
+        
+        // Specific error for configuration issues
         throw createAuthError(
           AuthErrorType.CONFIGURATION,
-          'The app does not have permission to access the Contacts app. Please check Podio API permissions.',
-          false
+          'The app does not have permission to access the Contacts app. Please check Podio API permissions.'
         );
       }
       
-      // Try to refresh the token and try again
-      const refreshed = await refreshPodioToken();
-      if (refreshed) {
+      // Get token to check format
+      const accessToken = localStorage.getItem('podio_access_token');
+      console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
+      
+      // Use the correct filter format for text fields (simple string value)
+      const filters = {
+        filters: {
+          [CONTACT_FIELD_IDS.username]: credentials.username
+        }
+      };
+      
+      console.log('Searching contacts with filters:', JSON.stringify(filters, null, 2));
+      
+      // Make the API call
+      let searchResponse;
+      try {
+        searchResponse = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/filter/`, {
+          method: 'POST',
+          body: JSON.stringify(filters),
+        });
+      } catch (error) {
+        console.error('Error during contact search:', error);
+        
+        // Try alternative filter format as fallback
         try {
-          console.log('Retrying app details after token refresh');
-          const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
-          console.log('Podio app details retrieved successfully after retry:', appDetails.app_id);
-        } catch (retryError) {
-          console.error('Failed to retrieve app details after token refresh:', retryError);
+          console.log('Trying alternative filter format...');
+          const alternativeFilters = {
+            filters: {
+              [CONTACT_FIELD_IDS.username]: {
+                "equals": credentials.username
+              }
+            }
+          };
+          console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
+          
+          searchResponse = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/filter/`, {
+            method: 'POST',
+            body: JSON.stringify(alternativeFilters),
+          });
+        } catch (secondError) {
+          console.error('Alternative filter also failed:', secondError);
           throw createAuthError(
             AuthErrorType.CONFIGURATION,
-            'Could not connect to Podio. Please check your credentials and app permissions.',
+            'Failed to search for user in Podio contacts',
             false
           );
         }
-      } else {
-        throw createAuthError(
-          AuthErrorType.CONFIGURATION,
-          'Could not connect to Podio. Please check your credentials.',
-          false
-        );
       }
-    }
-
-    // Use a simpler approach to find items by field value
-    const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
-    
-    // Get token to check format
-    const accessToken = localStorage.getItem('podio_access_token');
-    console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
-    
-    // Use the correct filter format for text fields (simple string value)
-    const filters = {
-      filters: {
-        [CONTACT_FIELD_IDS.username]: credentials.username
-      }
-    };
-
-    console.log('Searching contacts with filters:', JSON.stringify(filters, null, 2));
-    
-    // Make the API call
-    let searchResponse;
-    try {
-      searchResponse = await callPodioApi(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(filters),
-      });
-    } catch (error) {
-      console.error('Error during contact search:', error);
       
-      // Try alternative filter format as fallback
-      try {
-        console.log('Trying alternative filter format...');
-        const alternativeFilters = {
-          filters: {
-            [CONTACT_FIELD_IDS.username]: {
-              "equals": credentials.username
-            }
-          }
-        };
-        console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
-        
-        searchResponse = await callPodioApi(endpoint, {
-          method: 'POST',
-          body: JSON.stringify(alternativeFilters),
-        });
-      } catch (secondError) {
-        console.error('Alternative filter also failed:', secondError);
+      console.log('Search response items count:', searchResponse.items?.length || 0);
+      
+      // Check if we found any matches
+      if (!searchResponse.items || searchResponse.items.length === 0) {
+        console.log('No contact found with username:', credentials.username);
         throw createAuthError(
-          AuthErrorType.CONFIGURATION,
-          'Failed to search for user in Podio contacts',
+          AuthErrorType.AUTHENTICATION,
+          'No user found with that username',
           false
         );
       }
-    }
-    
-    console.log('Search response items count:', searchResponse.items?.length || 0);
-    
-    // Check if we found any matches
-    if (!searchResponse.items || searchResponse.items.length === 0) {
-      console.log('No contact found with username:', credentials.username);
+      
+      // Get the first matching contact
+      const contactItem = searchResponse.items[0];
+      console.log('Found contact item with ID:', contactItem.item_id);
+      
+      // Get the password field from the contact
+      const storedPassword = getFieldValueByExternalId(
+        contactItem.fields, 
+        CONTACT_FIELD_IDS.password
+      );
+      
+      if (!storedPassword) {
+        console.error('Contact has no password field set');
+        throw createAuthError(
+          AuthErrorType.AUTHENTICATION,
+          'User account is not properly configured',
+          false
+        );
+      }
+      
+      // Verify the password
+      const passwordMatches = await comparePasswords(credentials.password, storedPassword);
+      if (!passwordMatches) {
+        console.log('Password verification failed');
+        throw createAuthError(
+          AuthErrorType.AUTHENTICATION,
+          'No matching contact found with these credentials',
+          false
+        );
+      }
+      
+      // Password matches, extract contact data
+      const contactData = extractContactData(contactItem);
+      if (!contactData) {
+        throw createAuthError(
+          AuthErrorType.UNKNOWN,
+          'Could not process contact data',
+          false
+        );
+      }
+      
+      console.log('Authentication successful for user:', contactData.username);
+      return contactData;
+    } catch (appDetailsError) {
+      if (import.meta.env.DEV) {
+        console.error('Failed to retrieve app details:', appDetailsError);
+      }
+      
+      // Pass through AuthErrors
+      if (appDetailsError && typeof appDetailsError === 'object' && 'type' in appDetailsError) {
+        throw appDetailsError;
+      }
+      
       throw createAuthError(
-        AuthErrorType.AUTHENTICATION,
-        'No user found with that username',
-        false
+        AuthErrorType.CONFIGURATION,
+        'Could not verify access to Podio apps. Please check permissions.'
       );
     }
-    
-    // Get the first matching contact
-    const contactItem = searchResponse.items[0];
-    console.log('Found contact item with ID:', contactItem.item_id);
-    
-    // Get the password field from the contact
-    const storedPassword = getFieldValueByExternalId(
-      contactItem.fields, 
-      CONTACT_FIELD_IDS.password
-    );
-    
-    if (!storedPassword) {
-      console.error('Contact has no password field set');
-      throw createAuthError(
-        AuthErrorType.AUTHENTICATION,
-        'User account is not properly configured',
-        false
-      );
-    }
-    
-    // Verify the password
-    const passwordMatches = await comparePasswords(credentials.password, storedPassword);
-    if (!passwordMatches) {
-      console.log('Password verification failed');
-      throw createAuthError(
-        AuthErrorType.AUTHENTICATION,
-        'No matching contact found with these credentials',
-        false
-      );
-    }
-    
-    // Password matches, extract contact data
-    const contactData = extractContactData(contactItem);
-    if (!contactData) {
-      throw createAuthError(
-        AuthErrorType.UNKNOWN,
-        'Could not process contact data',
-        false
-      );
-    }
-    
-    console.log('Authentication successful for user:', contactData.username);
-    return contactData;
   } catch (error) {
-    console.error('Authentication error:', error);
+    if (import.meta.env.DEV) {
+      console.error('Error during authentication:', error);
+    }
     
-    // If it's already an AuthError, just rethrow it
+    // Pass through AuthErrors
     if (error && typeof error === 'object' && 'type' in error) {
       throw error;
     }
     
-    // Convert to AuthError if it's not already one
+    // Create a generic auth error for other types of errors
     throw createAuthError(
       AuthErrorType.UNKNOWN,
-      error instanceof Error ? error.message : 'Unknown authentication error',
-      false
+      error instanceof Error ? error.message : 'Unknown error during authentication'
     );
   }
 };

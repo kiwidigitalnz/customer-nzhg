@@ -127,8 +127,9 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     
     if (import.meta.env.DEV) {
       console.log('Attempting to authenticate with Podio using Password Flow');
-      console.log('Client ID (first 5 chars):', clientId.substring(0, 5) + '...');
-      console.log('Client secret available:', !!clientSecret);
+      console.log('Client ID:', clientId);
+      console.log('Environment:', import.meta.env.MODE);
+      console.log('Using client ID from:', import.meta.env.VITE_PODIO_CLIENT_ID ? 'environment variable' : 'localStorage');
     }
     
     const response = await fetch('https://podio.com/oauth/token', {
@@ -140,8 +141,13 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
         grant_type: 'client_credentials',
         client_id: clientId,
         client_secret: clientSecret,
+        scope: 'global:all',  // Explicitly request full scope
       }).toString(),
     });
+    
+    if (import.meta.env.DEV) {
+      console.log('Password flow response status:', response.status);
+    }
     
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
@@ -188,6 +194,15 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     clearRateLimit();
     
     const tokenData = await response.json();
+    
+    if (import.meta.env.DEV) {
+      console.log('Token response data:', {
+        token_type: tokenData.token_type,
+        expires_in: tokenData.expires_in,
+        scope: tokenData.scope,
+        ref: tokenData.ref
+      });
+    }
     
     // Store tokens in localStorage
     localStorage.setItem('podio_access_token', tokenData.access_token);
