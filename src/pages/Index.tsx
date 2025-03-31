@@ -2,16 +2,14 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   ensureInitialPodioAuth, 
   isPodioConfigured, 
   clearPodioTokens,
   isRateLimited,
   getPodioClientId,
-  getPodioClientSecret,
-  getPodioApiDomain,
-  DEV_BYPASS_API_VALIDATION
+  getPodioClientSecret
 } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
@@ -26,36 +24,24 @@ const Index = () => {
     if (!isAttemptingAuth) {
       setIsAttemptingAuth(true);
       
-      // Log environment information
-      console.log('[Index] Environment mode:', import.meta.env.MODE);
-      console.log('[Index] Development mode:', import.meta.env.DEV ? 'Yes' : 'No');
-      console.log('[Index] Browser:', navigator.userAgent);
-      console.log('[Index] URL:', window.location.href);
-      console.log('[Index] Podio API domain:', getPodioApiDomain());
-      console.log('[Index] Dev bypass enabled:', import.meta.env.DEV && DEV_BYPASS_API_VALIDATION ? 'Yes' : 'No');
-      
       // Check if Podio is configured with environment variables
-      console.log('[Index] Checking Podio configuration');
+      console.log('Checking Podio configuration');
       const configured = isPodioConfigured();
-      console.log('[Index] Podio configured:', configured);
+      console.log('Podio configured:', configured);
       
       // For debugging, log where credentials are coming from
       if (import.meta.env.DEV) {
         const clientId = getPodioClientId();
         const clientSecret = getPodioClientSecret();
-        console.log('[Index] Using Podio client ID from:', 
+        console.log('Using Podio client ID from:', 
           import.meta.env.VITE_PODIO_CLIENT_ID ? 'environment variable' : 'localStorage');
-        console.log('[Index] Using Podio client secret from:', 
+        console.log('Using Podio client secret from:', 
           import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'environment variable' : 'localStorage');
-        console.log('[Index] Client ID available:', !!clientId);
-        console.log('[Index] Client secret available:', !!clientSecret);
-        console.log('[Index] VITE_PODIO_CLIENT_ID:', import.meta.env.VITE_PODIO_CLIENT_ID ? 'defined' : 'undefined');
-        console.log('[Index] VITE_PODIO_CLIENT_SECRET:', import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'defined' : 'undefined');
-        console.log('[Index] VITE_PODIO_DEV_MODE:', import.meta.env.VITE_PODIO_DEV_MODE || 'Not set');
-        
-        if (clientId) {
-          console.log('[Index] Client ID first 5 chars:', clientId.substring(0, 5) + '...');
-        }
+        console.log('Client ID available:', !!clientId);
+        console.log('Client secret available:', !!clientSecret);
+        console.log('Environment variables:',
+          import.meta.env.VITE_PODIO_CLIENT_ID ? 'VITE_PODIO_CLIENT_ID is set' : 'VITE_PODIO_CLIENT_ID is missing',
+          import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'VITE_PODIO_CLIENT_SECRET is set' : 'VITE_PODIO_CLIENT_SECRET is missing');
       }
       
       if (configured) {
@@ -65,7 +51,7 @@ const Index = () => {
           const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
           const errorMessage = `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
           
-          console.error('[Index] ' + errorMessage);
+          console.error(errorMessage);
           setPodioAuthError(errorMessage);
           
           toast({
@@ -77,16 +63,16 @@ const Index = () => {
           return;
         }
         
-        console.log('[Index] Attempting initial Podio authentication with Password Flow');
+        console.log('Attempting initial Podio authentication with Password Flow');
         
         // Clear any previous errors
         setPodioAuthError(null);
         
         ensureInitialPodioAuth()
           .then(success => {
-            console.log('[Index] Initial Podio authentication result:', success ? 'Success' : 'Failed');
+            console.log('Initial Podio authentication result:', success ? 'Success' : 'Failed');
             if (!success) {
-              console.error('[Index] Could not automatically authenticate with Podio');
+              console.error('Could not automatically authenticate with Podio');
               // Clear tokens on authentication failure
               clearPodioTokens();
               
@@ -102,12 +88,7 @@ const Index = () => {
                   duration: 5000,
                 });
               } else {
-                // Different error message for development mode
-                if (import.meta.env.DEV) {
-                  setPodioAuthError('Development mode: Could not connect to Podio. Check console for details.');
-                } else {
-                  setPodioAuthError('Could not connect to the service. Please check that your Podio app has the correct permissions.');
-                }
+                setPodioAuthError('Could not connect to the service. Please check that your Podio app has the correct permissions.');
                 
                 toast({
                   title: "Connection Error",
@@ -115,47 +96,10 @@ const Index = () => {
                   duration: 5000,
                 });
               }
-            } else {
-              // Try to call a simple endpoint to verify token works
-              const accessToken = localStorage.getItem('podio_access_token');
-              if (accessToken) {
-                console.log('[Index] Testing token with a basic API call...');
-                
-                const apiDomain = getPodioApiDomain();
-                fetch(`https://${apiDomain}/org/`, {
-                  headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                  }
-                })
-                .then(response => {
-                  console.log('[Index] Test API call status:', response.status);
-                  if (response.ok) {
-                    return response.json();
-                  }
-                  console.error('[Index] Test API call failed with status:', response.status);
-                  return response.text().then(text => {
-                    try {
-                      return JSON.parse(text);
-                    } catch (e) {
-                      return { error: text };
-                    }
-                  });
-                })
-                .then(data => {
-                  if (Array.isArray(data)) {
-                    console.log('[Index] Test API call successful, organizations count:', data.length);
-                  } else {
-                    console.error('[Index] Test API call error body:', data);
-                  }
-                })
-                .catch(err => {
-                  console.error('[Index] Error during test API call:', err);
-                });
-              }
             }
           })
           .catch(err => {
-            console.error('[Index] Error during automatic Podio authentication:', err);
+            console.error('Error during automatic Podio authentication:', err);
             // Clear tokens on authentication error
             clearPodioTokens();
             
@@ -183,21 +127,14 @@ const Index = () => {
             }
           });
       } else {
-        console.error('[Index] Podio not properly configured. Check environment variables.');
+        console.error('Podio not properly configured. Check environment variables.');
         setPodioAuthError('Podio API is not properly configured. Please check your client credentials.');
         
         if (import.meta.env.DEV) {
-          console.log('[Index] To configure Podio:');
+          console.log('To configure Podio:');
           console.log('1. Ensure .env.development has the correct VITE_PODIO_CLIENT_ID and VITE_PODIO_CLIENT_SECRET');
           console.log('2. Or use the Podio Setup page to enter credentials manually');
           console.log('3. Ensure the Podio app has the correct permissions for the Contacts and Packing Specs apps');
-          
-          // Check for stored client credentials
-          const clientId = localStorage.getItem('podio_client_id');
-          const clientSecret = localStorage.getItem('podio_client_secret');
-          
-          console.log('[Index] Local storage client ID:', clientId ? 'Present' : 'Not found');
-          console.log('[Index] Local storage client secret:', clientSecret ? 'Present' : 'Not found');
         }
       }
     }
@@ -217,14 +154,8 @@ const Index = () => {
     return <Navigate to="/dashboard" replace />;
   }
   
-  // Show dev mode indicator
-  const showDevMode = import.meta.env.DEV && DEV_BYPASS_API_VALIDATION;
-  
   // For everyone else, show the landing page
-  return <LandingPage 
-    podioAuthError={podioAuthError} 
-    isDevelopmentMode={showDevMode} 
-  />;
+  return <LandingPage podioAuthError={podioAuthError} />;
 };
 
 export default Index;

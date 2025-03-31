@@ -13,8 +13,7 @@ export {
   clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
-  CONTACT_FIELD_IDS,
-  DEV_BYPASS_API_VALIDATION
+  CONTACT_FIELD_IDS
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
@@ -27,8 +26,7 @@ export {
   generatePodioAuthState,
   isRateLimited,
   setRateLimit,
-  clearRateLimit,
-  getPodioApiDomain
+  clearRateLimit
 } from './podio/podioOAuth';
 
 // Export packing spec related functions and types

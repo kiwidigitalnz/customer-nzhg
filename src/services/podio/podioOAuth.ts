@@ -20,14 +20,7 @@ export const generatePodioAuthState = (): string => {
 export const getPodioClientId = (): string | null => {
   // Always prioritize environment variables
   if (import.meta.env.VITE_PODIO_CLIENT_ID) {
-    if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Using client ID from environment variable');
-    }
     return import.meta.env.VITE_PODIO_CLIENT_ID;
-  }
-  
-  if (import.meta.env.DEV) {
-    console.log('[Podio Auth] Using client ID from localStorage');
   }
   return localStorage.getItem('podio_client_id');
 };
@@ -36,14 +29,7 @@ export const getPodioClientId = (): string | null => {
 export const getPodioClientSecret = (): string | null => {
   // Always prioritize environment variables
   if (import.meta.env.VITE_PODIO_CLIENT_SECRET) {
-    if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Using client secret from environment variable');
-    }
     return import.meta.env.VITE_PODIO_CLIENT_SECRET;
-  }
-  
-  if (import.meta.env.DEV) {
-    console.log('[Podio Auth] Using client secret from localStorage');
   }
   return localStorage.getItem('podio_client_secret');
 };
@@ -55,13 +41,10 @@ export const getPodioRedirectUri = (): string => {
     const port = window.location.port;
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    const redirectUri = `${protocol}//${hostname}${port ? ':' + port : ''}/podio-callback`;
-    console.log('[Podio Auth] Development redirect URI:', redirectUri);
-    return redirectUri;
+    return `${protocol}//${hostname}${port ? ':' + port : ''}/podio-callback`;
   }
   
   // In production, use the production URL
-  console.log('[Podio Auth] Production redirect URI: https://customer.nzhg.com/podio-callback');
   return 'https://customer.nzhg.com/podio-callback';
 };
 
@@ -91,7 +74,7 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
     const limitTime = Date.now() + (retryAfterSecs * 1000);
     localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
     if (import.meta.env.DEV) {
-      console.log(`[Podio Auth] Rate limited by Podio for ${retryAfterSecs} seconds`);
+      console.log(`Rate limited by Podio for ${retryAfterSecs} seconds`);
     }
     return;
   }
@@ -109,7 +92,7 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   localStorage.setItem('podio_retry_delay', delay.toString());
   
   if (import.meta.env.DEV) {
-    console.log(`[Podio Auth] Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
+    console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
   }
 };
 
@@ -127,7 +110,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
       const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
       if (import.meta.env.DEV) {
-        console.error(`[Podio Auth] Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+        console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
       }
       return false;
     }
@@ -137,19 +120,18 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     
     if (!clientId || !clientSecret) {
       if (import.meta.env.DEV) {
-        console.error('[Podio Auth] Missing Podio client credentials for password flow');
+        console.error('Missing Podio client credentials for password flow');
       }
       return false;
     }
     
     if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Attempting to authenticate with Podio using Password Flow');
-      console.log('[Podio Auth] Client ID (first 5 chars):', clientId.substring(0, 5) + '...');
-      console.log('[Podio Auth] Client secret available:', !!clientSecret);
+      console.log('Attempting to authenticate with Podio using Password Flow');
+      console.log('Client ID (first 5 chars):', clientId.substring(0, 5) + '...');
+      console.log('Client secret available:', !!clientSecret);
     }
     
-    console.log('[Podio Auth] Making token request to https://podio.com/oauth/token');
-    const tokenRequest = {
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -159,28 +141,19 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
         client_id: clientId,
         client_secret: clientSecret,
       }).toString(),
-    };
-    
-    console.log('[Podio Auth] Token request body:', tokenRequest.body);
-    
-    const response = await fetch('https://podio.com/oauth/token', tokenRequest);
-    
-    console.log('[Podio Auth] Token response status:', response.status);
-    console.log('[Podio Auth] Token response headers:', JSON.stringify(Object.fromEntries([...response.headers.entries()])));
+    });
     
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
       let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
-        console.error('[Podio Auth] Rate limit response data:', errorData);
       } catch (e) {
         // Failed to parse JSON, continue with empty object
-        console.error('[Podio Auth] Failed to parse rate limit JSON response:', e);
       }
       
       if (import.meta.env.DEV) {
-        console.error('[Podio Auth] Rate limit reached:', errorData);
+        console.error('Rate limit reached:', errorData);
       }
       
       // Extract retry-after information if available
@@ -201,14 +174,12 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
-        console.error('[Podio Auth] Password flow error response:', errorData);
       } catch (e) {
         // Failed to parse JSON, continue with empty object
-        console.error('[Podio Auth] Failed to parse error JSON response:', e);
       }
       
       if (import.meta.env.DEV) {
-        console.error('[Podio Auth] Password flow authentication failed:', errorData);
+        console.error('Password flow authentication failed:', errorData);
       }
       return false;
     }
@@ -217,16 +188,6 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     clearRateLimit();
     
     const tokenData = await response.json();
-    console.log('[Podio Auth] Token data received (excluding sensitive values):', {
-      token_type: tokenData.token_type,
-      expires_in: tokenData.expires_in,
-      scope: tokenData.scope
-    });
-    
-    // Log token scope to help diagnose permission issues
-    if (tokenData.scope) {
-      console.log('[Podio Auth] Token scope:', tokenData.scope);
-    }
     
     // Store tokens in localStorage
     localStorage.setItem('podio_access_token', tokenData.access_token);
@@ -238,42 +199,12 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
     
     if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Successfully obtained tokens via Password Flow');
-      console.log('[Podio Auth] Token expires in:', tokenData.expires_in, 'seconds');
-      console.log('[Podio Auth] Token type:', tokenData.token_type);
-      
-      // Make a test API call to verify the token works
-      try {
-        console.log('[Podio Auth] Testing token with a basic API call...');
-        const apiDomain = getPodioApiDomain();
-        const testResponse = await fetch(`https://${apiDomain}/org/`, {
-          headers: {
-            'Authorization': `Bearer ${tokenData.access_token}`
-          }
-        });
-        
-        console.log('[Podio Auth] Test API call status:', testResponse.status);
-        
-        if (testResponse.ok) {
-          const testData = await testResponse.json();
-          console.log('[Podio Auth] Test API call successful, organizations count:', testData.length);
-        } else {
-          console.error('[Podio Auth] Test API call failed with status:', testResponse.status);
-          try {
-            const errorBody = await testResponse.json();
-            console.error('[Podio Auth] Test API call error body:', errorBody);
-          } catch (e) {
-            console.error('[Podio Auth] Could not parse test API call error response');
-          }
-        }
-      } catch (e) {
-        console.error('[Podio Auth] Error during test API call:', e);
-      }
+      console.log('Successfully obtained tokens via Password Flow');
     }
     return true;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('[Podio Auth] Error during Password Flow authentication:', error);
+      console.error('Error during Password Flow authentication:', error);
     }
     // Set a short backoff on error
     setRateLimit(10);
@@ -284,7 +215,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
 // Start the OAuth flow - always use password flow for better consistency
 export const startPodioOAuthFlow = (): Promise<boolean> => {
   if (import.meta.env.DEV) {
-    console.log('[Podio Auth] Using Password Flow instead of OAuth flow for consistency');
+    console.log('Using Password Flow instead of OAuth flow for consistency');
   }
   return authenticateWithPasswordFlow();
 };
@@ -297,7 +228,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       const limitUntil = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || '0', 10);
       const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
       if (import.meta.env.DEV) {
-        console.error(`[Podio Auth] Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+        console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
       }
       return false;
     }
@@ -307,52 +238,41 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     
     if (!clientId || !clientSecret) {
       if (import.meta.env.DEV) {
-        console.error('[Podio Auth] Missing Podio client credentials');
+        console.error('Missing Podio client credentials');
       }
       return false;
     }
     
     if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Exchanging code for tokens with redirect URI:', redirectUri);
+      console.log('Exchanging code for tokens with redirect URI:', redirectUri);
     }
     
     const tokenUrl = 'https://podio.com/oauth/token';
-    console.log('[Podio Auth] Making token exchange request to:', tokenUrl);
-    
-    const exchangeBody = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      client_secret: clientSecret,
-      code: code,
-      redirect_uri: redirectUri,
-    }).toString();
-    
-    console.log('[Podio Auth] Token exchange request body:', exchangeBody);
-    
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: exchangeBody,
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        redirect_uri: redirectUri,
+      }).toString(),
     });
-    
-    console.log('[Podio Auth] Token exchange response status:', response.status);
-    console.log('[Podio Auth] Token exchange response headers:', JSON.stringify(Object.fromEntries([...response.headers.entries()])));
     
     // Handle rate limiting
     if (response.status === 420 || response.status === 429) {
       let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
-        console.error('[Podio Auth] Rate limit response data:', errorData);
       } catch (e) {
         // Failed to parse JSON, continue with empty object
-        console.error('[Podio Auth] Failed to parse rate limit JSON response:', e);
       }
       
       if (import.meta.env.DEV) {
-        console.error('[Podio Auth] Rate limit reached during token exchange:', errorData);
+        console.error('Rate limit reached during token exchange:', errorData);
       }
       
       // Extract retry-after information
@@ -373,14 +293,12 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       let errorData: PodioErrorResponse = {};
       try {
         errorData = await response.json();
-        console.error('[Podio Auth] Token exchange error response:', errorData);
         if (import.meta.env.DEV) {
-          console.error('[Podio Auth] Token exchange failed:', errorData);
+          console.error('Token exchange failed:', errorData);
         }
       } catch (e) {
-        console.error('[Podio Auth] Failed to parse error JSON response:', e);
         if (import.meta.env.DEV) {
-          console.error('[Podio Auth] Token exchange failed with non-JSON response');
+          console.error('Token exchange failed with non-JSON response');
         }
       }
       return false;
@@ -390,17 +308,6 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     clearRateLimit();
     
     const tokenData = await response.json();
-    console.log('[Podio Auth] Token exchange data received (excluding sensitive values):', {
-      token_type: tokenData.token_type,
-      expires_in: tokenData.expires_in,
-      scope: tokenData.scope,
-      ref: tokenData.ref
-    });
-    
-    // Log token scope to help diagnose permission issues
-    if (tokenData.scope) {
-      console.log('[Podio Auth] Token scope:', tokenData.scope);
-    }
     
     // Store tokens 
     localStorage.setItem('podio_access_token', tokenData.access_token);
@@ -408,12 +315,12 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     localStorage.setItem('podio_token_expiry', (Date.now() + tokenData.expires_in * 1000).toString());
     
     if (import.meta.env.DEV) {
-      console.log('[Podio Auth] Successfully obtained tokens via OAuth flow');
+      console.log('Successfully obtained tokens via OAuth flow');
     }
     return true;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('[Podio Auth] Error during token exchange:', error);
+      console.error('Error during token exchange:', error);
     }
     // Set a short backoff on error
     setRateLimit(10);
