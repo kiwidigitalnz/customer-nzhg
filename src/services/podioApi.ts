@@ -26,7 +26,8 @@ export {
   generatePodioAuthState,
   isRateLimited,
   setRateLimit,
-  clearRateLimit
+  clearRateLimit,
+  getPodioApiDomain
 } from './podio/podioOAuth';
 
 // Export packing spec related functions and types
