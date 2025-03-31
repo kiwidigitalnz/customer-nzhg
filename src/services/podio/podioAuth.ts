@@ -13,10 +13,13 @@ import {
   setRateLimit,
   clearRateLimit,
   getPodioApiDomain,
-  refreshPodioToken
+  refreshPodioToken as refreshToken
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import bcrypt from 'bcryptjs';
+
+// Re-export the refreshPodioToken function so it can be imported by other modules
+export { refreshToken as refreshPodioToken };
 
 interface PodioCredentials {
   username: string;
@@ -257,7 +260,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       AuthErrorType.TOKEN,
       'Not authenticated with Podio',
       true,
-      refreshPodioToken
+      refreshToken
     );
     throw error;
   }
@@ -342,7 +345,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       } else {
         retryCount++;
         console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
-        const refreshed = await refreshPodioToken();
+        const refreshed = await refreshToken();
         if (!refreshed) {
           retryCount = 0; // Reset for next time
           throw createAuthError(
@@ -506,7 +509,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       }
       
       // Try to refresh the token and try again
-      const refreshed = await refreshPodioToken();
+      const refreshed = await refreshToken();
       if (refreshed) {
         try {
           console.log('Retrying app details after token refresh');
