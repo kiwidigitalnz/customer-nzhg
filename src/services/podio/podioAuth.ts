@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -26,6 +27,10 @@ interface PodioCredentials {
 const API_CALL_COUNT_KEY = 'podio_api_call_count';
 const API_CALL_RESET_KEY = 'podio_api_call_reset';
 const MAX_API_CALLS_PER_MINUTE = 250; // Podio's general rate limit
+
+// Get Podio App IDs from environment variables with fallbacks to hardcoded values
+export const PODIO_CONTACTS_APP_ID = Number(import.meta.env.VITE_PODIO_CONTACTS_APP_ID) || 26969025;
+export const PODIO_PACKING_SPEC_APP_ID = Number(import.meta.env.VITE_PODIO_PACKING_SPEC_APP_ID) || 29797638;
 
 // Track API calls to prevent hitting rate limits
 const trackApiCall = (): boolean => {
@@ -124,7 +129,7 @@ export const validatePodioToken = async (): Promise<boolean> => {
       
       if (import.meta.env.DEV) {
         console.log('This typically means the Podio app does not have the correct permissions.');
-        console.log('Ensure the Podio API client has access to the Contacts app (ID: 26969025)');
+        console.log(`Ensure the Podio API client has access to the Contacts app (ID: ${PODIO_CONTACTS_APP_ID})`);
       }
       
       return false;
@@ -635,10 +640,6 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     );
   }
 };
-
-// Podio App IDs
-export const PODIO_CONTACTS_APP_ID = 26969025;
-export const PODIO_PACKING_SPEC_APP_ID = 29797638;
 
 // Podio Contact Field IDs
 export const CONTACT_FIELD_IDS = {
