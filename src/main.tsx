@@ -3,10 +3,30 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { handlePodioImageRequest } from './api/podioImageProxy';
+import { handlePodioTokenRequest } from './api/podioTokenProxy';
 
 // Handle API routes if the URL matches our pattern
 const url = new URL(window.location.href);
-if (url.pathname.startsWith('/api/podio-image/')) {
+
+// Handle Podio token proxy requests
+if (url.pathname === '/api/podio-token') {
+  handlePodioTokenRequest(new Request(url.href))
+    .then(response => {
+      response.json().then(data => {
+        document.body.innerHTML = JSON.stringify(data);
+        document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
+      });
+    })
+    .catch(error => {
+      console.error('Podio token proxy error:', error);
+      document.body.innerHTML = JSON.stringify({
+        error: 'proxy_error',
+        error_description: error.message
+      });
+    });
+}
+// Handle Podio image proxy requests
+else if (url.pathname.startsWith('/api/podio-image/')) {
   handlePodioImageRequest(new Request(url.href))
     .then(response => {
       // Handle the response - directly display the image

@@ -143,17 +143,20 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       console.log('Client secret available:', !!clientSecret);
     }
     
-    // Use the v2 token endpoint
-    const response = await fetch('https://podio.com/oauth/token/v2', {
+    // Use proxy API endpoint for token requests to avoid CORS issues
+    // Instead of making direct API calls to Podio, we'll use our API proxy
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'client_credentials');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    
+    // Use the /api/podio-token proxy endpoint
+    const response = await fetch('/api/podio-token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
+      body: formData,
     });
     
     // Handle rate limiting specifically
@@ -233,7 +236,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
   }
 };
 
-// Refresh token - now using the v2 endpoint
+// Refresh token - now using the proxy endpoint
 export const refreshPodioToken = async (): Promise<boolean> => {
   try {
     // Check for rate limiting first
@@ -269,18 +272,20 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       console.log('Refreshing Podio token using refresh token');
     }
     
-    // Use the v2 token endpoint with refresh token
-    const response = await fetch('https://podio.com/oauth/token/v2', {
+    // Use proxy API endpoint for token requests to avoid CORS issues
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'refresh_token');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('refresh_token', refreshToken);
+    
+    // Use the /api/podio-token proxy endpoint
+    const response = await fetch('/api/podio-token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        grant_type: 'refresh_token',
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-      }),
+      body: formData,
     });
     
     // Handle rate limiting specifically
@@ -406,20 +411,21 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       console.log('Exchanging code for tokens with redirect URI:', redirectUri);
     }
     
-    // Use the v2 token endpoint for the exchange
-    const tokenUrl = 'https://podio.com/oauth/token/v2';
-    const response = await fetch(tokenUrl, {
+    // Use proxy API endpoint for token requests to avoid CORS issues
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'authorization_code');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('code', code);
+    formData.append('redirect_uri', redirectUri);
+    
+    // Use the /api/podio-token proxy endpoint
+    const response = await fetch('/api/podio-token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-      }),
+      body: formData,
     });
     
     // Handle rate limiting
