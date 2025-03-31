@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -13,7 +12,8 @@ import {
   isRateLimited,
   setRateLimit,
   clearRateLimit,
-  getPodioApiDomain
+  getPodioApiDomain,
+  refreshPodioToken
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import bcrypt from 'bcryptjs';
@@ -115,24 +115,48 @@ export const validatePodioToken = async (): Promise<boolean> => {
       console.log('Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
     }
     
-    // Use an endpoint that works with app authentication instead of user authentication
-    // The /app/ endpoint requires only app authorization
+    // Use a more general endpoint that works with both user and app authentication
+    // The /user/status endpoint is a better choice for validation as it's more permissive
     const apiDomain = getPodioApiDomain();
-    const response = await fetch(`https://${apiDomain}/app/${PODIO_CONTACTS_APP_ID}`, {
+    const response = await fetch(`https://${apiDomain}/user/status`, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `${localStorage.getItem('podio_token_type') || 'Bearer'} ${accessToken}`
       }
     });
     
-    if (response.status === 403) {
-      console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
-      
+    // If we get a 401, token is invalid
+    if (response.status === 401) {
       if (import.meta.env.DEV) {
-        console.log('This typically means the Podio app does not have the correct permissions.');
-        console.log(`Ensure the Podio API client has access to the Contacts app (ID: ${PODIO_CONTACTS_APP_ID})`);
+        console.log('Token validation: 401 Unauthorized - Token is invalid or expired');
+      }
+      return false;
+    }
+    
+    // For client_credentials flow, we might get a 403 on /user/status
+    // Try a fallback check on the app endpoint
+    if (response.status === 403) {
+      if (import.meta.env.DEV) {
+        console.log('Token validation with /user/status got 403, trying app endpoint...');
       }
       
-      return false;
+      const appResponse = await fetch(`https://${apiDomain}/app/${PODIO_CONTACTS_APP_ID}`, {
+        headers: {
+          'Authorization': `${localStorage.getItem('podio_token_type') || 'Bearer'} ${accessToken}`
+        }
+      });
+      
+      if (appResponse.status === 403) {
+        console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
+        
+        if (import.meta.env.DEV) {
+          console.log('This typically means the Podio app does not have the correct permissions.');
+          console.log(`Ensure the Podio API client has access to the Contacts app (ID: ${PODIO_CONTACTS_APP_ID})`);
+        }
+        
+        return false;
+      }
+      
+      return appResponse.ok;
     }
     
     return response.ok;
@@ -162,6 +186,7 @@ export const clearPodioTokens = (): void => {
   localStorage.removeItem('podio_access_token');
   localStorage.removeItem('podio_refresh_token');
   localStorage.removeItem('podio_token_expiry');
+  localStorage.removeItem('podio_token_type');
   console.log('Cleared Podio tokens');
 };
 
@@ -192,21 +217,6 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   console.log('Starting Password Flow for Podio authentication...');
   
   // Use Password Flow (client_credentials) for app authentication
-  return await authenticateWithPasswordFlow();
-};
-
-// Enhanced function to refresh the access token if needed
-export const refreshPodioToken = async (): Promise<boolean> => {
-  // First check if we're rate limited
-  if (isRateLimited()) {
-    const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
-    const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-    console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
-    return false;
-  }
-  
-  // With client_credentials flow, there's no refresh token
-  // We need to get a new token each time
   return await authenticateWithPasswordFlow();
 };
 
@@ -253,10 +263,11 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
   
   const accessToken = localStorage.getItem('podio_access_token');
+  const tokenType = localStorage.getItem('podio_token_type') || 'Bearer';
   
-  // Merge the authorization header with the provided options
+  // Merge the authorization header with the provided options using the correct format
   const headers = {
-    'Authorization': `Bearer ${accessToken}`,
+    'Authorization': `${tokenType} ${accessToken}`,
     'Content-Type': 'application/json',
     ...options.headers,
   };
@@ -317,10 +328,10 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       
       // Check if we've already retried too many times
       if (retryCount >= MAX_RETRIES) {
-        console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
+        console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing new authentication`);
         retryCount = 0; // Reset for next time
         clearPodioTokens();
-        const refreshed = await authenticateWithPasswordFlow(); // Changed from startPodioOAuthFlow to use password flow consistently
+        const refreshed = await authenticateWithPasswordFlow();
         if (!refreshed) {
           throw createAuthError(
             AuthErrorType.AUTHENTICATION,

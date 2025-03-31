@@ -26,15 +26,15 @@ export interface AuthError {
 let lastTokenCheck = 0;
 const TOKEN_CHECK_INTERVAL = 60 * 1000; // Check token every minute
 
-// Check if the token will expire soon (within 5 minutes)
+// Check if the token will expire soon (within 30 minutes)
 export const willTokenExpireSoon = (): boolean => {
   const tokenExpiry = localStorage.getItem('podio_token_expiry');
   if (!tokenExpiry) return true;
   
   const expiryTime = parseInt(tokenExpiry, 10);
-  const nowPlus5Min = Date.now() + 5 * 60 * 1000; // 5 minute buffer
+  const nowPlus30Min = Date.now() + 30 * 60 * 1000; // 30 minute buffer
   
-  return expiryTime < nowPlus5Min;
+  return expiryTime < nowPlus30Min;
 };
 
 // Enhanced token refresh with retry logic and rate limiting
@@ -52,7 +52,7 @@ export const ensureValidToken = async (): Promise<boolean> => {
   if (now - lastTokenCheck < TOKEN_CHECK_INTERVAL) {
     // If we checked recently and token was valid, assume it's still valid
     const tokenExpiry = localStorage.getItem('podio_token_expiry');
-    if (tokenExpiry && parseInt(tokenExpiry, 10) > now + 5 * 60 * 1000) {
+    if (tokenExpiry && parseInt(tokenExpiry, 10) > now + 30 * 60 * 1000) {
       return true;
     }
   }
