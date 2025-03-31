@@ -2,7 +2,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { 
   ensureInitialPodioAuth, 
   isPodioConfigured, 
@@ -10,7 +10,8 @@ import {
   isRateLimited,
   getPodioClientId,
   getPodioClientSecret,
-  getPodioApiDomain
+  getPodioApiDomain,
+  DEV_BYPASS_API_VALIDATION
 } from '../services/podioApi';
 import LandingPage from './LandingPage';
 
@@ -26,10 +27,12 @@ const Index = () => {
       setIsAttemptingAuth(true);
       
       // Log environment information
-      console.log('[Index] Environment:', import.meta.env.DEV ? 'development' : 'production');
+      console.log('[Index] Environment mode:', import.meta.env.MODE);
+      console.log('[Index] Development mode:', import.meta.env.DEV ? 'Yes' : 'No');
       console.log('[Index] Browser:', navigator.userAgent);
       console.log('[Index] URL:', window.location.href);
       console.log('[Index] Podio API domain:', getPodioApiDomain());
+      console.log('[Index] Dev bypass enabled:', import.meta.env.DEV && DEV_BYPASS_API_VALIDATION ? 'Yes' : 'No');
       
       // Check if Podio is configured with environment variables
       console.log('[Index] Checking Podio configuration');
@@ -48,6 +51,7 @@ const Index = () => {
         console.log('[Index] Client secret available:', !!clientSecret);
         console.log('[Index] VITE_PODIO_CLIENT_ID:', import.meta.env.VITE_PODIO_CLIENT_ID ? 'defined' : 'undefined');
         console.log('[Index] VITE_PODIO_CLIENT_SECRET:', import.meta.env.VITE_PODIO_CLIENT_SECRET ? 'defined' : 'undefined');
+        console.log('[Index] VITE_PODIO_DEV_MODE:', import.meta.env.VITE_PODIO_DEV_MODE || 'Not set');
         
         if (clientId) {
           console.log('[Index] Client ID first 5 chars:', clientId.substring(0, 5) + '...');
@@ -98,7 +102,12 @@ const Index = () => {
                   duration: 5000,
                 });
               } else {
-                setPodioAuthError('Could not connect to the service. Please check that your Podio app has the correct permissions.');
+                // Different error message for development mode
+                if (import.meta.env.DEV) {
+                  setPodioAuthError('Development mode: Could not connect to Podio. Check console for details.');
+                } else {
+                  setPodioAuthError('Could not connect to the service. Please check that your Podio app has the correct permissions.');
+                }
                 
                 toast({
                   title: "Connection Error",
@@ -208,8 +217,14 @@ const Index = () => {
     return <Navigate to="/dashboard" replace />;
   }
   
+  // Show dev mode indicator
+  const showDevMode = import.meta.env.DEV && DEV_BYPASS_API_VALIDATION;
+  
   // For everyone else, show the landing page
-  return <LandingPage podioAuthError={podioAuthError} />;
+  return <LandingPage 
+    podioAuthError={podioAuthError} 
+    isDevelopmentMode={showDevMode} 
+  />;
 };
 
 export default Index;

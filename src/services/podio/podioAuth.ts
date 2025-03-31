@@ -22,6 +22,9 @@ interface PodioCredentials {
   password: string;
 }
 
+// Add a development mode bypass flag
+export const DEV_BYPASS_API_VALIDATION = true; // Set to false to enforce API validation in development
+
 // Rate limiting constants for API calls
 const API_CALL_COUNT_KEY = 'podio_api_call_count';
 const API_CALL_RESET_KEY = 'podio_api_call_reset';
@@ -70,6 +73,7 @@ export const isPodioConfigured = (): boolean => {
       console.log('[Podio Config] Environment variables found');
       console.log('[Podio Config] Client ID (first 5 chars):', 
         import.meta.env.VITE_PODIO_CLIENT_ID.substring(0, 5) + '...');
+      console.log('[Podio Config] Using env:', import.meta.env.MODE);
     }
     return true;
   }
@@ -116,6 +120,12 @@ export const isPodioConfigured = (): boolean => {
 // Helper function to validate if token is actually working with Podio
 export const validatePodioToken = async (): Promise<boolean> => {
   try {
+    // In development mode, we can bypass validation to help with debugging
+    if (import.meta.env.DEV && DEV_BYPASS_API_VALIDATION) {
+      console.log('[Podio Validation] Development mode - bypassing API validation');
+      return true;
+    }
+
     const accessToken = localStorage.getItem('podio_access_token');
     if (!accessToken) return false;
     
@@ -175,6 +185,13 @@ export const validatePodioToken = async (): Promise<boolean> => {
         }
       }
       
+      // In development mode, we can still return true despite 403 
+      // to allow development to continue without proper app permissions
+      if (import.meta.env.DEV && DEV_BYPASS_API_VALIDATION) {
+        console.log('[Podio Validation] Development mode - bypassing API validation despite 403');
+        return true;
+      }
+      
       return false;
     }
     
@@ -186,6 +203,13 @@ export const validatePodioToken = async (): Promise<boolean> => {
       } catch (e) {
         console.error('[Podio Validation] Failed to parse error response body');
       }
+      
+      // In development mode, we can still return true despite errors
+      if (import.meta.env.DEV && DEV_BYPASS_API_VALIDATION) {
+        console.log('[Podio Validation] Development mode - bypassing API validation despite error');
+        return true;
+      }
+      
       return false;
     }
     
@@ -193,6 +217,13 @@ export const validatePodioToken = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[Podio Validation] Error validating Podio token:', error);
+    
+    // In development mode, we can still return true despite errors
+    if (import.meta.env.DEV && DEV_BYPASS_API_VALIDATION) {
+      console.log('[Podio Validation] Development mode - bypassing API validation despite error');
+      return true;
+    }
+    
     return false;
   }
 };
@@ -223,6 +254,7 @@ export const clearPodioTokens = (): void => {
 // Function to initially authenticate with Podio using password flow
 export const ensureInitialPodioAuth = async (): Promise<boolean> => {
   console.log('[Podio Auth] Starting initial Podio authentication check');
+  console.log('[Podio Auth] Environment mode:', import.meta.env.MODE);
   
   // First check if we're rate limited
   if (isRateLimited()) {
@@ -230,6 +262,22 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
     const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
     console.error(`[Podio Auth] Rate limited. Please wait ${waitSecs} seconds before trying again.`);
     return false;
+  }
+  
+  // In development, we can bypass validation completely
+  if (import.meta.env.DEV && DEV_BYPASS_API_VALIDATION) {
+    console.log('[Podio Auth] Development mode - using simplified auth flow');
+    
+    // If we already have tokens, consider them valid in development
+    if (hasValidPodioTokens()) {
+      console.log('[Podio Auth] Development mode - existing tokens accepted without validation');
+      return true;
+    }
+    
+    // Otherwise get new tokens
+    const result = await authenticateWithPasswordFlow();
+    console.log('[Podio Auth] Development mode - password flow result:', result);
+    return result;
   }
   
   // Then validate any existing tokens
