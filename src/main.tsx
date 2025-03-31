@@ -8,11 +8,32 @@ import { handlePodioTokenRequest } from './api/podioTokenProxy';
 // Handle API routes if the URL matches our pattern
 const url = new URL(window.location.href);
 
+// Handle CORS preflight OPTIONS requests
+if (url.pathname === '/api/podio-token' && window.location.method === 'OPTIONS') {
+  new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
 // Handle Podio token proxy requests
-if (url.pathname === '/api/podio-token') {
-  handlePodioTokenRequest(new Request(url.href))
+else if (url.pathname === '/api/podio-token') {
+  console.log('Handling Podio token request');
+  handlePodioTokenRequest(new Request(url.href, {
+    method: 'POST',
+    body: window.location.search.substring(1),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  }))
     .then(response => {
+      console.log('Proxy response status:', response.status);
       response.json().then(data => {
+        console.log('Proxy response data:', data);
         document.body.innerHTML = JSON.stringify(data);
         document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
       });

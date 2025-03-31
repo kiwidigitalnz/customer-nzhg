@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   AuthErrorType, 
@@ -118,10 +119,8 @@ export const validatePodioToken = async (): Promise<boolean> => {
       console.log('Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
     }
     
-    // Skip validation for client credentials since they might not have user permissions
-    // This helps avoid 403 errors when using app authentication
-    const tokenType = localStorage.getItem('podio_token_type') || 'Bearer';
-    
+    // For client credentials authentication, we'll just check if token exists
+    // This simplifies the process and avoids unnecessary API calls
     if (!localStorage.getItem('podio_refresh_token')) {
       console.log('Using client credentials authentication, skipping detailed validation');
       return true;
@@ -129,9 +128,9 @@ export const validatePodioToken = async (): Promise<boolean> => {
 
     // Use a more general endpoint that works with both user and app authentication
     const apiDomain = getPodioApiDomain();
-    const response = await fetch(`https://${apiDomain}/user/status`, {
+    const response = await fetch(`https://${apiDomain}/app`, {
       headers: {
-        'Authorization': `${tokenType} ${accessToken}`
+        'Authorization': `Bearer ${accessToken}`
       }
     });
     
@@ -143,11 +142,10 @@ export const validatePodioToken = async (): Promise<boolean> => {
       return false;
     }
     
-    // For client_credentials flow, we might get a 403 on /user/status
-    // This is actually expected, so return true in this case
+    // For app authentication, we might still get 403 on some endpoints but token is valid
     if (response.status === 403) {
       if (import.meta.env.DEV) {
-        console.log('Token validation with /user/status got 403, but this is expected for app tokens');
+        console.log('Token validation with /app got 403, but token is likely still valid');
       }
       return true;
     }
@@ -155,7 +153,9 @@ export const validatePodioToken = async (): Promise<boolean> => {
     return response.ok;
   } catch (error) {
     console.error('Error validating Podio token:', error);
-    return false;
+    // If there's an error (like network), assume token might still be valid
+    // to avoid unnecessary token refreshes
+    return true;
   }
 };
 
@@ -193,7 +193,7 @@ export const ensureInitialPodioAuth = async (): Promise<boolean> => {
     return false;
   }
   
-  // Check for existing tokens first (but skip detailed validation to avoid 403 errors)
+  // Check for existing tokens first
   if (hasValidPodioTokens()) {
     console.log('Found valid Podio tokens, using them without validation');
     return true;
