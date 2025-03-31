@@ -67,7 +67,9 @@ export const isPodioConfigured = (): boolean => {
                      
   if (hasEnvVars) {
     if (import.meta.env.DEV) {
-      console.log('Podio config check: Environment variables found');
+      console.log('[Podio Config] Environment variables found');
+      console.log('[Podio Config] Client ID (first 5 chars):', 
+        import.meta.env.VITE_PODIO_CLIENT_ID.substring(0, 5) + '...');
     }
     return true;
   }
@@ -75,7 +77,7 @@ export const isPodioConfigured = (): boolean => {
   // Then check for valid tokens
   if (hasValidPodioTokens()) {
     if (import.meta.env.DEV) {
-      console.log('Podio config check: Valid tokens found');
+      console.log('[Podio Config] Valid tokens found');
     }
     return true;
   }
@@ -85,16 +87,27 @@ export const isPodioConfigured = (): boolean => {
                               !!localStorage.getItem('podio_client_secret');
                               
   if (hasLocalStorageCreds && import.meta.env.DEV) {
-    console.log('Podio config check: localStorage credentials found');
+    console.log('[Podio Config] localStorage credentials found');
+    const storedClientId = localStorage.getItem('podio_client_id');
+    if (storedClientId) {
+      console.log('[Podio Config] localStorage client ID (first 5 chars):', 
+        storedClientId.substring(0, 5) + '...');
+    }
     return true;
   }
   
   // Log what's missing for debugging
   if (import.meta.env.DEV) {
-    console.log('Podio not configured:',
+    console.log('[Podio Config] Podio not configured:',
       !hasEnvVars ? 'No environment variables' : '',
       !hasValidPodioTokens() ? 'No valid tokens' : '',
       !hasLocalStorageCreds ? 'No localStorage credentials' : '');
+    
+    // Log environment variable details
+    console.log('[Podio Config] VITE_PODIO_CLIENT_ID defined:', 
+      !!import.meta.env.VITE_PODIO_CLIENT_ID);
+    console.log('[Podio Config] VITE_PODIO_CLIENT_SECRET defined:', 
+      !!import.meta.env.VITE_PODIO_CLIENT_SECRET);
   }
   
   return false;
@@ -107,32 +120,79 @@ export const validatePodioToken = async (): Promise<boolean> => {
     if (!accessToken) return false;
     
     if (import.meta.env.DEV) {
-      console.log('Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
+      console.log('[Podio Validation] Validating token (first 10 chars):', accessToken.substring(0, 10) + '...');
     }
     
     // Use an endpoint that works with app authentication instead of user authentication
     // The /app/ endpoint requires only app authorization
     const apiDomain = getPodioApiDomain();
+    console.log(`[Podio Validation] Making API call to https://${apiDomain}/app/${PODIO_CONTACTS_APP_ID}`);
+    
     const response = await fetch(`https://${apiDomain}/app/${PODIO_CONTACTS_APP_ID}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
     
+    console.log('[Podio Validation] Validation API call status:', response.status);
+    console.log('[Podio Validation] Validation API call headers:', JSON.stringify(Object.fromEntries([...response.headers.entries()])));
+    
     if (response.status === 403) {
-      console.log('Token validation: 403 Forbidden - The app may not have access to this resource');
+      console.log('[Podio Validation] 403 Forbidden - The app may not have access to this resource');
+      
+      // Try to get more details from the response
+      try {
+        const errorData = await response.json();
+        console.error('[Podio Validation] 403 error details:', errorData);
+      } catch (e) {
+        console.error('[Podio Validation] Failed to parse 403 response body');
+      }
       
       if (import.meta.env.DEV) {
-        console.log('This typically means the Podio app does not have the correct permissions.');
-        console.log('Ensure the Podio API client has access to the Contacts app (ID: 26969025)');
+        console.log('[Podio Validation] This typically means the Podio app does not have the correct permissions.');
+        console.log('[Podio Validation] Ensure the Podio API client has access to the Contacts app (ID: 26969025)');
+        
+        // Try another endpoint to see if token works at all
+        try {
+          console.log('[Podio Validation] Trying alternative endpoint to check token validity...');
+          const altResponse = await fetch(`https://${apiDomain}/org/`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+          
+          console.log('[Podio Validation] Alternative endpoint status:', altResponse.status);
+          
+          if (altResponse.ok) {
+            console.log('[Podio Validation] Token is valid but lacks specific app permissions');
+            const orgs = await altResponse.json();
+            console.log('[Podio Validation] Organizations accessible with token:', orgs.length);
+          } else {
+            console.log('[Podio Validation] Token is invalid or has very limited permissions');
+          }
+        } catch (e) {
+          console.error('[Podio Validation] Error checking alternative endpoint:', e);
+        }
       }
       
       return false;
     }
     
-    return response.ok;
+    if (!response.ok) {
+      console.error('[Podio Validation] Token validation failed with status:', response.status);
+      try {
+        const errorData = await response.json();
+        console.error('[Podio Validation] Error details:', errorData);
+      } catch (e) {
+        console.error('[Podio Validation] Failed to parse error response body');
+      }
+      return false;
+    }
+    
+    console.log('[Podio Validation] Token validated successfully');
+    return true;
   } catch (error) {
-    console.error('Error validating Podio token:', error);
+    console.error('[Podio Validation] Error validating Podio token:', error);
     return false;
   }
 };
@@ -157,37 +217,121 @@ export const clearPodioTokens = (): void => {
   localStorage.removeItem('podio_access_token');
   localStorage.removeItem('podio_refresh_token');
   localStorage.removeItem('podio_token_expiry');
-  console.log('Cleared Podio tokens');
+  console.log('[Podio Auth] Cleared Podio tokens');
 };
 
 // Function to initially authenticate with Podio using password flow
 export const ensureInitialPodioAuth = async (): Promise<boolean> => {
+  console.log('[Podio Auth] Starting initial Podio authentication check');
+  
   // First check if we're rate limited
   if (isRateLimited()) {
     const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
     const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-    console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+    console.error(`[Podio Auth] Rate limited. Please wait ${waitSecs} seconds before trying again.`);
     return false;
   }
   
   // Then validate any existing tokens
   if (hasValidPodioTokens()) {
-    console.log('Found valid Podio tokens, validating...');
+    console.log('[Podio Auth] Found valid Podio tokens, validating...');
     const isValid = await validatePodioToken();
     
     if (isValid) {
-      console.log('Existing tokens are valid');
+      console.log('[Podio Auth] Existing tokens are valid');
       return true;
     } else {
-      console.log('Existing tokens are invalid, clearing and getting new ones');
+      console.log('[Podio Auth] Existing tokens are invalid, clearing and getting new ones');
       clearPodioTokens();
     }
   }
   
-  console.log('Starting Password Flow for Podio authentication...');
+  console.log('[Podio Auth] Starting Password Flow for Podio authentication...');
+  console.log('[Podio Auth] Environment:', import.meta.env.DEV ? 'development' : 'production');
+  
+  // Print Podio client ID and secret status
+  const clientId = getPodioClientId();
+  const clientSecret = getPodioClientSecret();
+  console.log('[Podio Auth] Client ID available:', !!clientId);
+  console.log('[Podio Auth] Client Secret available:', !!clientSecret);
+  if (clientId) {
+    console.log('[Podio Auth] Client ID first 5 chars:', clientId.substring(0, 5) + '...');
+  }
   
   // Use Password Flow (client_credentials) for app authentication
-  return await authenticateWithPasswordFlow();
+  const result = await authenticateWithPasswordFlow();
+  console.log('[Podio Auth] Password flow authentication result:', result ? 'success' : 'failed');
+  
+  // If authentication was successful, verify the token works by making a test call
+  if (result) {
+    try {
+      console.log('[Podio Auth] Verifying token with test API call');
+      const accessToken = localStorage.getItem('podio_access_token');
+      if (accessToken) {
+        const apiDomain = getPodioApiDomain();
+        const testEndpoint = `/app/${PODIO_CONTACTS_APP_ID}`;
+        console.log(`[Podio Auth] Making test call to https://${apiDomain}${testEndpoint}`);
+        
+        const testResponse = await fetch(`https://${apiDomain}${testEndpoint}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        
+        console.log('[Podio Auth] Test API call status:', testResponse.status);
+        
+        if (testResponse.ok) {
+          const testData = await testResponse.json();
+          console.log('[Podio Auth] Test API call successful:', testData.app_id);
+          return true;
+        } else {
+          console.error('[Podio Auth] Test API call failed with status:', testResponse.status);
+          try {
+            const errorBody = await testResponse.json();
+            console.error('[Podio Auth] Test API error details:', errorBody);
+          } catch (e) {
+            console.error('[Podio Auth] Could not parse test API error response');
+          }
+          
+          // If we get a 403, it's likely a permissions issue
+          if (testResponse.status === 403) {
+            console.log('[Podio Auth] 403 Forbidden - The API client may need additional permissions');
+            console.log('[Podio Auth] Retrying with a different endpoint to check token validity');
+            
+            // Try a different endpoint to see if token is valid at all
+            const altResponse = await fetch(`https://${apiDomain}/org/`, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            });
+            
+            console.log('[Podio Auth] Alternative endpoint status:', altResponse.status);
+            
+            if (altResponse.ok) {
+              console.log('[Podio Auth] Token is valid but lacks specific app permissions');
+              
+              // Token is valid, but we need to check scope
+              try {
+                const tokenExpiry = localStorage.getItem('podio_token_expiry');
+                if (tokenExpiry) {
+                  const expiryDate = new Date(parseInt(tokenExpiry, 10));
+                  console.log('[Podio Auth] Token expires at:', expiryDate.toISOString());
+                }
+              } catch (e) {
+                console.error('[Podio Auth] Error parsing token expiry:', e);
+              }
+              
+              return true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Podio Auth] Error during token verification:', e);
+    }
+  }
+  
+  return result;
 };
 
 // Enhanced function to refresh the access token if needed
@@ -196,9 +340,11 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   if (isRateLimited()) {
     const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
     const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-    console.error(`Rate limited. Please wait ${waitSecs} seconds before trying again.`);
+    console.error(`[Podio Auth] Rate limited. Please wait ${waitSecs} seconds before trying again.`);
     return false;
   }
+  
+  console.log('[Podio Auth] Refreshing token using Password Flow');
   
   // With client_credentials flow, there's no refresh token
   // We need to get a new token each time
@@ -210,6 +356,8 @@ let retryCount = 0;
 const MAX_RETRIES = 2;
 
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  console.log(`[Podio API] Calling endpoint: ${endpoint}`);
+  
   // Check if we're rate limited
   if (isRateLimited()) {
     const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
@@ -234,10 +382,12 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
   
   // First, ensure we have a valid token
+  console.log('[Podio API] Ensuring valid token before API call');
   const tokenValid = await ensureValidToken();
   
   if (!tokenValid) {
     retryCount = 0; // Reset retry count
+    console.error('[Podio API] No valid token available for API call');
     const error = createAuthError(
       AuthErrorType.TOKEN,
       'Not authenticated with Podio',
@@ -248,6 +398,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
   
   const accessToken = localStorage.getItem('podio_access_token');
+  console.log('[Podio API] Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
   
   // Merge the authorization header with the provided options
   const headers = {
@@ -258,15 +409,53 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   
   try {
     const apiDomain = getPodioApiDomain();
-    const response = await fetch(`https://${apiDomain}/${endpoint}`, {
+    const url = `https://${apiDomain}/${endpoint}`;
+    console.log(`[Podio API] Making request to: ${url}`);
+    
+    // Log request details in development
+    if (import.meta.env.DEV) {
+      console.log('[Podio API] Request method:', options.method || 'GET');
+      console.log('[Podio API] Request headers:', headers);
+      if (options.body) {
+        try {
+          // If it's JSON, try to parse and log it
+          if (typeof options.body === 'string' && headers['Content-Type']?.includes('application/json')) {
+            console.log('[Podio API] Request body:', JSON.parse(options.body));
+          } else {
+            console.log('[Podio API] Request body:', options.body);
+          }
+        } catch (e) {
+          console.log('[Podio API] Request body: [Could not parse]', options.body);
+        }
+      }
+    }
+    
+    const response = await fetch(url, {
       ...options,
       headers,
     });
     
+    console.log(`[Podio API] Response status: ${response.status}`);
+    
+    // Log response headers in development
+    if (import.meta.env.DEV) {
+      console.log('[Podio API] Response headers:', 
+        JSON.stringify(Object.fromEntries([...response.headers.entries()])));
+    }
+    
     // Handle rate limiting (420 or 429 status)
     if (response.status === 420 || response.status === 429) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Rate limit reached:', errorData);
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('[Podio API] Rate limit response data:', errorData);
+      } catch (e) {
+        // Failed to parse JSON
+        console.error('[Podio API] Could not parse rate limit error response');
+        errorData = {};
+      }
+      
+      console.error('[Podio API] Rate limit reached:', errorData);
       
       // Extract retry-after information
       const retryAfter = response.headers.get('Retry-After') || 
@@ -288,14 +477,16 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     // Handle 403 Forbidden specifically - this could mean the app doesn't have permission
     if (response.status === 403) {
-      console.error(`API call returned 403 Forbidden for endpoint ${endpoint}. The app may not have sufficient permissions.`);
+      console.error(`[Podio API] API call returned 403 Forbidden for endpoint ${endpoint}. The app may not have sufficient permissions.`);
       
       // Getting a 403 after successful token acquisition likely means permission issues,
       // not token issues. Don't keep retrying with the same credentials.
       let errorData;
       try {
         errorData = await response.json();
+        console.error('[Podio API] 403 error details:', errorData);
       } catch (e) {
+        console.error('[Podio API] Could not parse 403 error response');
         errorData = { error_description: "Forbidden - Insufficient permissions" };
       }
       
@@ -308,11 +499,20 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     // If token is expired or invalid, try refreshing it once and retry the call
     if (response.status === 401) {
-      console.log(`API call returned 401, attempting to refresh token`);
+      console.log(`[Podio API] API call returned 401, attempting to refresh token`);
+      
+      // Try to get more details about the 401
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('[Podio API] 401 error details:', errorData);
+      } catch (e) {
+        console.error('[Podio API] Could not parse 401 error response');
+      }
       
       // Check if we've already retried too many times
       if (retryCount >= MAX_RETRIES) {
-        console.log(`Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
+        console.log(`[Podio API] Maximum retry count (${MAX_RETRIES}) reached, forcing OAuth flow`);
         retryCount = 0; // Reset for next time
         clearPodioTokens();
         const refreshed = await authenticateWithPasswordFlow(); // Changed from startPodioOAuthFlow to use password flow consistently
@@ -325,7 +525,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         }
       } else {
         retryCount++;
-        console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
+        console.log(`[Podio API] Retry attempt ${retryCount} of ${MAX_RETRIES}`);
         const refreshed = await refreshPodioToken();
         if (!refreshed) {
           retryCount = 0; // Reset for next time
@@ -349,9 +549,11 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       
       try {
         const errorData = await response.json();
+        console.error('[Podio API] Error response:', errorData);
         errorMessage = errorData.error_description || errorMessage;
       } catch (e) {
         // Cannot parse response as JSON, use status text
+        console.error('[Podio API] Could not parse error response as JSON');
         errorMessage = response.statusText || errorMessage;
       }
       
@@ -375,10 +577,35 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Clear rate limit on successful call
     clearRateLimit();
     
-    return await response.json();
+    const responseData = await response.json();
+    
+    // In development, log a summary of the response
+    if (import.meta.env.DEV) {
+      const summary = {};
+      // Try to create a safe summary for logging
+      if (Array.isArray(responseData)) {
+        console.log(`[Podio API] Response is an array with ${responseData.length} items`);
+      } else if (typeof responseData === 'object' && responseData !== null) {
+        Object.keys(responseData).forEach(key => {
+          // Skip logging values that might be large or sensitive
+          if (key === 'access_token' || key === 'refresh_token' || key === 'token') {
+            summary[key] = '[REDACTED]';
+          } else if (Array.isArray(responseData[key])) {
+            summary[key] = `Array with ${responseData[key].length} items`;
+          } else if (typeof responseData[key] === 'object' && responseData[key] !== null) {
+            summary[key] = 'Object';
+          } else {
+            summary[key] = responseData[key];
+          }
+        });
+        console.log('[Podio API] Response data summary:', summary);
+      }
+    }
+    
+    return responseData;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('Podio API call error:', error);
+      console.error('[Podio API] API call error:', error);
     }
     
     // Reset retry count on error
@@ -428,7 +655,7 @@ const extractContactData = (item: any): any => {
     return null;
   }
   
-  console.log('Processing contact item:', item.item_id);
+  console.log('[Podio Auth] Processing contact item:', item.item_id);
   
   // Extract fields from the Podio contact item
   const name = getFieldValueByExternalId(item.fields, 'title') || 'Unknown Contact';
@@ -448,7 +675,7 @@ const extractContactData = (item: any): any => {
 // This function authenticates a user by checking the Podio contacts app
 export const authenticateUser = async (credentials: PodioCredentials): Promise<any | null> => {
   try {
-    console.log('Authenticating with Podio...', credentials.username);
+    console.log('[Podio Auth] Authenticating user:', credentials.username);
     
     // Check if we're rate limited first
     if (isRateLimited()) {
@@ -462,9 +689,10 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     }
     
     // Ensure we're authenticated with Podio first using password flow
+    console.log('[Podio Auth] Ensuring Podio authentication before user login');
     const authenticated = await ensureInitialPodioAuth();
     if (!authenticated) {
-      console.error('Failed to authenticate with Podio');
+      console.error('[Podio Auth] Failed to authenticate with Podio');
       throw createAuthError(
         AuthErrorType.CONFIGURATION,
         'Could not authenticate with Podio',
@@ -474,11 +702,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     // First, test to see if we can get the app details to verify our connection
     try {
-      console.log(`Attempting to retrieve app details for app ${PODIO_CONTACTS_APP_ID}`);
+      console.log(`[Podio Auth] Attempting to retrieve app details for app ${PODIO_CONTACTS_APP_ID}`);
       const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
-      console.log('Podio app details retrieved successfully:', appDetails.app_id);
+      console.log('[Podio Auth] Podio app details retrieved successfully:', appDetails.app_id);
     } catch (error) {
-      console.error('Failed to retrieve app details:', error);
+      console.error('[Podio Auth] Failed to retrieve app details:', error);
       
       // If we get a 403, it means we don't have access to this app
       if (error && typeof error === 'object' && 'type' in error && error.type === AuthErrorType.AUTHENTICATION) {
@@ -493,11 +721,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       const refreshed = await refreshPodioToken();
       if (refreshed) {
         try {
-          console.log('Retrying app details after token refresh');
+          console.log('[Podio Auth] Retrying app details after token refresh');
           const appDetails = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
-          console.log('Podio app details retrieved successfully after retry:', appDetails.app_id);
+          console.log('[Podio Auth] Podio app details retrieved successfully after retry:', appDetails.app_id);
         } catch (retryError) {
-          console.error('Failed to retrieve app details after token refresh:', retryError);
+          console.error('[Podio Auth] Failed to retrieve app details after token refresh:', retryError);
           throw createAuthError(
             AuthErrorType.CONFIGURATION,
             'Could not connect to Podio. Please check your credentials and app permissions.',
@@ -518,7 +746,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     // Get token to check format
     const accessToken = localStorage.getItem('podio_access_token');
-    console.log('Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
+    console.log('[Podio Auth] Using token (first 10 chars):', accessToken?.substring(0, 10) + '...');
     
     // Use the correct filter format for text fields (simple string value)
     const filters = {
@@ -527,7 +755,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       }
     };
 
-    console.log('Searching contacts with filters:', JSON.stringify(filters, null, 2));
+    console.log('[Podio Auth] Searching contacts with filters:', JSON.stringify(filters, null, 2));
     
     // Make the API call
     let searchResponse;
@@ -537,11 +765,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
         body: JSON.stringify(filters),
       });
     } catch (error) {
-      console.error('Error during contact search:', error);
+      console.error('[Podio Auth] Error during contact search:', error);
       
       // Try alternative filter format as fallback
       try {
-        console.log('Trying alternative filter format...');
+        console.log('[Podio Auth] Trying alternative filter format...');
         const alternativeFilters = {
           filters: {
             [CONTACT_FIELD_IDS.username]: {
@@ -549,14 +777,14 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
             }
           }
         };
-        console.log('Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
+        console.log('[Podio Auth] Alternative filters:', JSON.stringify(alternativeFilters, null, 2));
         
         searchResponse = await callPodioApi(endpoint, {
           method: 'POST',
           body: JSON.stringify(alternativeFilters),
         });
       } catch (secondError) {
-        console.error('Alternative filter also failed:', secondError);
+        console.error('[Podio Auth] Alternative filter also failed:', secondError);
         throw createAuthError(
           AuthErrorType.CONFIGURATION,
           'Failed to search for user in Podio contacts',
@@ -565,11 +793,11 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       }
     }
     
-    console.log('Search response items count:', searchResponse.items?.length || 0);
+    console.log('[Podio Auth] Search response items count:', searchResponse.items?.length || 0);
     
     // Check if we found any matches
     if (!searchResponse.items || searchResponse.items.length === 0) {
-      console.log('No contact found with username:', credentials.username);
+      console.log('[Podio Auth] No contact found with username:', credentials.username);
       throw createAuthError(
         AuthErrorType.AUTHENTICATION,
         'No user found with that username',
@@ -579,7 +807,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     
     // Get the first matching contact
     const contactItem = searchResponse.items[0];
-    console.log('Found contact item with ID:', contactItem.item_id);
+    console.log('[Podio Auth] Found contact item with ID:', contactItem.item_id);
     
     // Get the password field from the contact
     const storedPassword = getFieldValueByExternalId(
@@ -588,7 +816,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     );
     
     if (!storedPassword) {
-      console.error('Contact has no password field set');
+      console.error('[Podio Auth] Contact has no password field set');
       throw createAuthError(
         AuthErrorType.AUTHENTICATION,
         'User account is not properly configured',
@@ -599,7 +827,7 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
     // Verify the password
     const passwordMatches = await comparePasswords(credentials.password, storedPassword);
     if (!passwordMatches) {
-      console.log('Password verification failed');
+      console.log('[Podio Auth] Password verification failed');
       throw createAuthError(
         AuthErrorType.AUTHENTICATION,
         'No matching contact found with these credentials',
@@ -617,10 +845,10 @@ export const authenticateUser = async (credentials: PodioCredentials): Promise<a
       );
     }
     
-    console.log('Authentication successful for user:', contactData.username);
+    console.log('[Podio Auth] Authentication successful for user:', contactData.username);
     return contactData;
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('[Podio Auth] Authentication error:', error);
     
     // If it's already an AuthError, just rethrow it
     if (error && typeof error === 'object' && 'type' in error) {

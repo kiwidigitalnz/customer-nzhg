@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ensureInitialPodioAuth, isRateLimited } from '../services/podioApi';
+import { ensureInitialPodioAuth, isRateLimited, getPodioClientId, getPodioApiDomain } from '../services/podioApi';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -43,26 +43,44 @@ const LoginForm = () => {
       return;
     }
 
-    console.log(`Attempting login with username: ${username}`);
+    console.log(`[Login] Attempting login with username: ${username}`);
+    console.log('[Login] Environment:', import.meta.env.DEV ? 'development' : 'production');
+    
+    // Log Podio API domain
+    const apiDomain = getPodioApiDomain();
+    console.log('[Login] Using Podio API domain:', apiDomain);
+    
+    // Log client ID details (partial, for security)
+    const clientId = getPodioClientId();
+    if (clientId) {
+      console.log('[Login] Using client ID (first 5 chars):', clientId.substring(0, 5) + '...');
+    } else {
+      console.error('[Login] No client ID available');
+    }
     
     try {
       // First ensure we're connected to Podio using Password Flow
+      console.log('[Login] Ensuring initial Podio authentication...');
       setConnectingToPodio(true);
       const podioConnected = await ensureInitialPodioAuth();
       setConnectingToPodio(false);
       
       if (!podioConnected) {
+        console.error('[Login] Failed to connect to Podio');
+        
         // Check if failure was due to rate limiting
         if (isRateLimited()) {
           const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
           const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
           
+          console.log(`[Login] Rate limited for ${waitSecs} seconds`);
           toast({
             title: 'Rate Limit Reached',
             description: `Please wait ${waitSecs} seconds before trying again.`,
             variant: 'destructive',
           });
         } else {
+          console.error('[Login] Connection error, but not rate limited');
           toast({
             title: 'Connection Error',
             description: 'Could not connect to the service. Please try again later.',
@@ -72,18 +90,22 @@ const LoginForm = () => {
         return;
       }
       
+      console.log('[Login] Podio connected successfully, proceeding with login');
       const success = await login(username, password);
       
       if (success) {
+        console.log('[Login] Login successful');
         toast({
           title: 'Login successful',
           description: 'Welcome back',
           variant: 'default',
         });
         navigate('/dashboard');
+      } else {
+        console.error('[Login] Login failed but no error was thrown');
       }
     } catch (err) {
-      console.error('Unhandled login error:', err);
+      console.error('[Login] Unhandled login error:', err);
       
       // Check if error is due to rate limiting
       if (err && typeof err === 'object' && 'message' in err && 
@@ -91,6 +113,7 @@ const LoginForm = () => {
         const waitMatch = err.message.match(/wait\s+(\d+)\s+seconds/i);
         const waitSecs = waitMatch ? waitMatch[1] : '60';
         
+        console.log(`[Login] Rate limited for ${waitSecs} seconds based on error message`);
         toast({
           title: 'Rate Limit Reached',
           description: `Please wait ${waitSecs} seconds before trying again.`,
