@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_PODIO_CONTACTS_APP_ID: string
   readonly VITE_PODIO_PACKING_SPEC_APP_ID: string
   readonly VITE_PODIO_CONTACTS_APP_TOKEN: string
-  readonly VITE_PODIO_PACKING_SPEC_APP_TOKEN: string
   // Add other environment variables here
 }
 
