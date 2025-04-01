@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { authenticateUser, authenticateWithClientCredentials } from '../services/podioAuth';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,6 +24,31 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper function to emit debug info for the UI
+const emitLoginDebugInfo = (step: string, status: 'pending' | 'success' | 'error', details?: string) => {
+  // Store debug info in localStorage to allow components to react
+  const debugKey = `auth_login_debug_${Date.now()}`;
+  const debugInfo = JSON.stringify({ step, status, details });
+  
+  // Use localStorage event for communication
+  localStorage.setItem(debugKey, debugInfo);
+  // Trigger event for current window
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: debugKey,
+    newValue: debugInfo
+  }));
+  
+  // Log to console
+  if (import.meta.env.DEV) {
+    console.log(`[Auth Login Debug] ${step} - ${status}${details ? ': ' + details : ''}`);
+  }
+  
+  // Clean up old debug keys after 10 seconds to prevent localStorage pollution
+  setTimeout(() => {
+    localStorage.removeItem(debugKey);
+  }, 10000);
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<ContactData | null>(null);
@@ -96,11 +122,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
+      emitLoginDebugInfo('Login process started', 'pending');
+      
       // Try to authenticate with client credentials if we're not already authenticated
+      emitLoginDebugInfo('Authenticating with client credentials', 'pending');
       await authenticateWithClientCredentials();
+      emitLoginDebugInfo('Client credentials authentication completed', 'success');
       
       // Call the authenticateUser function to check if user exists in Contacts app
+      emitLoginDebugInfo('Checking user in Contacts app', 'pending');
       const userData = await authenticateUser(username, password);
+      
+      emitLoginDebugInfo('User authenticated successfully', 'success', 
+        `User ID: ${userData.id}
+         Name: ${userData.name}`
+      );
       
       setUser(userData);
       localStorage.setItem('nzhg_user', JSON.stringify(userData));
@@ -112,6 +148,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Login failed';
       setError(errorMsg);
+      
+      emitLoginDebugInfo('Login process failed', 'error', errorMsg);
+      
       setLoading(false);
       return false;
     }
@@ -122,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('nzhg_user');
     localStorage.removeItem('user_info');
     localStorage.removeItem('nzhg_session_expiry');
+    emitLoginDebugInfo('User logged out', 'success');
   };
 
   return (
