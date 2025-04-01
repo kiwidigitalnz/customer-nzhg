@@ -1,3 +1,4 @@
+
 // Service for handling Podio OAuth flow
 
 // Define interfaces for error responses from Podio API
@@ -165,12 +166,12 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     formData.append('client_secret', clientSecret);
     
     // Make direct request to Podio API (avoiding the proxy that's causing issues)
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData,
     });
@@ -307,12 +308,12 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     formData.append('client_secret', clientSecret);
     formData.append('refresh_token', refreshToken);
     
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData,
     });
@@ -454,12 +455,12 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     formData.append('code', code);
     formData.append('redirect_uri', redirectUri);
     
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData,
     });

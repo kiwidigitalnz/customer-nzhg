@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   getPodioClientId,
@@ -230,12 +231,12 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     );
     
     // Make the token request directly to Podio's token endpoint
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData
     });
@@ -375,12 +376,12 @@ export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
     );
     
     // Make the token request directly to Podio's token endpoint
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData
     });
@@ -512,12 +513,12 @@ export const authenticateWithPackingSpecAppToken = async (): Promise<boolean> =>
     );
     
     // Make the token request directly to Podio's token endpoint
+    // Removed User-Agent header to fix CORS issues
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'NZHG-Customer-Portal/1.0'
+        'Accept': 'application/json'
       },
       body: formData
     });
@@ -772,7 +773,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     headers.set('Authorization', `OAuth2 ${accessToken}`);
     headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
-    headers.set('User-Agent', 'NZHG-Customer-Portal/1.0');
+    // Removed User-Agent header to fix CORS issues
     
     // Create a new options object with the updated headers
     const newOptions = {
