@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -94,8 +93,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                 <div className="absolute inset-0 bg-white/50 rounded-3xl border border-honey-amber/10 backdrop-blur-sm transform rotate-3 scale-105 shadow-md"></div>
                 <div className="relative bg-white/80 backdrop-blur-md rounded-2xl border border-honey-amber/20 p-6 shadow-lg transform rotate-1 overflow-hidden">
                   <img 
-                    src="https://images.unsplash.com/photo-1587049633312-d628ae50a8ae?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2080&q=80" 
-                    alt="Honey Production" 
+                    src="https://dl.dropbox.com/scl/fi/9yxbc0w3oyrfyevnulbrt/Honey-Filling-Machine.jpg?rlkey=1vzgtypdp5lbgscwi5cmgs1cy" 
+                    alt="Honey Filling Machine" 
                     className="w-full h-auto rounded-xl object-cover shadow-md transition-all duration-700 hover:scale-105"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
