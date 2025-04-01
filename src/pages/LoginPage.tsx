@@ -3,10 +3,10 @@ import LoginForm from '../components/LoginForm';
 import MainLayout from '../components/MainLayout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Info } from 'lucide-react';
-import { isPodioConfigured } from '../services/podioAuth';
+import { RefreshCw, Info, Shield } from 'lucide-react';
+import { isPodioConfigured, validateContactsAppAccess } from '../services/podioAuth';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
@@ -14,7 +14,40 @@ const LoginPage = () => {
   const podioConfigured = isPodioConfigured();
   const { forceReauthenticate } = useAuth();
   const [reAuthenticating, setReAuthenticating] = useState(false);
+  const [appAccessStatus, setAppAccessStatus] = useState<'checking' | 'granted' | 'denied' | 'unknown'>('unknown');
+  const [checkingAccess, setCheckingAccess] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check Podio app access on mount
+    const checkPodioAccess = async () => {
+      if (!podioConfigured) return;
+      
+      setCheckingAccess(true);
+      setAppAccessStatus('checking');
+      
+      try {
+        const hasAccess = await validateContactsAppAccess();
+        setAppAccessStatus(hasAccess ? 'granted' : 'denied');
+        
+        if (!hasAccess) {
+          console.error('No access to Contacts app');
+          toast({
+            title: "API Permission Issue",
+            description: "The app doesn't have permission to access the Contacts database. Please try reauthorizing.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error checking Podio access:', error);
+        setAppAccessStatus('unknown');
+      } finally {
+        setCheckingAccess(false);
+      }
+    };
+    
+    checkPodioAccess();
+  }, [podioConfigured, toast]);
 
   const handleForceReauth = async () => {
     setReAuthenticating(true);
@@ -25,6 +58,19 @@ const LoginPage = () => {
           title: "Podio Reauthentication Successful",
           description: "Your app has been successfully reauthenticated with Podio."
         });
+        
+        // Check access again after reauth
+        setAppAccessStatus('checking');
+        const hasAccess = await validateContactsAppAccess();
+        setAppAccessStatus(hasAccess ? 'granted' : 'denied');
+        
+        if (!hasAccess) {
+          toast({
+            title: "Permission Issue Persists",
+            description: "Still unable to access Contacts app. Please check API permissions in Podio.",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Podio Reauthentication Failed",
@@ -69,19 +115,30 @@ const LoginPage = () => {
             </Alert>
           )}
           
+          {appAccessStatus === 'denied' && (
+            <Alert className="mb-4" variant="destructive">
+              <Shield className="h-4 w-4" />
+              <AlertTitle>API Permission Issue</AlertTitle>
+              <AlertDescription>
+                The app doesn't have access to the Contacts database. This is likely a Podio API permission issue.
+                Try reauthorizing below or contact your administrator.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Force Reauthentication Button */}
           <div className="mb-4 flex justify-center">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleForceReauth}
-              disabled={reAuthenticating}
+              disabled={reAuthenticating || checkingAccess}
               className="text-xs"
             >
-              {reAuthenticating && (
+              {(reAuthenticating || appAccessStatus === 'checking') && (
                 <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
               )}
-              {!reAuthenticating && (
+              {!reAuthenticating && appAccessStatus !== 'checking' && (
                 <RefreshCw className="mr-1 h-3 w-3" />
               )}
               Reauthorize with Podio

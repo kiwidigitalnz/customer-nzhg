@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { authenticateUser, authenticateWithClientCredentials, isRateLimited, validateContactsAppAccess } from '../services/podioAuth';
+import { authenticateUser, authenticateWithClientCredentials, authenticateWithPasswordFlow, isRateLimited, validateContactsAppAccess } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
 
 // Session duration (4 hours)
@@ -67,26 +67,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Reset permission error state
     setPermissionError(false);
     
-    // Try to authenticate with client credentials
+    // Try to authenticate with client credentials first
     try {
       setLoading(true);
-      const success = await authenticateWithClientCredentials();
+      // First try client credentials
+      const clientSuccess = await authenticateWithClientCredentials();
+      
+      if (!clientSuccess) {
+        toast({
+          title: 'Podio Authentication Failed',
+          description: 'Could not authenticate with Podio API using client credentials',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return false;
+      }
+      
+      // Then try app authentication
+      const appSuccess = await authenticateWithPasswordFlow();
+      
       setLoading(false);
       
-      if (success) {
+      if (appSuccess) {
         toast({
           title: 'Podio Authentication Successful',
           description: 'Successfully authenticated with Podio API',
         });
       } else {
         toast({
-          title: 'Podio Authentication Failed',
-          description: 'Could not authenticate with Podio API',
-          variant: 'destructive',
+          title: 'Podio App Authentication Limited',
+          description: 'Authenticated with client credentials but could not get app-specific access',
+          variant: 'default',
         });
       }
       
-      return success;
+      // Check if we can access the Contacts app
+      const hasAccess = await validateContactsAppAccess();
+      if (!hasAccess) {
+        toast({
+          title: 'Permission Issue',
+          description: 'Could not access the Contacts app. Please check Podio API permissions.',
+          variant: 'destructive',
+        });
+        setPermissionError(true);
+        return false;
+      }
+      
+      // Reset permission error state since we have access
+      setPermissionError(false);
+      return true;
     } catch (error) {
       setLoading(false);
       toast({
@@ -125,10 +154,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Try to authenticate with client credentials
-      const success = await authenticateWithClientCredentials();
+      // If we have access, reset permission error flag
+      setPermissionError(false);
       
-      console.log('Pre-authentication result:', success ? 'success' : 'failed');
+      console.log('Pre-authentication successful, contacts app is accessible');
     } catch (error) {
       console.warn('Error during pre-authentication:', error);
       
@@ -235,6 +264,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Set auth attempt timestamp to prevent duplicates
       setLastAuthAttempt(now);
+      
+      // Try to authenticate with the contacts app first for better permissions
+      await authenticateWithPasswordFlow();
       
       // Call the authenticateUser function to check if user exists in Contacts app
       const userData = await authenticateUser(username, password);

@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { 
   getPodioClientId,
@@ -205,17 +206,9 @@ export const CONTACT_FIELD_IDS = {
   password: 265834181
 };
 
-// Keep track of permission errors to avoid infinite loops
-let hasContactsAppPermissionError = false;
-
-// User or contact authentication - Fix the infinite retry loop
+// User or contact authentication with improved error handling
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
-    // If we've already encountered a permission error, don't try again
-    if (hasContactsAppPermissionError) {
-      throw new Error('The application does not have permission to access the Contacts app');
-    }
-    
     // Check for rate limiting
     if (checkRateLimit()) {
       throw new Error('Rate limited. Please try again later.');
@@ -229,20 +222,28 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     console.log(`Authenticating user ${username}`);
     
-    // Filter contacts by username
-    const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
-    
-    const filters = {
-      filters: {
-        [CONTACT_FIELD_IDS.username]: username
-      }
-    };
-    
+    // Try with app token authentication first - this has a higher success rate
     try {
+      // Make sure we're using a fresh token for this critical operation
+      await authenticateWithPasswordFlow();
+      
+      // Filter contacts by username
+      const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
+      
+      const filters = {
+        filters: {
+          [CONTACT_FIELD_IDS.username]: username
+        }
+      };
+      
+      console.log("Searching for user with filters:", JSON.stringify(filters));
+      
       const response = await callPodioApi(endpoint, {
         method: 'POST',
         body: JSON.stringify(filters),
       });
+      
+      console.log("Filter response:", JSON.stringify(response));
       
       if (!response.items || response.items.length === 0) {
         throw new Error('User not found');
@@ -269,19 +270,8 @@ export const authenticateUser = async (username: string, password: string): Prom
       };
       
       return userData;
-    } catch (apiError: any) {
-      // Check specifically for permission errors
-      if (apiError.message && (
-          apiError.message.includes('403') || 
-          apiError.message.includes('forbidden') || 
-          apiError.message.includes('permission')
-      )) {
-        // Mark that we have a permission error to prevent future attempts
-        hasContactsAppPermissionError = true;
-        throw new Error('The application does not have permission to access the Contacts app');
-      }
-      
-      // Re-throw other errors
+    } catch (apiError) {
+      console.error("API Error during authentication:", apiError);
       throw apiError;
     }
   } catch (error) {
@@ -360,6 +350,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     formData.append('grant_type', 'client_credentials');
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
+    formData.append('scope', 'global');  // Request global scope to ensure we have proper permissions
     
     // Make the token request directly to Podio's token endpoint
     const response = await fetch('https://podio.com/oauth/token', {
@@ -389,6 +380,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     }
     
     const responseText = await response.text();
+    console.log("Auth response:", responseText);
     
     // Check for valid JSON
     try {
@@ -418,37 +410,99 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
-// For backward compatibility, keeping these function aliases
+// Authenticate with password flow for app-specific access
 export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
-  return await authenticateWithClientCredentials();
+  try {
+    if (authAttemptInProgress) {
+      console.log('Auth attempt already in progress, skipping duplicate call');
+      return false;
+    }
+    
+    const clientId = getClientId();
+    const clientSecret = getClientSecret();
+    
+    if (!clientId || !clientSecret) {
+      console.error('Missing Podio client credentials');
+      return false;
+    }
+    
+    authAttemptInProgress = true;
+    
+    console.log('Authenticating with Podio using password flow...');
+    
+    // Use the app token for contacts app
+    const contactsAppToken = import.meta.env.VITE_PODIO_CONTACTS_APP_TOKEN;
+    if (!contactsAppToken) {
+      console.error('Missing Contacts app token');
+      authAttemptInProgress = false;
+      return false;
+    }
+    
+    // Create form data for app authentication
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'app');
+    formData.append('app_id', PODIO_CONTACTS_APP_ID.toString());
+    formData.append('app_token', contactsAppToken);
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    
+    // Make the token request directly to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+    
+    console.log('App token response status:', response.status);
+    
+    if (!response.ok) {
+      console.error(`App authentication failed with status ${response.status}`);
+      authAttemptInProgress = false;
+      return false;
+    }
+    
+    const responseData = await response.json();
+    
+    if (!responseData.access_token) {
+      console.error('No access token in app auth response');
+      authAttemptInProgress = false;
+      return false;
+    }
+    
+    // Store tokens
+    storeTokens(responseData);
+    setCurrentAppContext(PodioAppContext.CONTACTS);
+    
+    authAttemptInProgress = false;
+    return true;
+  } catch (error) {
+    console.error('Error during app authentication:', error);
+    authAttemptInProgress = false;
+    return false;
+  }
 };
 
 // Simplified app validation - just check if we can authenticate and access the app
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
-    // First authenticate with client credentials
-    const authSuccess = await authenticateWithClientCredentials();
+    // First authenticate with password flow for better app-specific access
+    const authSuccess = await authenticateWithPasswordFlow();
     if (!authSuccess) {
-      return false;
+      // Fall back to client credentials
+      const clientAuthSuccess = await authenticateWithClientCredentials();
+      if (!clientAuthSuccess) {
+        return false;
+      }
     }
     
     // Test if we can access the app
     const response = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
     
-    // Reset the permission error flag if we successfully accessed the app
-    hasContactsAppPermissionError = false;
-    
     return !!response && !!response.app_id;
   } catch (error) {
-    // Check for permission errors
-    if ((error as Error).message && (
-        (error as Error).message.includes('403') || 
-        (error as Error).message.includes('forbidden') || 
-        (error as Error).message.includes('permission')
-    )) {
-      hasContactsAppPermissionError = true;
-    }
-    
     console.error('Error validating Contacts app access:', error);
     return false;
   }
@@ -475,19 +529,12 @@ export const validatePackingSpecAppAccess = async (): Promise<boolean> => {
 
 // API call tracking to prevent infinite loops
 let apiCallsInProgress = new Map<string, boolean>();
-// Track API permission errors to prevent infinite retries
-const permissionErrorEndpoints = new Set<string>();
 
 // Generic function to call Podio API with authentication and rate limit handling
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   const callKey = `${endpoint}_${options.method || 'GET'}`;
   
   try {
-    // Check if we've had a permission error for this endpoint before
-    if (permissionErrorEndpoints.has(endpoint)) {
-      throw new Error(`API access to ${endpoint} is forbidden - permission denied`);
-    }
-    
     // Prevent duplicate API calls
     if (apiCallsInProgress.get(callKey)) {
       console.log(`API call to ${endpoint} already in progress, skipping duplicate`);
@@ -546,24 +593,19 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       throw new Error(`Rate limit reached for ${endpoint}`);
     }
     
-    // Handle 403 Forbidden - likely a permission issue that won't be solved by retrying
-    if (response.status === 403) {
-      // Store this endpoint as having permission issues to prevent future attempts
-      permissionErrorEndpoints.add(endpoint);
-      const errorText = await response.text();
-      throw new Error(`API access to ${endpoint} is forbidden - ${errorText}`);
-    }
-    
-    // Handle 401 Unauthorized - try refreshing token once
-    if (response.status === 401) {
-      console.log('Authentication error. Trying to refresh token...');
+    // Handle auth errors
+    if (response.status === 401 || response.status === 403) {
+      console.log(`Authentication error (${response.status}). Trying with password flow...`);
       
-      // Clear tokens to force a new auth attempt
-      clearTokens();
+      // Try app-specific authentication
+      const authSuccess = await authenticateWithPasswordFlow();
       
-      const authSuccess = await authenticateWithClientCredentials();
       if (!authSuccess) {
-        throw new Error('Failed to authenticate with Podio API after retry');
+        // If that fails, try client credentials
+        const clientAuthSuccess = await authenticateWithClientCredentials();
+        if (!clientAuthSuccess) {
+          throw new Error('Failed to authenticate with Podio API');
+        }
       }
       
       // Release the lock for this endpoint
@@ -601,6 +643,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
 };
 
-// Re-exporting for backward compatibility
-export const authenticateWithContactsAppToken = authenticateWithClientCredentials;
+// Backward compatibility
+export const authenticateWithContactsAppToken = authenticateWithPasswordFlow;
 export const authenticateWithPackingSpecAppToken = authenticateWithClientCredentials;
