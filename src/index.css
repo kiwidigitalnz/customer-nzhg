@@ -151,6 +151,11 @@
   transform: translateY(-2px);
 }
 
+/* Text gradient styles */
+.text-gradient-primary {
+  @apply bg-gradient-to-br from-blue-50 via-white to-blue-100 bg-clip-text text-transparent;
+}
+
 /* Status badge styles - enhanced with consistent styling */
 .status-badge {
   @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors shadow-sm;
