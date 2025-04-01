@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { 
@@ -158,7 +157,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     const response = await callPodioApi(endpoint, {
       method: 'POST',
       body: JSON.stringify(filters),
-    });
+    }, 'packingspec'); // Use packing spec app token
     
     if (!response.items || response.items.length === 0) {
       console.log('No packing specs found for this contact');
@@ -221,7 +220,7 @@ export const getPackingSpecDetails = async (packingSpecId: number): Promise<Pack
     }
 
     // Get the item details
-    const response = await callPodioApi(`item/${packingSpecId}`);
+    const response = await callPodioApi(`item/${packingSpecId}`, {}, 'packingspec'); // Use packing spec app token
 
     if (!response) {
       console.log('No packing spec found with this ID');
@@ -431,7 +430,7 @@ export const updatePackingSpecStatus = async (
     const response = await callPodioApi(endpoint, {
       method: 'PUT',
       body: JSON.stringify(updateData),
-    });
+    }, 'packingspec'); // Use packing spec app token
     
     console.log('Podio update response:', response);
     return true;

@@ -1,4 +1,3 @@
-
 // This module provides helper functions for dealing with Podio fields
 
 // Helper function to get field value by external_id
@@ -13,6 +12,32 @@ export const getFieldValueByExternalId = (fields: any[], externalId: string): st
     return field.values[0].value.text;
   }
   
+  // Handle app reference fields (like customer)
+  if (field.type === 'app' && field.values[0].value) {
+    if (field.values[0].value.title) {
+      return field.values[0].value.title;
+    }
+    if (field.values[0].value.name) {
+      return field.values[0].value.name;
+    }
+  }
+  
+  // Handle email fields
+  if (field.type === 'email' && field.values[0].value) {
+    return field.values[0].value;
+  }
+  
+  // Handle phone fields
+  if (field.type === 'phone' && field.values[0].value) {
+    return field.values[0].value;
+  }
+  
+  // Handle calculation fields
+  if (field.type === 'calculation' && field.values[0].value !== undefined) {
+    return field.values[0].value.toString();
+  }
+  
+  // Default case
   return field.values[0].value;
 };
 
@@ -23,6 +48,8 @@ export const getFieldIdValue = (fields: any[], fieldId: number): number | null =
     return null;
   }
   
+  // Handle different reference field formats
+  
   // Reference fields have an "item" or "value" property with "item_id"
   if (field.values[0].item && field.values[0].item.item_id) {
     return field.values[0].item.item_id;
@@ -30,6 +57,11 @@ export const getFieldIdValue = (fields: any[], fieldId: number): number | null =
   
   if (field.values[0].value && field.values[0].value.item_id) {
     return field.values[0].value.item_id;
+  }
+  
+  // For app reference fields
+  if (field.type === 'app' && field.values[0].value && field.values[0].value.id) {
+    return field.values[0].value.id;
   }
   
   return null;
@@ -123,8 +155,8 @@ export const mapPodioStatusToAppStatus = (podioStatus: string | null): 'pending-
   
   if (normalizedStatus === 'pending approval' || 
       normalizedStatus === 'pending-approval' ||
-      normalizedStatus === 'pending customer approval' ||  // Added this mapping
-      normalizedStatus === 'pending-customer-approval') {  // Added this mapping
+      normalizedStatus === 'pending customer approval' ||
+      normalizedStatus === 'pending-customer-approval') {
     return 'pending-approval';
   }
   

@@ -1,80 +1,53 @@
 
-import { callPodioApi, hasValidTokens } from './podioAuth';
+import { callPodioApi } from './podioAuth';
 
-// Define the CommentItem interface
 export interface CommentItem {
   id: number;
   text: string;
-  author: {
-    name: string;
-    avatar?: string;
-  };
+  createdBy: string;
   createdAt: string;
-  createdBy: string; // Added this property to match the expected interface
 }
 
-// Get comments for a specific item
+// Get comments for a specific item from Podio
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    if (!hasValidTokens()) {
-      console.error('Not authenticated with Podio');
-      return [];
-    }
-    
-    // Get the comments from Podio for this item
-    const response = await callPodioApi(`comment/item/${itemId}`);
+    const response = await callPodioApi(`comment/item/${itemId}`, {}, 'packingspec');
     
     if (!response || !Array.isArray(response)) {
-      console.log('No comments found or invalid response');
       return [];
     }
     
-    // Transform the Podio comment format to our application format
-    const comments: CommentItem[] = response.map((comment: any) => ({
+    // Map Podio comments to our format
+    return response.map((comment: any) => ({
       id: comment.comment_id,
       text: comment.value || '',
-      author: {
-        name: comment.created_by.name || 'Unknown',
-        avatar: comment.created_by.avatar_url,
-      },
-      createdAt: comment.created_on,
-      createdBy: comment.created_by.name || 'Unknown', // Added this field mapping to match our interface
+      createdBy: comment.created_by?.name || 'Unknown',
+      createdAt: comment.created_on
     }));
-    
-    return comments;
   } catch (error) {
-    console.error('Error getting comments:', error);
+    console.error('Error fetching comments from Podio:', error);
     return [];
   }
 };
 
-// Add a comment to an item
+// Add a comment to a Podio item
 export const addCommentToPodio = async (itemId: number, comment: string): Promise<boolean> => {
   try {
-    if (!hasValidTokens()) {
-      console.error('Not authenticated with Podio');
-      return false;
-    }
-    
-    // Create the comment data
-    const commentData = {
-      value: comment
-    };
-    
-    // Call the Podio API to add the comment
-    await callPodioApi(`comment/item/${itemId}`, {
+    const response = await callPodioApi(`comment/item/${itemId}`, {
       method: 'POST',
-      body: JSON.stringify(commentData),
-    });
+      body: JSON.stringify({
+        value: comment
+      })
+    }, 'packingspec');
     
-    return true;
+    return !!response;
   } catch (error) {
-    console.error('Error adding comment:', error);
+    console.error('Error adding comment to Podio:', error);
     return false;
   }
 };
 
-// Add a comment to a packing spec - convenience function
-export const addCommentToPackingSpec = async (packingSpecId: number, comment: string): Promise<boolean> => {
-  return addCommentToPodio(packingSpecId, comment);
+// Helper function for packing spec comments
+export const addCommentToPackingSpec = async (specId: number, comment: string): Promise<boolean> => {
+  return addCommentToPodio(specId, comment);
 };
