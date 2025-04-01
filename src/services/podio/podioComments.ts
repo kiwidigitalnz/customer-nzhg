@@ -10,6 +10,7 @@ export interface CommentItem {
     avatar?: string;
   };
   createdAt: string;
+  createdBy: string; // Added this property to match the expected interface
 }
 
 // Get comments for a specific item
@@ -37,6 +38,7 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
         avatar: comment.created_by.avatar_url,
       },
       createdAt: comment.created_on,
+      createdBy: comment.created_by.name || 'Unknown', // Added this field mapping to match our interface
     }));
     
     return comments;

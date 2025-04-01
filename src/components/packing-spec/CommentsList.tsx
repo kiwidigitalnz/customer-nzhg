@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User, RefreshCcw, AlertCircle, Bell } from 'lucide-react';
@@ -10,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { CommentItem } from '@/services/podio/podioComments';
 
 interface Comment {
   id: number;
@@ -32,7 +32,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use our custom polling hook if we have a specId
   const {
     comments: polledComments,
     isLoading,
@@ -48,10 +47,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
     isActive && !!specId
   );
   
-  // Use polled comments if available, otherwise use passed in comments
   const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
   
-  // Mark comments as seen when tab becomes active
   useEffect(() => {
     if (isActive && newCommentsCount > 0) {
       markAllAsSeen();
@@ -67,12 +64,9 @@ const CommentsList: React.FC<CommentsListProps> = ({
     });
   };
   
-  // Format time to NZ Pacific timezone
   const formatNZTime = (dateStr: string) => {
     try {
-      // Format time in 12-hour format (e.g., 2:30 PM)
       const date = new Date(dateStr);
-      // Using Auckland specific time format
       return format(date, 'h:mm a');
     } catch (err) {
       console.error('Error formatting time:', err);
@@ -88,6 +82,28 @@ const CommentsList: React.FC<CommentsListProps> = ({
       console.error('Error formatting last polled time:', err);
       return '';
     }
+  };
+  
+  const ensureCommentFormat = (comment: any): Comment => {
+    if (typeof comment.createdBy === 'string') {
+      return comment as Comment;
+    }
+    
+    if (comment.author && comment.author.name) {
+      return {
+        id: comment.id,
+        text: comment.text,
+        createdBy: comment.createdBy || comment.author.name,
+        createdAt: comment.createdAt
+      };
+    }
+    
+    return {
+      id: comment.id,
+      text: comment.text,
+      createdBy: 'Unknown',
+      createdAt: comment.createdAt
+    };
   };
   
   if (!comments || comments.length === 0) {
@@ -124,12 +140,10 @@ const CommentsList: React.FC<CommentsListProps> = ({
     );
   }
   
-  // Sort comments by creation date (newest first)
   const sortedComments = [...comments].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   
-  // Get current user's company name directly from auth context
   const companyName = user?.name || "Unknown Company";
   const authUsername = user?.username || null;
   
@@ -176,36 +190,29 @@ const CommentsList: React.FC<CommentsListProps> = ({
       )}
       
       {sortedComments.map(comment => {
-        // Check if the comment was created by the current user
         const isCurrentUserComment = 
           comment.createdBy === authUsername || 
           comment.createdBy === "Customer Portal User" ||
           comment.createdBy.includes(authUsername || '');
         
-        // Parse the comment text to extract the company name if it's in the format [CompanyName] Comment
         let displayName = comment.createdBy;
         let commentText = comment.text;
         
-        // Check if the comment starts with [Company] format
         const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
         if (companyMatch && companyMatch.length > 2) {
-          // If it's not the current user's comment, use the company name from the comment
           if (!isCurrentUserComment) {
-            displayName = companyMatch[1]; // Company name inside brackets
+            displayName = companyMatch[1];
           }
-          commentText = companyMatch[2]; // The rest of the comment after the company name
+          commentText = companyMatch[2];
         }
         
-        // For current user's comment, always use their company name from auth context
         if (isCurrentUserComment) {
           displayName = companyName;
         }
-
-        // Format time to show below the date
+        
         const commentDate = new Date(comment.createdAt);
         const timeString = formatNZTime(comment.createdAt);
         
-        // Check if this is a new comment
         const isNewComment = newCommentIds.has(comment.id);
         
         return (

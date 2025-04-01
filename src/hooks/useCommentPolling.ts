@@ -1,8 +1,9 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { getCommentsFromPodio } from '../services/podioApi';
+import { getCommentsFromPodio, CommentItem } from '../services/podio/podioComments';
 import { format } from 'date-fns';
 
+// Ensure our internal Comment interface matches the CommentItem interface from podioComments
 interface Comment {
   id: number;
   text: string;
@@ -52,8 +53,16 @@ export const useCommentPolling = (
     try {
       const fetchedComments = await getCommentsFromPodio(itemId);
       
+      // Transform CommentItem[] to Comment[] to ensure type consistency
+      const transformedComments: Comment[] = fetchedComments.map(comment => ({
+        id: comment.id,
+        text: comment.text,
+        createdBy: comment.createdBy,
+        createdAt: comment.createdAt
+      }));
+      
       // Check if we have new comments by comparing with what we've seen before
-      const newComments = fetchedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
+      const newComments = transformedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
       
       if (newComments.length > 0) {
         setNewCommentsCount(prevCount => {
@@ -66,18 +75,14 @@ export const useCommentPolling = (
       }
       
       // Check if we need to update the comments list
-      if (fetchedComments.length !== comments.length || 
-          fetchedComments.some((comment, index) => 
+      if (transformedComments.length !== comments.length || 
+          transformedComments.some((comment, index) => 
             index >= comments.length || 
             comment.id !== comments[index].id || 
             comment.text !== comments[index].text
           )) {
         // Update comments without causing a flicker
-        setComments(prevComments => {
-          // Preserve references to existing comments where possible to minimize re-renders
-          const updatedComments = [...fetchedComments];
-          return updatedComments;
-        });
+        setComments(transformedComments);
       }
       
       lastPollTimeRef.current = Date.now();
