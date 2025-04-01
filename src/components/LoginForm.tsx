@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
@@ -17,8 +17,6 @@ import {
   authenticateWithClientCredentials,
   isRateLimitedWithInfo
 } from '../services/podioAuth';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -28,87 +26,12 @@ const LoginForm = () => {
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  // Debug information state
-  const [debugInfo, setDebugInfo] = useState<{
-    steps: Array<{ step: string, status: 'pending' | 'success' | 'error', details?: string }>,
-    showDetails: boolean
-  }>({
-    steps: [],
-    showDetails: true // Set to true by default for easier debugging
-  });
-
-  // Add a debug step
-  const addDebugStep = (step: string, status: 'pending' | 'success' | 'error', details?: string) => {
-    setDebugInfo(prev => ({
-      ...prev,
-      steps: [...prev.steps, { step, status, details }]
-    }));
-  };
-
-  // Update the last debug step
-  const updateLastDebugStep = (status: 'pending' | 'success' | 'error', details?: string) => {
-    setDebugInfo(prev => {
-      if (prev.steps.length === 0) return prev;
-      
-      const updatedSteps = [...prev.steps];
-      const lastStepIndex = updatedSteps.length - 1;
-      updatedSteps[lastStepIndex] = {
-        ...updatedSteps[lastStepIndex],
-        status,
-        details: details || updatedSteps[lastStepIndex].details
-      };
-      
-      return {
-        ...prev,
-        steps: updatedSteps
-      };
-    });
-  };
-
-  // Clear debug info
-  const clearDebugInfo = () => {
-    setDebugInfo({
-      steps: [],
-      showDetails: debugInfo.showDetails
-    });
-  };
-
-  const toggleDebugDetails = () => {
-    setDebugInfo(prev => ({
-      ...prev,
-      showDetails: !prev.showDetails
-    }));
-  };
-
-  // Listen for debug events from the podio auth service
-  useEffect(() => {
-    const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key?.startsWith('podio_auth_debug')) {
-        try {
-          const debugData = JSON.parse(event.newValue || '{}');
-          if (debugData.step && debugData.status) {
-            addDebugStep(debugData.step, debugData.status, debugData.details);
-          }
-        } catch (e) {
-          console.error('Failed to parse debug info', e);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageEvent);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageEvent);
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Reset error state and debug info
+    // Reset error state
     setPodioAPIError(null);
-    clearDebugInfo();
     
     if (!username || !password) {
       toast({
@@ -124,12 +47,12 @@ const LoginForm = () => {
       return;
     }
 
-    // Check if we're rate limited with more details
+    // Check if we're rate limited
     const rateLimitInfo = isRateLimitedWithInfo();
     if (rateLimitInfo.isLimited) {
       const waitTime = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
       const retryMessage = rateLimitInfo.retryCount > 1 
-        ? `Multiple attempts detected (${rateLimitInfo.retryCount}). Please wait longer.` 
+        ? `Multiple attempts detected. Please wait ${waitTime} seconds.` 
         : `Please wait ${waitTime} seconds before trying again.`;
         
       toast({
@@ -138,39 +61,18 @@ const LoginForm = () => {
         variant: 'destructive',
       });
       
-      addDebugStep('Rate limited', 'error', 
-        `Wait time: ${waitTime} seconds
-         Retry count: ${rateLimitInfo.retryCount}
-         Last endpoint: ${rateLimitInfo.lastEndpoint || 'Unknown'}`
-      );
-      
       return;
     }
-
-    console.log(`Attempting login with username: ${username}`);
-    addDebugStep(`Attempting login with username: ${username}`, 'pending');
     
     try {
       setAuthenticating(true);
       
       // Try to authenticate with Contacts app token
-      addDebugStep('Authenticating with Contacts app token', 'pending');
       let contactsAuthSuccess = await authenticateWithContactsAppToken();
       
       if (!contactsAuthSuccess) {
-        updateLastDebugStep('error', 'Contacts app authentication failed, falling back to client credentials');
-        
         // Fall back to client credentials if app auth fails
-        addDebugStep('Falling back to client credentials authentication', 'pending');
         contactsAuthSuccess = await authenticateWithClientCredentials();
-        
-        if (contactsAuthSuccess) {
-          updateLastDebugStep('success', 'Client credentials authentication successful');
-        } else {
-          updateLastDebugStep('error', 'Client credentials authentication failed');
-        }
-      } else {
-        updateLastDebugStep('success', 'Contacts app authentication successful');
       }
       
       if (!contactsAuthSuccess) {
@@ -180,28 +82,15 @@ const LoginForm = () => {
       }
       
       // Pre-authenticate with Packing Spec app in parallel (don't wait for it)
-      addDebugStep('Pre-authenticating with Packing Spec app for later use', 'pending');
-      authenticateWithPackingSpecAppToken()
-        .then(success => {
-          if (success) {
-            updateLastDebugStep('success', 'Successfully pre-authenticated with Packing Spec app');
-          } else {
-            updateLastDebugStep('error', 'Failed to pre-authenticate with Packing Spec app (will try again later when needed)');
-          }
-        })
-        .catch(error => {
-          updateLastDebugStep('error', `Error pre-authenticating with Packing Spec app: ${error.message}`);
-        });
+      authenticateWithPackingSpecAppToken().catch(() => {
+        // Silently fail, we'll try again later when needed
+      });
       
       // If authentication was successful, try to login the user
       try {
-        addDebugStep('Searching for user in Contacts app', 'pending');
         const success = await login(username, password);
         
         if (success) {
-          updateLastDebugStep('success', 'User found in Contacts app');
-          addDebugStep('Login successful', 'success');
-          
           toast({
             title: 'Login successful',
             description: 'Welcome back',
@@ -209,13 +98,11 @@ const LoginForm = () => {
           });
           navigate('/dashboard');
         } else {
-          updateLastDebugStep('error', 'User not found in Contacts app');
           setPodioAPIError('Invalid username or password');
         }
       } catch (loginErr) {
         // Handle specific unauthorized errors differently
         const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
-        updateLastDebugStep('error', `Login failed: ${errorMessage}`);
         
         if (errorMessage.includes('Invalid contacts app token') || errorMessage.includes('Invalid app token')) {
           setPodioAPIError('Authentication error. Please check your Podio configuration.');
@@ -232,10 +119,7 @@ const LoginForm = () => {
         }
       }
     } catch (err) {
-      console.error('Login error:', err);
-      
       const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
-      addDebugStep('Login error', 'error', errorMessage);
       
       // Check for specific permission issues related to Podio API
       if (errorMessage.includes('Invalid contacts app token')) {
@@ -261,10 +145,7 @@ const LoginForm = () => {
     const rateLimitInfo = isRateLimitedWithInfo();
     if (rateLimitInfo.isLimited) {
       const waitSecs = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
-      const retryMessage = rateLimitInfo.retryCount > 1 
-        ? `Rate limited after ${rateLimitInfo.retryCount} attempts. Please wait ${waitSecs} seconds.` 
-        : `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
-      return retryMessage;
+      return `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
     }
     return null;
   };
@@ -328,49 +209,6 @@ const LoginForm = () => {
               </AlertTitle>
               <AlertDescription>{displayError}</AlertDescription>
             </Alert>
-          )}
-          
-          {debugInfo.steps.length > 0 && (
-            <Collapsible open={debugInfo.showDetails} onOpenChange={toggleDebugDetails} className="w-full border rounded-md p-2 mt-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Authentication Process Details</h4>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-0 h-7 w-7">
-                    {debugInfo.showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-
-              <CollapsibleContent>
-                <ScrollArea className="h-60 w-full mt-2">
-                  <div className="space-y-2">
-                    {debugInfo.steps.map((step, i) => (
-                      <div key={i} className="text-xs border-l-2 pl-2 py-1 mb-1" 
-                           style={{ 
-                             borderColor: step.status === 'success' ? 'green' : 
-                                          step.status === 'error' ? 'red' : 'blue' 
-                           }}>
-                        <div className="font-semibold">
-                          {step.step}
-                          <span className={`ml-2 inline-block rounded-full px-2 text-xs ${
-                            step.status === 'success' ? 'bg-green-100 text-green-800' : 
-                            step.status === 'error' ? 'bg-red-100 text-red-800' : 
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {step.status}
-                          </span>
-                        </div>
-                        {step.details && (
-                          <pre className="text-xs mt-1 whitespace-pre-wrap overflow-x-auto bg-gray-50 p-1 rounded">
-                            {step.details}
-                          </pre>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CollapsibleContent>
-            </Collapsible>
           )}
           
           <Button 
