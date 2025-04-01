@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioApi';
+import { getPackingSpecsForContact, isPodioConfigured, isRateLimitedWithInfo } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import RateLimitError from './errors/RateLimitError';
 
 interface PackingSpec {
   id: number;
@@ -38,6 +38,9 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [rateLimitResetTime, setRateLimitResetTime] = useState(3600);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,17 +50,43 @@ const Dashboard = () => {
   const fetchSpecs = async () => {
     if (user) {
       setLoading(true);
+      setError(null);
+      setRateLimited(false);
+
       try {
+        // Check for rate limiting before making API call
+        const rateLimitInfo = isRateLimitedWithInfo();
+        if (rateLimitInfo.isLimited) {
+          setRateLimited(true);
+          setRateLimitResetTime(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000));
+          setLoading(false);
+          return;
+        }
+
         console.log(`Fetching specs for contact ID: ${user.id}`);
         const data = await getPackingSpecsForContact(user.id);
         setSpecs(data as PackingSpec[]);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching specs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load your packing specifications',
-          variant: 'destructive',
-        });
+        
+        // Check if error is due to rate limiting
+        if (error.message && error.message.toLowerCase().includes('rate limit')) {
+          setRateLimited(true);
+          setRateLimitResetTime(3600); // Default to 1 hour if not specified
+          
+          // Try to extract the wait time from error message
+          const waitTimeMatch = error.message.match(/wait (\d+) seconds/);
+          if (waitTimeMatch && waitTimeMatch[1]) {
+            setRateLimitResetTime(parseInt(waitTimeMatch[1], 10));
+          }
+        } else {
+          setError('Failed to load your packing specifications');
+          toast({
+            title: 'Error',
+            description: 'Failed to load your packing specifications',
+            variant: 'destructive',
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -102,6 +131,48 @@ const Dashboard = () => {
         <LoadingSpinner 
           size="lg" 
           text="Loading..."
+        />
+      </div>
+    );
+  }
+
+  // If rate limited, show rate limit error
+  if (rateLimited) {
+    return (
+      <div className="container mx-auto px-4 py-8 animate-fade-in">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
+              {user?.logoUrl ? (
+                <AvatarImage 
+                  src={user.logoUrl} 
+                  alt={user?.name || 'Company Logo'} 
+                  onError={(e) => {
+                    e.currentTarget.src = '';
+                  }}
+                />
+              ) : null}
+              <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
+                {user?.name ? getCompanyInitials(user.name) : <Building />}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
+              <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={logout}
+            className="transition-all hover:-translate-y-1 hover:shadow-md"
+          >
+            <LogOut className="mr-2 h-4 w-4" /> Logout
+          </Button>
+        </div>
+
+        <RateLimitError 
+          retryTime={rateLimitResetTime} 
+          onRetry={fetchSpecs} 
         />
       </div>
     );
