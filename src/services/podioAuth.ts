@@ -14,8 +14,12 @@ export {
   getContactsAppToken,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
-  callPodioApi
-} from './podioApi';
+  callPodioApi,
+  refreshPodioToken,
+  clearPodioTokens,
+  CONTACT_FIELD_IDS,
+  authenticateWithContactsAppToken
+} from './podio/podioAuth';
 
 // For backward compatibility - Re-export types
 export type { 

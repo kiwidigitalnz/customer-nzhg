@@ -1,7 +1,6 @@
-
 // This module handles interactions with Podio packing specs
 
-import { callPodioApi, hasValidPodioTokens, refreshPodioToken, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
+import { callPodioApi, hasValidPodioTokens } from '../podioApi';
 import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
 import { uploadFileToPodio, shouldProceedWithoutSignature } from './podioFiles';
 import { getCommentsFromPodio, CommentItem, addCommentToPodio } from './podioComments';
@@ -136,7 +135,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   try {
     console.log('Fetching packing specs for contact ID:', contactId);
     
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    if (!hasValidPodioTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     
@@ -213,7 +212,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
   try {
     console.log('Fetching details for packing spec ID:', specId);
     
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    if (!hasValidPodioTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     
@@ -335,7 +334,7 @@ export const updatePackingSpecStatus = async (
   try {
     console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
     
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    if (!hasValidPodioTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     

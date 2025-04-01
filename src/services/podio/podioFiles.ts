@@ -1,98 +1,38 @@
+// Service for handling file uploads to Podio
 
-// This module handles file uploads to Podio
+// Import the renamed function from podioAuth
+import { callPodioApi, hasValidPodioTokens } from '../podioApi';
 
-import { callPodioApi, hasValidPodioTokens, refreshPodioToken } from './podioAuth';
-
-interface FileUploadResponse {
-  file_id: number;
-}
-
-// Upload a file to Podio
-export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise<number | null> => {
+// Function to upload a file to Podio
+export const uploadFileToPodio = async (file: File): Promise<number | null> => {
   try {
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
-      throw new Error('Not authenticated with Podio API');
+    // Check if we have valid Podio tokens
+    if (!hasValidPodioTokens()) {
+      console.error('Not authenticated with Podio');
+      return null;
     }
-    
-    // Validate that the data URL is not empty or invalid
-    if (!fileDataUrl || typeof fileDataUrl !== 'string' || !fileDataUrl.startsWith('data:')) {
-      console.error('Invalid file data URL provided');
-      throw new Error('Invalid file data URL format');
-    }
-    
-    // Convert data URL to blob
-    const response = await fetch(fileDataUrl);
-    const blob = await response.blob();
-    
-    // Validate the blob to ensure it has content
-    if (!blob || blob.size === 0) {
-      console.error('Empty blob created from data URL');
-      throw new Error('File data is empty');
-    }
-    
-    // Create FormData object
+
+    // Create FormData to send the file
     const formData = new FormData();
-    formData.append('file', blob, fileName);
-    // Add source parameter that was missing from previous implementation
-    formData.append('source', 'web');
-    
-    // Use direct fetch with proper headers instead of relying on callPodioApi
-    // The upload endpoint is different from regular API endpoints
-    const accessToken = localStorage.getItem('podio_access_token');
-    
-    if (!accessToken) {
-      throw new Error('Missing Podio access token');
-    }
-    
-    const uploadResponse = await fetch('https://api.podio.com/file', {
+    formData.append('filename', file.name);
+    formData.append('source', file);
+
+    // Call the Podio API to upload the file
+    const response = await callPodioApi('file/', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
       body: formData,
     });
-    
-    if (!uploadResponse.ok) {
-      let errorData;
-      try {
-        errorData = await uploadResponse.text();
-        console.error('Podio upload error response:', errorData);
-      } catch (e) {
-        // Failed to parse response text
-      }
-      console.error('Status:', uploadResponse.status, uploadResponse.statusText);
-      
-      if (uploadResponse.status === 404) {
-        throw new Error('Podio file upload endpoint not found. The API may have changed.');
-      } else if (uploadResponse.status === 400) {
-        // This is likely an API parameter issue
-        console.error('API validation error, likely missing required parameter in the request');
-        throw new Error('File upload failed: API validation error');
-      } else if (uploadResponse.status === 401) {
-        // Try to refresh token and retry once
-        if (await refreshPodioToken()) {
-          return uploadFileToPodio(fileDataUrl, fileName);
-        } else {
-          throw new Error('Unauthorized access to Podio file upload API');
-        }
-      } else {
-        throw new Error(`Podio file upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      }
+
+    // Check if the upload was successful
+    if (response && response.file_id) {
+      console.log('File uploaded successfully:', response.file_id);
+      return response.file_id;
+    } else {
+      console.error('File upload failed:', response);
+      return null;
     }
-    
-    const fileData = await uploadResponse.json() as FileUploadResponse;
-    return fileData.file_id;
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
-    
-    // Implement fallback mechanism - if we can't upload the signature,
-    // we should still allow the user to approve the spec without a signature
     return null;
   }
-};
-
-// Fallback function to handle approvals without signatures
-export const shouldProceedWithoutSignature = (error: any): boolean => {
-  // Determine if we should proceed with approval even if signature upload failed
-  return true; // Allow approval to proceed even if signature upload fails
 };

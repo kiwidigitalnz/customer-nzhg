@@ -13,9 +13,8 @@ import {
   isPodioConfigured, 
   isRateLimited, 
   authenticateWithClientCredentials, 
-  getContactsAppToken,
-  authenticateWithContactsAppToken,
-  validateContactsAppAccess 
+  validateContactsAppAccess,
+  getContactsAppToken 
 } from '../services/podioApi';
 
 const LoginForm = () => {

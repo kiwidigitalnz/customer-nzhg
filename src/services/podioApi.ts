@@ -8,15 +8,17 @@ export {
   hasValidTokens as hasValidPodioTokens,
   refreshPodioToken,
   callPodioApi,
-  authenticateWithClientCredentials as ensureInitialPodioAuth,
-  validateContactsAppAccess as validatePodioToken,
+  authenticateWithClientCredentials,
+  validateContactsAppAccess,
   clearTokens as clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
   CONTACT_FIELD_IDS,
-  validateContactsAppAccess,
   authenticateWithContactsAppToken,
-  getContactsAppToken
+  getContactsAppToken,
+  isRateLimited,
+  setRateLimit,
+  clearRateLimit
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
@@ -27,9 +29,6 @@ export {
   getPodioClientSecret,
   getPodioRedirectUri,
   generatePodioAuthState,
-  isRateLimited,
-  setRateLimit,
-  clearRateLimit
 } from './podio/podioOAuth';
 
 // Export packing spec related functions and types

@@ -1,7 +1,6 @@
-
 // This module handles interactions with Podio comments
 
-import { callPodioApi, hasValidPodioTokens, refreshPodioToken } from './podioAuth';
+import { callPodioApi, hasValidPodioTokens } from '../podioApi';
 
 export interface CommentItem {
   id: number;
@@ -13,7 +12,7 @@ export interface CommentItem {
 // Get comments from Podio for a specific item
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    if (!hasValidPodioTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     
@@ -53,7 +52,7 @@ export const addCommentToPodio = async (
   comment: string
 ): Promise<boolean> => {
   try {
-    if (!hasValidPodioTokens() && !await refreshPodioToken()) {
+    if (!hasValidPodioTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     

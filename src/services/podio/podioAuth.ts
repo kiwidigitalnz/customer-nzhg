@@ -11,19 +11,26 @@ import {
   getPodioClientSecret,
   startPodioOAuthFlow,
   getPodioApiDomain,
-  refreshPodioToken as refreshToken
+  refreshPodioToken as refreshToken,
+  isRateLimited as checkRateLimit,
+  setRateLimit as setApiRateLimit,
+  clearRateLimit as clearApiRateLimit
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 
 // Re-export the refreshPodioToken function so it can be imported by other modules
 export { refreshToken as refreshPodioToken };
+// Re-export rate limiting functions to avoid conflicts
+export const isRateLimited = checkRateLimit;
+export const setRateLimit = setApiRateLimit;
+export const clearRateLimit = clearApiRateLimit;
 
 interface PodioCredentials {
   username: string;
   password: string;
 }
 
-// Rate limiting constants for API calls
+// Storage keys for Podio tokens and settings
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'podio_access_token',
   REFRESH_TOKEN: 'podio_refresh_token',
@@ -32,8 +39,7 @@ const STORAGE_KEYS = {
   APP_TOKEN_EXPIRY: 'podio_app_token_expiry',
   CLIENT_ID: 'podio_client_id',
   CLIENT_SECRET: 'podio_client_secret',
-  CONTACTS_APP_TOKEN: 'podio_contacts_app_token',
-  RATE_LIMIT: 'podio_rate_limit_until'
+  CONTACTS_APP_TOKEN: 'podio_contacts_app_token'
 };
 
 // Get Podio App IDs from environment variables with fallbacks to hardcoded values
@@ -60,24 +66,6 @@ export const isPodioConfigured = (): boolean => {
   return !!getClientId() && !!getClientSecret();
 };
 
-// Rate limiting functions
-export const isRateLimited = (): boolean => {
-  const limitUntil = localStorage.getItem(STORAGE_KEYS.RATE_LIMIT);
-  if (!limitUntil) return false;
-  
-  return Date.now() < parseInt(limitUntil, 10);
-};
-
-export const setRateLimit = (seconds: number): void => {
-  const limitTime = Date.now() + (seconds * 1000);
-  localStorage.setItem(STORAGE_KEYS.RATE_LIMIT, limitTime.toString());
-  console.log(`Rate limited for ${seconds} seconds`);
-};
-
-export const clearRateLimit = (): void => {
-  localStorage.removeItem(STORAGE_KEYS.RATE_LIMIT);
-};
-
 // Token management for client credentials
 export const hasValidTokens = (): boolean => {
   const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -89,6 +77,9 @@ export const hasValidTokens = (): boolean => {
   const expiryTime = parseInt(tokenExpiry, 10);
   return expiryTime > (Date.now() + 5 * 60 * 1000);
 };
+
+// For backward compatibility
+export const hasValidPodioTokens = hasValidTokens;
 
 // Check if app token is valid
 export const hasValidAppToken = (): boolean => {
@@ -110,6 +101,9 @@ export const clearTokens = (): void => {
   localStorage.removeItem(STORAGE_KEYS.APP_TOKEN_EXPIRY);
   console.log('Cleared Podio tokens');
 };
+
+// For backward compatibility
+export const clearPodioTokens = clearTokens;
 
 export const storeTokens = (tokenData: any): void => {
   localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
@@ -357,11 +351,13 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   const isContactsEndpoint = endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
                            endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`);
   
+  console.log(isContactsEndpoint ? 'Using specific contacts app token for request' : 'Using general access token for request');
+  
   // For contacts app endpoints, use app authentication
   if (isContactsEndpoint) {
     const isAppAuthenticated = await ensureContactsAppAuthenticated();
     if (!isAppAuthenticated) {
-      throw new Error('Could not authenticate with Contacts app');
+      throw new Error('Invalid contacts app token');
     }
     
     // Use the app access token
@@ -400,7 +396,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         
         const reauth = await authenticateWithContactsAppToken();
         if (!reauth) {
-          throw new Error('Failed to authenticate with Contacts app');
+          throw new Error('Invalid contacts app token');
         }
         
         // Retry with new token
@@ -536,16 +532,16 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error('Could not authenticate with Podio');
     }
     
+    // Store the contacts app token if available
+    const contactsAppToken = getContactsAppToken();
+    if (contactsAppToken) {
+      storeContactsAppToken(contactsAppToken);
+    }
+    
     // Authenticate with the Contacts app token
     const appAuthenticated = await authenticateWithContactsAppToken();
     if (!appAuthenticated) {
-      throw new Error('Could not authenticate with Contacts app');
-    }
-    
-    // Validate app access
-    const hasAppAccess = await validateContactsAppAccess();
-    if (!hasAppAccess) {
-      throw new Error('The application does not have permission to access the Contacts app. Please check your Podio API permissions.');
+      throw new Error('Invalid contacts app token');
     }
     
     // Search for user by username in the Contacts app
