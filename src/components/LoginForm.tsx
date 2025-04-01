@@ -12,7 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimited, 
-  authenticateWithAppToken,
+  authenticateWithContactsAppToken,
+  authenticateWithPackingSpecAppToken,
   authenticateWithClientCredentials
 } from '../services/podioAuth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -138,31 +139,45 @@ const LoginForm = () => {
     try {
       setAuthenticating(true);
       
-      // Try to authenticate with app authentication (new approach)
-      addDebugStep('Authenticating with app token', 'pending');
-      let authSuccess = await authenticateWithAppToken();
+      // Try to authenticate with Contacts app token
+      addDebugStep('Authenticating with Contacts app token', 'pending');
+      let contactsAuthSuccess = await authenticateWithContactsAppToken();
       
-      if (!authSuccess) {
-        updateLastDebugStep('error', 'App authentication failed, falling back to client credentials');
+      if (!contactsAuthSuccess) {
+        updateLastDebugStep('error', 'Contacts app authentication failed, falling back to client credentials');
         
         // Fall back to client credentials if app auth fails
         addDebugStep('Falling back to client credentials authentication', 'pending');
-        authSuccess = await authenticateWithClientCredentials();
+        contactsAuthSuccess = await authenticateWithClientCredentials();
         
-        if (authSuccess) {
+        if (contactsAuthSuccess) {
           updateLastDebugStep('success', 'Client credentials authentication successful');
         } else {
           updateLastDebugStep('error', 'Client credentials authentication failed');
         }
       } else {
-        updateLastDebugStep('success', 'App authentication successful');
+        updateLastDebugStep('success', 'Contacts app authentication successful');
       }
       
-      if (!authSuccess) {
+      if (!contactsAuthSuccess) {
         setPodioAPIError('Authentication failed. Please check your Podio API credentials.');
         setAuthenticating(false);
         return;
       }
+      
+      // Pre-authenticate with Packing Spec app in parallel (don't wait for it)
+      addDebugStep('Pre-authenticating with Packing Spec app for later use', 'pending');
+      authenticateWithPackingSpecAppToken()
+        .then(success => {
+          if (success) {
+            updateLastDebugStep('success', 'Successfully pre-authenticated with Packing Spec app');
+          } else {
+            updateLastDebugStep('error', 'Failed to pre-authenticate with Packing Spec app (will try again later when needed)');
+          }
+        })
+        .catch(error => {
+          updateLastDebugStep('error', `Error pre-authenticating with Packing Spec app: ${error.message}`);
+        });
       
       // If authentication was successful, try to login the user
       try {

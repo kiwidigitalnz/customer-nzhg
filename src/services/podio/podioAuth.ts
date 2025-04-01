@@ -28,8 +28,16 @@ const STORAGE_KEYS = {
   APP_TOKEN_EXPIRY: 'podio_app_token_expiry',
   CLIENT_ID: 'podio_client_id',
   CLIENT_SECRET: 'podio_client_secret',
-  CONTACTS_APP_TOKEN: 'podio_contacts_app_token'
+  CONTACTS_APP_TOKEN: 'podio_contacts_app_token',
+  PACKING_SPEC_APP_TOKEN: 'podio_packing_spec_app_token',
+  CURRENT_APP_CONTEXT: 'podio_current_app_context' // Track which app we're using
 };
+
+// App context enum for tracking which app we're authenticating with
+export enum PodioAppContext {
+  CONTACTS = 'contacts',
+  PACKING_SPEC = 'packing_spec'
+}
 
 // Get Podio App IDs from environment variables with fallbacks to hardcoded values
 export const PODIO_CONTACTS_APP_ID = Number(import.meta.env.VITE_PODIO_CONTACTS_APP_ID) || 26969025;
@@ -63,6 +71,24 @@ const emitDebugInfo = (step: string, status: 'pending' | 'success' | 'error', de
 // Get the contacts app token from environment
 export const getContactsAppToken = (): string | null => {
   return import.meta.env.VITE_PODIO_CONTACTS_APP_TOKEN || localStorage.getItem(STORAGE_KEYS.CONTACTS_APP_TOKEN);
+};
+
+// Get the packing spec app token from environment
+export const getPackingSpecAppToken = (): string | null => {
+  return import.meta.env.VITE_PODIO_PACKING_SPEC_APP_TOKEN || localStorage.getItem(STORAGE_KEYS.PACKING_SPEC_APP_TOKEN);
+};
+
+// Set the current app context
+export const setCurrentAppContext = (context: PodioAppContext): void => {
+  localStorage.setItem(STORAGE_KEYS.CURRENT_APP_CONTEXT, context);
+  console.log(`Set current app context to: ${context}`);
+  emitDebugInfo('Set app context', 'success', `Context: ${context}`);
+};
+
+// Get the current app context
+export const getCurrentAppContext = (): PodioAppContext => {
+  const context = localStorage.getItem(STORAGE_KEYS.CURRENT_APP_CONTEXT) as PodioAppContext;
+  return context || PodioAppContext.CONTACTS; // Default to contacts app
 };
 
 // Utility to get client ID from environment or localStorage
@@ -113,6 +139,7 @@ export const clearTokens = (): void => {
   localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
   localStorage.removeItem(STORAGE_KEYS.APP_ACCESS_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.APP_TOKEN_EXPIRY);
+  localStorage.removeItem(STORAGE_KEYS.CURRENT_APP_CONTEXT);
   console.log('Cleared Podio tokens');
   emitDebugInfo('Cleared all Podio tokens', 'success');
 };
@@ -158,6 +185,13 @@ export const storeContactsAppToken = (token: string): void => {
   localStorage.setItem(STORAGE_KEYS.CONTACTS_APP_TOKEN, token);
   console.log('Contacts app token stored');
   emitDebugInfo('Contacts app token stored', 'success');
+};
+
+// Store the packing spec app token
+export const storePackingSpecAppToken = (token: string): void => {
+  localStorage.setItem(STORAGE_KEYS.PACKING_SPEC_APP_TOKEN, token);
+  console.log('Packing spec app token stored');
+  emitDebugInfo('Packing spec app token stored', 'success');
 };
 
 // Main client credentials authentication
@@ -275,6 +309,12 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       storeContactsAppToken(contactsAppToken);
     }
     
+    // Store the packing spec app token separately if in environment
+    const packingSpecAppToken = getPackingSpecAppToken();
+    if (packingSpecAppToken) {
+      storePackingSpecAppToken(packingSpecAppToken);
+    }
+    
     clearApiRateLimit();
     emitDebugInfo('Client credentials authentication successful', 'success');
     
@@ -288,8 +328,8 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
-// App authentication (NEW) - this uses the app_id and app_token approach
-export const authenticateWithAppToken = async (): Promise<boolean> => {
+// App authentication with contacts app token
+export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
   try {
     // Check if we're rate limited
     if (checkRateLimit()) {
@@ -315,8 +355,8 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
       return false;
     }
     
-    console.log('Authenticating with Podio using app authentication...');
-    emitDebugInfo('Authenticating with app authentication', 'pending');
+    console.log('Authenticating with Podio using Contacts app authentication...');
+    emitDebugInfo('Authenticating with Contacts app token', 'pending');
     
     // Create form data for app authentication
     const formData = new URLSearchParams();
@@ -326,7 +366,7 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
-    emitDebugInfo('Sending app auth request', 'pending', 
+    emitDebugInfo('Sending Contacts app auth request', 'pending', 
       `Endpoint: https://podio.com/oauth/token
        Method: POST
        grant_type: app
@@ -345,16 +385,16 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
       body: formData
     });
     
-    console.log('App auth response status:', response.status);
-    emitDebugInfo('Received app auth response', 'pending', `Status: ${response.status}`);
+    console.log('Contacts app auth response status:', response.status);
+    emitDebugInfo('Received Contacts app auth response', 'pending', `Status: ${response.status}`);
     
     // First get the response as text to inspect it
     const responseText = await response.text();
-    console.log('App auth response first 100 chars:', responseText.substring(0, 100));
+    console.log('Contacts app auth response first 100 chars:', responseText.substring(0, 100));
     
     // Check if the response is HTML instead of JSON
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      console.error('Received HTML instead of JSON during app auth');
+      console.error('Received HTML instead of JSON during Contacts app auth');
       emitDebugInfo('Invalid response format', 'error', 'Received HTML instead of JSON');
       return false;
     }
@@ -363,7 +403,7 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
     let responseData: any;
     try {
       responseData = JSON.parse(responseText);
-      emitDebugInfo('Parsed app auth response', 'success', 
+      emitDebugInfo('Parsed Contacts app auth response', 'success', 
         `Response data: ${JSON.stringify(responseData).substring(0, 100)}...`
       );
     } catch (error) {
@@ -387,8 +427,8 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      console.error('App authentication failed:', responseData);
-      emitDebugInfo('App authentication failed', 'error', 
+      console.error('Contacts app authentication failed:', responseData);
+      emitDebugInfo('Contacts app authentication failed', 'error', 
         `Status: ${response.status}
          Error: ${responseData.error || 'Unknown error'}
          Error detail: ${responseData.error_detail || 'No detail'}
@@ -409,17 +449,162 @@ export const authenticateWithAppToken = async (): Promise<boolean> => {
     // Store tokens
     storeTokens(tokenData);
     
+    // Set current app context to Contacts
+    setCurrentAppContext(PodioAppContext.CONTACTS);
+    
     clearApiRateLimit();
-    emitDebugInfo('App authentication successful', 'success');
+    emitDebugInfo('Contacts app authentication successful', 'success');
     
     return true;
   } catch (error) {
-    console.error('Error during app authentication:', error);
-    emitDebugInfo('App authentication error', 'error', 
+    console.error('Error during Contacts app authentication:', error);
+    emitDebugInfo('Contacts app authentication error', 'error', 
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     return false;
   }
+};
+
+// App authentication with packing spec app token
+export const authenticateWithPackingSpecAppToken = async (): Promise<boolean> => {
+  try {
+    // Check if we're rate limited
+    if (checkRateLimit()) {
+      console.log('Rate limited. Try again later.');
+      emitDebugInfo('Rate limited', 'error', 'Please wait before trying again');
+      return false;
+    }
+    
+    const clientId = getClientId();
+    const clientSecret = getClientSecret();
+    const packingSpecAppId = PODIO_PACKING_SPEC_APP_ID.toString();
+    const packingSpecAppToken = getPackingSpecAppToken();
+    
+    if (!clientId || !clientSecret) {
+      console.error('Missing Podio client credentials');
+      emitDebugInfo('Missing Podio client credentials', 'error');
+      return false;
+    }
+    
+    if (!packingSpecAppToken) {
+      console.error('Missing Packing Spec app token');
+      emitDebugInfo('Missing Packing Spec app token', 'error');
+      return false;
+    }
+    
+    console.log('Authenticating with Podio using Packing Spec app authentication...');
+    emitDebugInfo('Authenticating with Packing Spec app token', 'pending');
+    
+    // Create form data for app authentication
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'app');
+    formData.append('app_id', packingSpecAppId);
+    formData.append('app_token', packingSpecAppToken);
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    
+    emitDebugInfo('Sending Packing Spec app auth request', 'pending', 
+      `Endpoint: https://podio.com/oauth/token
+       Method: POST
+       grant_type: app
+       app_id: ${packingSpecAppId}
+       client_id: ${clientId.substring(0, 5)}...`
+    );
+    
+    // Make the token request directly to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
+      },
+      body: formData
+    });
+    
+    console.log('Packing Spec app auth response status:', response.status);
+    emitDebugInfo('Received Packing Spec app auth response', 'pending', `Status: ${response.status}`);
+    
+    // First get the response as text to inspect it
+    const responseText = await response.text();
+    console.log('Packing Spec app auth response first 100 chars:', responseText.substring(0, 100));
+    
+    // Check if the response is HTML instead of JSON
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON during Packing Spec app auth');
+      emitDebugInfo('Invalid response format', 'error', 'Received HTML instead of JSON');
+      return false;
+    }
+    
+    // Parse the text response
+    let responseData: any;
+    try {
+      responseData = JSON.parse(responseText);
+      emitDebugInfo('Parsed Packing Spec app auth response', 'success', 
+        `Response data: ${JSON.stringify(responseData).substring(0, 100)}...`
+      );
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      console.error('Raw response:', responseText);
+      emitDebugInfo('Failed to parse response', 'error', 
+        `Error: ${error instanceof Error ? error.message : String(error)}
+         Raw response: ${responseText.substring(0, 200)}...`
+      );
+      return false;
+    }
+    
+    // Handle rate limiting
+    if (response.status === 429 || response.status === 420) {
+      const retryAfter = response.headers.get('Retry-After');
+      setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      emitDebugInfo('Rate limited by Podio', 'error', 
+        `Retry after: ${retryAfter || '60'} seconds`
+      );
+      return false;
+    }
+    
+    if (!response.ok) {
+      console.error('Packing Spec app authentication failed:', responseData);
+      emitDebugInfo('Packing Spec app authentication failed', 'error', 
+        `Status: ${response.status}
+         Error: ${responseData.error || 'Unknown error'}
+         Error detail: ${responseData.error_detail || 'No detail'}
+         Description: ${responseData.error_description || 'No description'}`
+      );
+      return false;
+    }
+    
+    // Parse and store token data
+    const tokenData = responseData;
+    
+    if (!tokenData.access_token) {
+      console.error('Invalid token data received:', tokenData);
+      emitDebugInfo('Invalid token data', 'error', 'No access token in response');
+      return false;
+    }
+    
+    // Store tokens
+    storeTokens(tokenData);
+    
+    // Set current app context to Packing Spec
+    setCurrentAppContext(PodioAppContext.PACKING_SPEC);
+    
+    clearApiRateLimit();
+    emitDebugInfo('Packing Spec app authentication successful', 'success');
+    
+    return true;
+  } catch (error) {
+    console.error('Error during Packing Spec app authentication:', error);
+    emitDebugInfo('Packing Spec app authentication error', 'error', 
+      `Error: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return false;
+  }
+};
+
+// For backward compatibility and as the default app authentication
+export const authenticateWithAppToken = async (): Promise<boolean> => {
+  return await authenticateWithContactsAppToken();
 };
 
 // Password authentication flow for user access - keep for backward compatibility
@@ -427,7 +612,7 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
   // We'll use app authentication instead of password flow
   console.log('Password flow is deprecated. Using app authentication instead.');
   emitDebugInfo('Using app authentication instead of password flow', 'pending');
-  return await authenticateWithAppToken();
+  return await authenticateWithContactsAppToken();
 };
 
 // Function to check if we can access the Contacts app
@@ -435,20 +620,14 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
     emitDebugInfo('Validating Contacts app access', 'pending');
     
-    // First ensure we have valid tokens
-    if (!hasValidTokens()) {
-      emitDebugInfo('No valid tokens, authenticating', 'pending');
-      // Try app authentication first
-      let authenticated = await authenticateWithAppToken();
-      
-      // Fall back to client credentials if app authentication fails
-      if (!authenticated) {
-        authenticated = await authenticateWithClientCredentials();
-      }
+    // First ensure we have valid tokens and authentication with the Contacts app
+    if (!hasValidTokens() || getCurrentAppContext() !== PodioAppContext.CONTACTS) {
+      emitDebugInfo('No valid Contacts app tokens, authenticating', 'pending');
+      const authenticated = await authenticateWithContactsAppToken();
       
       if (!authenticated) {
-        console.error('Failed to authenticate with Podio');
-        emitDebugInfo('Failed to authenticate', 'error');
+        console.error('Failed to authenticate with Contacts app');
+        emitDebugInfo('Failed to authenticate with Contacts app', 'error');
         return false;
       }
     }
@@ -483,37 +662,101 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
   }
 };
 
-// Ensure we have a valid token before making API calls
-export const ensureAuthenticated = async (): Promise<boolean> => {
+// Function to check if we can access the Packing Spec app
+export const validatePackingSpecAppAccess = async (): Promise<boolean> => {
+  try {
+    emitDebugInfo('Validating Packing Spec app access', 'pending');
+    
+    // First ensure we have valid tokens and authentication with the Packing Spec app
+    if (!hasValidTokens() || getCurrentAppContext() !== PodioAppContext.PACKING_SPEC) {
+      emitDebugInfo('No valid Packing Spec app tokens, authenticating', 'pending');
+      const authenticated = await authenticateWithPackingSpecAppToken();
+      
+      if (!authenticated) {
+        console.error('Failed to authenticate with Packing Spec app');
+        emitDebugInfo('Failed to authenticate with Packing Spec app', 'error');
+        return false;
+      }
+    }
+    
+    // Try to get the app details
+    const appEndpoint = `app/${PODIO_PACKING_SPEC_APP_ID}`;
+    emitDebugInfo('Checking Packing Spec app', 'pending', 
+      `Endpoint: ${appEndpoint}`
+    );
+    
+    try {
+      const appDetails = await callPodioApi(appEndpoint);
+      console.log('Successfully accessed Packing Spec app:', appDetails.app_id);
+      emitDebugInfo('Packing Spec app access validated', 'success', 
+        `App ID: ${appDetails.app_id}
+         App name: ${appDetails.config?.name || 'Unknown'}`
+      );
+      return true;
+    } catch (error) {
+      console.error('Failed to access Packing Spec app:', error);
+      emitDebugInfo('Failed to access Packing Spec app', 'error', 
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return false;
+    }
+  } catch (error) {
+    console.error('Error validating Packing Spec app access:', error);
+    emitDebugInfo('Validation error', 'error', 
+      `Error: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return false;
+  }
+};
+
+// Ensure we have valid tokens for the specified app before making API calls
+export const ensureAuthenticated = async (appContext?: PodioAppContext): Promise<boolean> => {
+  const currentContext = appContext || getCurrentAppContext();
+  
+  // If we have valid tokens, check if they're for the right app context
   if (hasValidTokens()) {
-    emitDebugInfo('Token is valid', 'success');
-    return true;
+    const contextMatches = currentContext === getCurrentAppContext();
+    
+    if (contextMatches) {
+      emitDebugInfo(`Token is valid for ${currentContext}`, 'success');
+      return true;
+    } else {
+      emitDebugInfo(`Token is valid but for different app context, authenticating with ${currentContext}`, 'pending');
+    }
+  } else {
+    emitDebugInfo(`Token invalid or expired, authenticating with ${currentContext}`, 'pending');
   }
   
-  emitDebugInfo('Token invalid or expired, refreshing', 'pending');
+  // Try refreshing with the refresh token if we have one
   const refreshTokenValue = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   if (refreshTokenValue) {
-    return await refreshToken();
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      return true;
+    }
   }
   
-  // Try app authentication first
-  let authenticated = await authenticateWithAppToken();
-  
-  // Fall back to client credentials if needed
-  if (!authenticated) {
-    return await authenticateWithClientCredentials();
+  // Authenticate with the appropriate app based on context
+  if (currentContext === PodioAppContext.CONTACTS) {
+    return await authenticateWithContactsAppToken();
+  } else if (currentContext === PodioAppContext.PACKING_SPEC) {
+    return await authenticateWithPackingSpecAppToken();
   }
   
-  return authenticated;
+  // Fall back to client credentials if specific app authentication fails
+  return await authenticateWithClientCredentials();
 };
 
 // Modified API call function to use access tokens with the correct OAuth2 format
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appContext?: PodioAppContext): Promise<any> => {
   try {
-    // Ensure we have valid tokens first
-    const isAuthenticated = await ensureAuthenticated();
+    // Get the app context to use (from parameter or current context)
+    const context = appContext || getCurrentAppContext();
+    
+    // Ensure we have valid tokens for the right app context
+    const isAuthenticated = await ensureAuthenticated(context);
     if (!isAuthenticated) {
-      throw new Error('Not authenticated with Podio');
+      throw new Error(`Not authenticated with Podio for ${context} app`);
     }
     
     // Get the access token
@@ -538,8 +781,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     };
     
     // Log the request for debugging
-    console.log(`Making API call to ${endpoint} with token: ${accessToken.substring(0, 10)}...`);
-    emitDebugInfo('Making API call', 'pending', 
+    console.log(`Making API call to ${endpoint} with token: ${accessToken.substring(0, 10)}... for app context: ${context}`);
+    emitDebugInfo(`Making API call for ${context} app`, 'pending', 
       `Endpoint: ${endpoint}
        Method: ${options.method || 'GET'}
        Token (first 10 chars): ${accessToken.substring(0, 10)}...
@@ -548,7 +791,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     const response = await fetch(`https://api.podio.com/${endpoint}`, newOptions);
     
-    // Handle rate limiting
+    // Handle rate limiting with exponential backoff
     if (response.status === 429 || response.status === 420) {
       const retryAfter = response.headers.get('Retry-After');
       setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
@@ -558,20 +801,51 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       throw new Error('Rate limit reached');
     }
     
-    // If token is invalid, try refreshing it
+    // If token is invalid, try refreshing it and try with the other app if needed
     if (response.status === 401) {
       console.log('Token invalid, trying to refresh');
-      emitDebugInfo('Token invalid, refreshing', 'pending');
+      emitDebugInfo('Token invalid', 'pending');
       
+      // First try refreshing the current token
       const refreshed = await refreshToken();
-      if (!refreshed) {
-        emitDebugInfo('Token refresh failed', 'error');
-        throw new Error('Authentication failed');
+      if (refreshed) {
+        emitDebugInfo('Token refreshed, retrying API call', 'success');
+        // Retry with new token
+        return callPodioApi(endpoint, options, context);
       }
       
-      emitDebugInfo('Token refreshed, retrying API call', 'success');
-      // Retry with new token
-      return callPodioApi(endpoint, options);
+      // If that fails, try switching to the other app context
+      const otherContext = context === PodioAppContext.CONTACTS 
+        ? PodioAppContext.PACKING_SPEC 
+        : PodioAppContext.CONTACTS;
+        
+      emitDebugInfo(`Token refresh failed, trying with ${otherContext} app`, 'pending');
+      
+      // Authenticate with the other app
+      let authSuccess = false;
+      if (otherContext === PodioAppContext.CONTACTS) {
+        authSuccess = await authenticateWithContactsAppToken();
+      } else {
+        authSuccess = await authenticateWithPackingSpecAppToken();
+      }
+      
+      if (authSuccess) {
+        emitDebugInfo(`Authenticated with ${otherContext} app, retrying API call`, 'success');
+        // Retry with the new context
+        return callPodioApi(endpoint, options, otherContext);
+      }
+      
+      // If all else fails, try client credentials
+      emitDebugInfo('App authentication failed, falling back to client credentials', 'pending');
+      const clientAuthSuccess = await authenticateWithClientCredentials();
+      
+      if (clientAuthSuccess) {
+        emitDebugInfo('Client credentials authentication successful, retrying API call', 'success');
+        return callPodioApi(endpoint, options, context);
+      }
+      
+      emitDebugInfo('All authentication methods failed', 'error');
+      throw new Error('Authentication failed after multiple attempts');
     }
     
     if (!response.ok) {
@@ -618,21 +892,33 @@ export const authenticateUser = async (username: string, password: string): Prom
     console.log(`Authenticating user: ${username}`);
     emitDebugInfo(`Authenticating user: ${username}`, 'pending');
     
-    // First ensure we have valid tokens by using app authentication
-    if (!hasValidTokens()) {
-      emitDebugInfo('No valid tokens, authenticating with app token', 'pending');
-      const appAuthSuccess = await authenticateWithAppToken();
-      
-      // Fall back to client credentials if app auth fails
-      if (!appAuthSuccess) {
-        emitDebugInfo('App authentication failed, trying client credentials', 'pending');
-        const clientAuthSuccess = await authenticateWithClientCredentials();
-        if (!clientAuthSuccess) {
-          emitDebugInfo('Client credentials authentication failed', 'error');
-          throw new Error('Not authenticated with Podio');
-        }
-      }
+    // First authenticate with the Contacts app
+    emitDebugInfo('Authenticating with Contacts app', 'pending');
+    const contactsAuthSuccess = await authenticateWithContactsAppToken();
+    
+    if (!contactsAuthSuccess) {
+      emitDebugInfo('Contacts app authentication failed', 'error');
+      throw new Error('Failed to authenticate with Contacts app');
     }
+    
+    // Pre-authenticate with the Packing Spec app for later use
+    // This is done asynchronously and won't block the login process
+    (async () => {
+      try {
+        emitDebugInfo('Pre-authenticating with Packing Spec app', 'pending');
+        const packingSpecAuthSuccess = await authenticateWithPackingSpecAppToken();
+        
+        if (packingSpecAuthSuccess) {
+          emitDebugInfo('Packing Spec app pre-authentication successful', 'success');
+          console.log('Pre-authenticated with Packing Spec app');
+        } else {
+          emitDebugInfo('Packing Spec app pre-authentication failed', 'error');
+          console.warn('Failed to pre-authenticate with Packing Spec app');
+        }
+      } catch (error) {
+        console.error('Error pre-authenticating with Packing Spec app:', error);
+      }
+    })();
     
     // Search for user by username in the Contacts app
     console.log(`Searching for user: ${username}`);
@@ -652,11 +938,11 @@ export const authenticateUser = async (username: string, password: string): Prom
          Filter: username = ${username}`
       );
       
-      // Make the API call with the correct token
+      // Make the API call with the Contacts app context
       const searchResponse = await callPodioApi(endpoint, {
         method: 'POST',
         body: JSON.stringify(filters)
-      });
+      }, PodioAppContext.CONTACTS);
       
       if (!searchResponse.items || searchResponse.items.length === 0) {
         emitDebugInfo('User not found', 'error', 
@@ -711,13 +997,6 @@ export const authenticateUser = async (username: string, password: string): Prom
     );
     throw error;
   }
-};
-
-// Backward compatibility for authenticateWithContactsAppToken
-export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
-  console.log('Function authenticateWithContactsAppToken is now using app authentication');
-  emitDebugInfo('Using app authentication', 'pending');
-  return await authenticateWithAppToken();
 };
 
 // Podio Contact Field IDs

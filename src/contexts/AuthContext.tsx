@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, authenticateWithAppToken } from '../services/podioAuth';
-import { useToast } from '@/components/ui/use-toast';
+import { authenticateUser, authenticateWithContactsAppToken, authenticateWithPackingSpecAppToken } from '../services/podioAuth';
+import { useToast } from '@/hooks/use-toast';
 
 // Session duration (4 hours)
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
@@ -79,6 +79,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
         localStorage.setItem('user_info', JSON.stringify(userData));
         extendSession();
+        
+        // Try to pre-authenticate with both apps to ensure tokens are valid
+        // This is done asynchronously and won't block the loading
+        Promise.all([
+          authenticateWithContactsAppToken(),
+          authenticateWithPackingSpecAppToken()
+        ]).then(([contactsAuth, packingSpecAuth]) => {
+          if (contactsAuth) {
+            console.log('Successfully pre-authenticated with Contacts app on session restore');
+          }
+          if (packingSpecAuth) {
+            console.log('Successfully pre-authenticated with Packing Spec app on session restore');
+          }
+        }).catch(error => {
+          console.warn('Error pre-authenticating on session restore:', error);
+        });
+        
       } catch (e) {
         // Invalid stored data
         localStorage.removeItem('nzhg_user');
@@ -124,16 +141,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       emitLoginDebugInfo('Login process started', 'pending');
       
-      // Try to authenticate with app authentication instead of client credentials
-      emitLoginDebugInfo('Authenticating with app authentication', 'pending');
-      const appAuthSuccess = await authenticateWithAppToken();
+      // Try to authenticate with Contacts app token (contacts app needs to be authenticated first)
+      emitLoginDebugInfo('Authenticating with Contacts app', 'pending');
+      const contactsAppAuthSuccess = await authenticateWithContactsAppToken();
       
-      if (!appAuthSuccess) {
-        emitLoginDebugInfo('App authentication failed', 'error');
-        throw new Error('Failed to authenticate with Podio');
+      if (!contactsAppAuthSuccess) {
+        emitLoginDebugInfo('Contacts app authentication failed', 'error');
+        throw new Error('Failed to authenticate with Podio Contacts app');
       }
       
-      emitLoginDebugInfo('App authentication completed', 'success');
+      emitLoginDebugInfo('Contacts app authentication completed', 'success');
       
       // Call the authenticateUser function to check if user exists in Contacts app
       emitLoginDebugInfo('Checking user in Contacts app', 'pending');
@@ -143,6 +160,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         `User ID: ${userData.id}
          Name: ${userData.name}`
       );
+      
+      // Pre-authenticate with Packing Spec app to avoid issues later
+      // This is done asynchronously and won't block the login process
+      emitLoginDebugInfo('Pre-authenticating with Packing Spec app', 'pending');
+      authenticateWithPackingSpecAppToken()
+        .then(success => {
+          if (success) {
+            emitLoginDebugInfo('Pre-authenticated with Packing Spec app', 'success');
+          } else {
+            emitLoginDebugInfo('Failed to pre-authenticate with Packing Spec app', 'error',
+              'This may cause issues when accessing packing specifications'
+            );
+          }
+        })
+        .catch(error => {
+          emitLoginDebugInfo('Error pre-authenticating with Packing Spec app', 'error',
+            error instanceof Error ? error.message : String(error)
+          );
+        });
       
       setUser(userData);
       localStorage.setItem('nzhg_user', JSON.stringify(userData));

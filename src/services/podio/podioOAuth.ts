@@ -1,4 +1,3 @@
-
 // Service for handling Podio OAuth flow
 
 // Define interfaces for error responses from Podio API
@@ -67,8 +66,10 @@ export const getPodioApiDomain = (): string => {
 
 // Rate limit handling
 const RATE_LIMIT_KEY = 'podio_rate_limit_until';
+const RATE_LIMIT_COUNTER_KEY = 'podio_rate_limit_counter';
 const MIN_RETRY_DELAY = 2000; // Start with 2 seconds
-const MAX_RETRY_DELAY = 60000; // Maximum 1 minute
+const MAX_RETRY_DELAY = 300000; // Maximum 5 minutes
+const MAX_RETRIES_BEFORE_LONG_TIMEOUT = 5;
 
 // Check if we're currently rate limited
 export const isRateLimited = (): boolean => {
@@ -79,7 +80,7 @@ export const isRateLimited = (): boolean => {
   return Date.now() < limitTime;
 };
 
-// Set rate limit with exponential backoff
+// Set rate limit with exponential backoff and jitter
 export const setRateLimit = (retryAfterSecs?: number): void => {
   // If Podio tells us when to retry, use that
   if (retryAfterSecs) {
@@ -91,27 +92,41 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
     return;
   }
   
-  // Otherwise use exponential backoff
-  const currentDelay = localStorage.getItem('podio_retry_delay');
-  let delay = currentDelay ? parseInt(currentDelay, 10) : MIN_RETRY_DELAY;
+  // Otherwise use exponential backoff with retry counter
+  const retryCountStr = localStorage.getItem(RATE_LIMIT_COUNTER_KEY);
+  const retryCount = retryCountStr ? parseInt(retryCountStr, 10) : 0;
+  const newRetryCount = retryCount + 1;
   
-  // Apply exponential backoff with jitter
-  delay = Math.min(delay * 2, MAX_RETRY_DELAY);
-  delay = delay + (Math.random() * delay * 0.2); // Add up to 20% jitter
+  // Store the updated retry count
+  localStorage.setItem(RATE_LIMIT_COUNTER_KEY, newRetryCount.toString());
+  
+  // Calculate delay with exponential backoff
+  let delay = MIN_RETRY_DELAY * Math.pow(2, Math.min(newRetryCount, 8)); // 2^8 = 256 max multiplier
+  
+  // Add jitter (up to 20% random variation)
+  delay = delay + (Math.random() * delay * 0.2);
+  
+  // Cap at maximum delay
+  delay = Math.min(delay, MAX_RETRY_DELAY);
+  
+  // If we've exceeded multiple retries, implement a longer timeout
+  if (newRetryCount >= MAX_RETRIES_BEFORE_LONG_TIMEOUT) {
+    delay = MAX_RETRY_DELAY;
+    console.warn(`Exceeded ${MAX_RETRIES_BEFORE_LONG_TIMEOUT} retries, implementing longer timeout`);
+  }
   
   const limitTime = Date.now() + delay;
   localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
-  localStorage.setItem('podio_retry_delay', delay.toString());
   
   if (import.meta.env.DEV) {
-    console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds`);
+    console.log(`Rate limited (backoff): waiting ${Math.round(delay/1000)} seconds (retry #${newRetryCount})`);
   }
 };
 
 // Clear rate limit
 export const clearRateLimit = (): void => {
   localStorage.removeItem(RATE_LIMIT_KEY);
-  localStorage.removeItem('podio_retry_delay');
+  localStorage.removeItem(RATE_LIMIT_COUNTER_KEY);
 };
 
 // Implement Password Flow Authentication (App Authentication)
