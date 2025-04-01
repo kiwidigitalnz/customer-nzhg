@@ -21,6 +21,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   checkSession: () => boolean;
+  forceReauthenticate: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +48,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const extendSession = (): void => {
     const expiry = Date.now() + SESSION_DURATION;
     localStorage.setItem('nzhg_session_expiry', expiry.toString());
+  };
+
+  // Force reauthenticate with Podio - useful when credentials have changed
+  const forceReauthenticate = async (): Promise<boolean> => {
+    // Clear all Podio-related tokens and state
+    logout();
+    
+    // Clear all Podio auth tokens
+    localStorage.removeItem('podio_access_token');
+    localStorage.removeItem('podio_refresh_token');
+    localStorage.removeItem('podio_token_expiry');
+    localStorage.removeItem('podio_app_access_token');
+    localStorage.removeItem('podio_app_token_expiry');
+    localStorage.removeItem('podio_current_app_context');
+    localStorage.removeItem('podio_rate_limit_info');
+    
+    // Reset permission error state
+    setPermissionError(false);
+    
+    // Try to authenticate with client credentials
+    try {
+      setLoading(true);
+      const success = await authenticateWithClientCredentials();
+      setLoading(false);
+      
+      if (success) {
+        toast({
+          title: 'Podio Authentication Successful',
+          description: 'Successfully authenticated with Podio API',
+        });
+      } else {
+        toast({
+          title: 'Podio Authentication Failed',
+          description: 'Could not authenticate with Podio API',
+          variant: 'destructive',
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      setLoading(false);
+      toast({
+        title: 'Podio Authentication Error',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: 'destructive',
+      });
+      return false;
+    }
   };
 
   // Pre-authenticate with client credentials - with rate limit and dedupe protection
@@ -100,6 +149,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Prevent multiple initializations
     if (authInitialized.current) return;
     authInitialized.current = true;
+    
+    // Clear any existing Podio tokens on initial load to force reauthorization with new credentials
+    localStorage.removeItem('podio_access_token');
+    localStorage.removeItem('podio_refresh_token');
+    localStorage.removeItem('podio_token_expiry');
+    localStorage.removeItem('podio_app_access_token');
+    localStorage.removeItem('podio_app_token_expiry');
+    localStorage.removeItem('podio_current_app_context');
     
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
@@ -215,7 +272,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout, checkSession }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, checkSession, forceReauthenticate }}>
       {children}
     </AuthContext.Provider>
   );

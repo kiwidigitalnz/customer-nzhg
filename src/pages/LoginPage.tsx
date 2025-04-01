@@ -2,12 +2,46 @@
 import LoginForm from '../components/LoginForm';
 import MainLayout from '../components/MainLayout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, Info } from 'lucide-react';
 import { isPodioConfigured } from '../services/podioAuth';
+import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
   const isDevelopment = process.env.NODE_ENV !== 'production';
   const podioConfigured = isPodioConfigured();
+  const { forceReauthenticate } = useAuth();
+  const [reAuthenticating, setReAuthenticating] = useState(false);
+  const { toast } = useToast();
+
+  const handleForceReauth = async () => {
+    setReAuthenticating(true);
+    try {
+      const success = await forceReauthenticate();
+      if (success) {
+        toast({
+          title: "Podio Reauthentication Successful",
+          description: "Your app has been successfully reauthenticated with Podio."
+        });
+      } else {
+        toast({
+          title: "Podio Reauthentication Failed",
+          description: "Failed to reauthenticate with Podio. Please check your API credentials.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Reauthentication Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setReAuthenticating(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -34,6 +68,25 @@ const LoginPage = () => {
               </AlertDescription>
             </Alert>
           )}
+          
+          {/* Force Reauthentication Button */}
+          <div className="mb-4 flex justify-center">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleForceReauth}
+              disabled={reAuthenticating}
+              className="text-xs"
+            >
+              {reAuthenticating && (
+                <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+              )}
+              {!reAuthenticating && (
+                <RefreshCw className="mr-1 h-3 w-3" />
+              )}
+              Reauthorize with Podio
+            </Button>
+          </div>
           
           <LoginForm />
         </div>
