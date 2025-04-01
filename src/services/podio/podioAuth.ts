@@ -1214,12 +1214,3 @@ export const CONTACT_FIELD_IDS = {
   logoUrl: "logo-url",
   title: "title"
 };
-
-// Export the new rate limit functions
-export { 
-  setRateLimitWithBackoff,
-  clearRateLimitInfo,
-  isRateLimitedWithInfo,
-  cacheUserData,
-  getCachedUserData
-};
