@@ -148,22 +148,22 @@ export const authenticateWithClientCredentials = async (): Promise<any> => {
 
 // Function to authenticate with password flow
 export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<any> => {
-    try {
-        const podioClient = initializePodio();
-        if (!podioClient) {
-            throw new Error('Podio client not initialized');
-        }
-
-        const tokens = await podioClient.oauth.authenticate('password', {
-            username: username,
-            password: password
-        });
-        storeTokens(tokens);
-        return tokens;
-    } catch (error) {
-        console.error('Error authenticating with password flow:', error);
-        throw error;
+  try {
+    const podioClient = initializePodio();
+    if (!podioClient) {
+      throw new Error('Podio client not initialized');
     }
+
+    const tokens = await podioClient.oauth.authenticate('password', {
+      username: username,
+      password: password
+    });
+    storeTokens(tokens);
+    return tokens;
+  } catch (error) {
+    console.error('Error authenticating with password flow:', error);
+    throw error;
+  }
 };
 
 // Function to validate access to the contacts app
@@ -181,29 +181,6 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
     console.error('Access validation failed:', error);
     return false;
   }
-};
-
-// Rate limiting variables
-let rateLimitExceeded = false;
-let rateLimitExpiry: Date | null = null;
-
-// Function to check if rate limit is exceeded
-export const isRateLimited = (): boolean => {
-  return rateLimitExceeded && rateLimitExpiry !== null && rateLimitExpiry > new Date();
-};
-
-// Function to set rate limit
-export const setRateLimit = (durationInSeconds: number = 60) => {
-  rateLimitExceeded = true;
-  rateLimitExpiry = new Date(Date.now() + durationInSeconds * 1000);
-  console.warn(`Rate limit exceeded. Will retry after ${rateLimitExpiry.toLocaleTimeString()}`);
-};
-
-// Function to clear rate limit
-export const clearRateLimit = () => {
-  rateLimitExceeded = false;
-  rateLimitExpiry = null;
-  console.log('Rate limit cleared.');
 };
 
 // Module constants
@@ -417,7 +394,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     
     // Check for rate limiting
     if (response.status === 429) {
-      setRateLimit();
+      setRateLimit(60, endpoint);
       throw new Error('API rate limit exceeded. Please try again later.');
     }
     
