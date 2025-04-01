@@ -242,9 +242,9 @@ export const CONTACT_FIELD_IDS = {
   phone: 265834177,
   address: 265834178,
   website: 265834179,
-  logo: 265834180,
-  username: 265834182,
-  password: 265834181
+  logo: 271291962,
+  username: 271281606, // Updated to the correct field ID for customer-portal-username
+  password: 271280804  // Updated to the correct field ID for customer-portal-password
 };
 
 // User or contact authentication
@@ -268,7 +268,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     const filters = {
       filters: {
-        "username": username  // Using field name (external_id) instead of field_id
+        "customer-portal-username": username  // Using correct external_id
       }
     };
     
@@ -286,7 +286,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     const fields = contact.fields;
     
     // Extract the password field to validate
-    const storedPassword = getFieldValueByExternalId(fields, 'password');
+    const storedPassword = getFieldValueByExternalId(fields, 'customer-portal-password');
     
     if (storedPassword !== password) {
       throw new Error('Invalid password');
@@ -295,9 +295,9 @@ export const authenticateUser = async (username: string, password: string): Prom
     // Extract user data
     const userData = {
       id: contact.item_id,
-      name: getFieldValueByExternalId(fields, 'name'),
-      email: getFieldValueByExternalId(fields, 'email'),
-      username: getFieldValueByExternalId(fields, 'username'),
+      name: getFieldValueByExternalId(fields, 'title') || getFieldValueByExternalId(fields, 'business-contact-name'),
+      email: getFieldValueByExternalId(fields, 'contact-email'),
+      username: getFieldValueByExternalId(fields, 'customer-portal-username'),
       logoUrl: getLogoUrl(fields)
     };
     

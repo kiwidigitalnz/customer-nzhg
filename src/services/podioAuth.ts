@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { 
   getPodioClientId,
@@ -196,14 +195,14 @@ export const getCurrentAppContext = (): PodioAppContext => {
 
 // Contact field IDs for the Podio Contacts app
 export const CONTACT_FIELD_IDS = {
-  email: 265834175,
-  name: 265834176,
-  phone: 265834177,
-  address: 265834178,
-  website: 265834179,
-  logo: 265834180,
-  username: 265834182,
-  password: 265834181
+  email: 233245358,        // contact-email
+  name: 233245352,         // title (business name)
+  phone: 233245357,        // contact-number
+  address: 233245358,      // Keeping the old value as address wasn't in the provided fields
+  website: 233246156,      // website
+  logo: 271291962,         // logo
+  username: 271281606,     // customer-portal-username
+  password: 271280804      // customer-portal-password
 };
 
 // User or contact authentication with improved error handling
@@ -233,7 +232,7 @@ export const authenticateUser = async (username: string, password: string): Prom
       // Fix: Use the external_id format for filtering instead of field_id directly
       const filters = {
         filters: {
-          "username": username  // Use the external_id (field name) instead of field_id
+          "customer-portal-username": username  // Use the correct external_id
         }
       };
       
@@ -255,7 +254,7 @@ export const authenticateUser = async (username: string, password: string): Prom
       const fields = contact.fields;
       
       // Extract the password field to validate
-      const storedPassword = getFieldValueByExternalId(fields, 'password');
+      const storedPassword = getFieldValueByExternalId(fields, 'customer-portal-password');
       
       if (storedPassword !== password) {
         throw new Error('Invalid password');
@@ -264,9 +263,9 @@ export const authenticateUser = async (username: string, password: string): Prom
       // Extract user data
       const userData = {
         id: contact.item_id,
-        name: getFieldValueByExternalId(fields, 'name'),
-        email: getFieldValueByExternalId(fields, 'email'),
-        username: getFieldValueByExternalId(fields, 'username'),
+        name: getFieldValueByExternalId(fields, 'title') || getFieldValueByExternalId(fields, 'business-contact-name'),
+        email: getFieldValueByExternalId(fields, 'contact-email'),
+        username: getFieldValueByExternalId(fields, 'customer-portal-username'),
         logoUrl: getLogoUrl(fields)
       };
       
