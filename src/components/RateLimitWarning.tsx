@@ -20,15 +20,17 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
     const checkRateLimit = () => {
       const rateLimitInfo = isRateLimitedWithInfo();
       
-      if (!rateLimitInfo.limited) {
+      if (!rateLimitInfo.isLimited) {
         setTimeLeft(null);
         setIsButtonDisabled(false);
         return;
       }
       
-      setTimeLeft(rateLimitInfo.remainingSeconds);
-      setRateLimitReason(rateLimitInfo.reason || 'API rate limit reached');
-      setIsButtonDisabled(rateLimitInfo.remainingSeconds > 0);
+      setTimeLeft(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000));
+      setRateLimitReason(rateLimitInfo.lastEndpoint ? 
+        `API rate limit reached for ${rateLimitInfo.lastEndpoint}` : 
+        'API rate limit reached');
+      setIsButtonDisabled(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000) > 0);
     };
     
     // Check immediately

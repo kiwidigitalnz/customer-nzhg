@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -55,8 +56,12 @@ const LoginForm = () => {
 
     // Check if we're rate limited
     const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.limited) {
-      setPodioAPIError(`Rate limit reached: ${rateLimitInfo.reason}. Please wait ${rateLimitInfo.remainingSeconds} seconds.`);
+    if (rateLimitInfo.isLimited) {
+      const secondsLeft = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      const reason = rateLimitInfo.lastEndpoint ? 
+        `Rate limit reached for ${rateLimitInfo.lastEndpoint}` : 
+        'Rate limit reached';
+      setPodioAPIError(`${reason}. Please wait ${secondsLeft} seconds.`);
       return;
     }
     
@@ -142,8 +147,12 @@ const LoginForm = () => {
   // Generate a message if rate limited
   const getRateLimitMessage = () => {
     const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.limited) {
-      return `Rate limited: ${rateLimitInfo.reason}. Please wait ${rateLimitInfo.remainingSeconds} seconds.`;
+    if (rateLimitInfo.isLimited) {
+      const secondsLeft = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      const reason = rateLimitInfo.lastEndpoint ? 
+        `Rate limited for ${rateLimitInfo.lastEndpoint}` : 
+        'Rate limited';
+      return `${reason}. Please wait ${secondsLeft} seconds.`;
     }
     return null;
   };
@@ -156,7 +165,7 @@ const LoginForm = () => {
   const getLoadingMessage = () => {
     if (authenticating) return 'Authenticating...';
     if (loading) return 'Logging in...';
-    if (isRateLimitedWithInfo().limited) return 'Rate limited';
+    if (isRateLimitedWithInfo().isLimited) return 'Rate limited';
     return 'Log In';
   };
 
@@ -185,7 +194,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={isLoading || isRateLimitedWithInfo().limited}
+              disabled={isLoading || isRateLimitedWithInfo().isLimited}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -202,7 +211,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                disabled={isLoading || isRateLimitedWithInfo().limited}
+                disabled={isLoading || isRateLimitedWithInfo().isLimited}
                 autoComplete="current-password"
                 className="border-gray-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
               />
@@ -236,7 +245,7 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={isLoading || isRateLimitedWithInfo().limited}
+            disabled={isLoading || isRateLimitedWithInfo().isLimited}
           >
             {isLoading && (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-25 border-t-white"></span>
