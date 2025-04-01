@@ -1,7 +1,47 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isPodioConfigured, authenticateWithPackingSpecAppToken, isRateLimited, isRateLimitedWithInfo } from '../services/podioAuth';
+import { useToast } from '../hooks/use-toast';
+import { 
+  isPodioConfigured, 
+  authenticateWithPackingSpecAppToken, 
+  isRateLimited, 
+  isRateLimitedWithInfo,
+  getCachedUserData,
+  cacheUserData
+} from '../services/podioAuth';
 import { getPackingSpecsForContact } from '../services/podioApi';
+import { 
+  AlertTriangle, 
+  AlertCircle, 
+  Building, 
+  LogOut, 
+  PackageCheck, 
+  CheckCircle 
+} from 'lucide-react';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { 
+  Tabs, 
+  TabsList, 
+  TabsTrigger, 
+  TabsContent 
+} from '@/components/ui/tabs';
+import { 
+  Avatar, 
+  AvatarImage, 
+  AvatarFallback 
+} from '@/components/ui/avatar';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import RateLimitWarning from '../components/RateLimitWarning';
+import PackingSpecList from '../components/PackingSpecList';
+import { SpecStatus } from '../components/packing-spec/StatusBadge';
 
 interface PackingSpec {
   id: number;
