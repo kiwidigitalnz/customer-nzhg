@@ -288,8 +288,17 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
       return false;
     }
     
+    // Check for specific error types
     if (!response.ok) {
       console.error('Password authentication failed:', responseData);
+      
+      // If the username is invalid, return false but don't throw
+      if (responseData.error_detail === 'user.invalid.username') {
+        console.log('Invalid username, will try client credentials instead');
+        return false;
+      }
+      
+      // For other errors, return false
       return false;
     }
     
@@ -434,9 +443,13 @@ export const authenticateUser = async (username: string, password: string): Prom
   try {
     console.log(`Authenticating user: ${username}`);
     
-    // We should already be authenticated from the password flow
+    // We should already be authenticated either from the password flow or client credentials
     if (!hasValidTokens()) {
-      throw new Error('Not authenticated with Podio');
+      // Try to authenticate with client credentials as fallback
+      const clientAuthSuccess = await authenticateWithClientCredentials();
+      if (!clientAuthSuccess) {
+        throw new Error('Not authenticated with Podio');
+      }
     }
     
     // Search for user by username in the Contacts app
@@ -462,6 +475,13 @@ export const authenticateUser = async (username: string, password: string): Prom
       
       // Get the first matching contact
       const contact = searchResponse.items[0];
+      
+      // Verify password if we have one
+      // This is a simple example - in production you would use proper password hashing
+      const storedPassword = getFieldValueByExternalId(contact.fields, 'customer-portal-password');
+      if (storedPassword && storedPassword !== password) {
+        throw new Error('Invalid password');
+      }
       
       // Get user details
       const contactData = {

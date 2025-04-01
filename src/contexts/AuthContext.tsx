@@ -1,6 +1,5 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser } from '../services/podioAuth';
+import { authenticateUser, authenticateWithClientCredentials } from '../services/podioAuth';
 import { useToast } from '@/components/ui/use-toast';
 
 // Session duration (4 hours)
@@ -97,7 +96,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Call the authenticateUser function (we are already authenticated with password flow)
+      // Try to authenticate with client credentials if we're not already authenticated
+      await authenticateWithClientCredentials();
+      
+      // Call the authenticateUser function to check if user exists in Contacts app
       const userData = await authenticateUser(username, password);
       
       setUser(userData);

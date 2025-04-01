@@ -12,7 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimited, 
-  authenticateWithPasswordFlow
+  authenticateWithPasswordFlow,
+  authenticateWithClientCredentials
 } from '../services/podioAuth';
 
 const LoginForm = () => {
@@ -59,18 +60,31 @@ const LoginForm = () => {
     try {
       setAuthenticating(true);
       
-      // Authenticate directly with username and password
+      // Try to authenticate with password flow first
+      let authSuccess = false;
+      
       try {
         // First authenticate with password flow to access the APIs
-        const authSuccess = await authenticateWithPasswordFlow(username, password);
-        
-        if (!authSuccess) {
-          setPodioAPIError('Invalid username or password');
-          setAuthenticating(false);
-          return;
-        }
-        
-        // If authentication was successful, try to login the user
+        authSuccess = await authenticateWithPasswordFlow(username, password);
+      } catch (error) {
+        console.error('Password flow authentication failed:', error);
+        // Fall back to client credentials if password flow fails
+        authSuccess = await authenticateWithClientCredentials();
+      }
+      
+      // If password flow fails, try client credentials as fallback
+      if (!authSuccess) {
+        authSuccess = await authenticateWithClientCredentials();
+      }
+      
+      if (!authSuccess) {
+        setPodioAPIError('Authentication failed. Please check your credentials.');
+        setAuthenticating(false);
+        return;
+      }
+      
+      // If authentication was successful, try to login the user
+      try {
         const success = await login(username, password);
         
         if (success) {
@@ -80,6 +94,8 @@ const LoginForm = () => {
             variant: 'default',
           });
           navigate('/dashboard');
+        } else {
+          setPodioAPIError('Invalid username or password');
         }
       } catch (loginErr) {
         // Handle specific unauthorized errors differently
