@@ -46,6 +46,7 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       },
       body: formData,
     });
@@ -61,17 +62,33 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
     
     // Get the response text
     const responseText = await podioResponse.text();
-    console.log('Podio response body:', responseText);
+    console.log('Response content type:', podioResponse.headers.get('Content-Type'));
+    console.log('Podio response first 100 chars:', responseText.substring(0, 100));
+    
+    // Check if it looks like HTML (indicating an error or redirect)
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON from Podio token endpoint');
+      return new Response(JSON.stringify({
+        error: 'invalid_response',
+        error_description: 'Podio returned HTML instead of JSON. Check your client credentials.'
+      }), {
+        status: 502,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
     
     // Try to parse as JSON
     let responseData;
     try {
       responseData = responseText ? JSON.parse(responseText) : {};
     } catch (error) {
-      console.error('Error parsing Podio response:', error);
+      console.error('Error parsing Podio response:', error, 'Raw response:', responseText);
       return new Response(JSON.stringify({
         error: 'invalid_response',
-        error_description: 'Could not parse Podio response'
+        error_description: 'Could not parse Podio response: ' + (error instanceof Error ? error.message : 'Unknown error')
       }), {
         status: 502,
         headers: {

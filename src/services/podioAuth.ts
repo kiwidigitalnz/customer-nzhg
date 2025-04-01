@@ -123,11 +123,32 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       },
       body: formData
     });
     
     console.log('Token response status:', response.status);
+    
+    // First get the response as text to inspect it
+    const responseText = await response.text();
+    console.log('Response first 100 chars:', responseText.substring(0, 100));
+    
+    // Check if the response is HTML instead of JSON
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON. Check your API endpoint configuration.');
+      return false;
+    }
+    
+    // Parse the text response
+    let responseData: any;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      console.error('Raw response:', responseText);
+      return false;
+    }
     
     // Handle rate limiting specifically
     if (response.status === 429 || response.status === 420) {
@@ -137,16 +158,15 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Authentication failed:', errorData);
+      console.error('Authentication failed:', responseData);
       return false;
     }
     
     // Parse and store token data
-    const tokenData = await response.json();
+    const tokenData = responseData;
     
     if (!tokenData.access_token) {
-      console.error('Invalid token data received');
+      console.error('Invalid token data received:', tokenData);
       return false;
     }
     
@@ -168,8 +188,8 @@ export const refreshToken = async (): Promise<boolean> => {
       return false;
     }
     
-    const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-    if (!refreshToken) {
+    const refreshTokenValue = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!refreshTokenValue) {
       // If no refresh token, fall back to client credentials
       return authenticateWithClientCredentials();
     }
@@ -185,7 +205,7 @@ export const refreshToken = async (): Promise<boolean> => {
     
     const formData = new URLSearchParams();
     formData.append('grant_type', 'refresh_token');
-    formData.append('refresh_token', refreshToken);
+    formData.append('refresh_token', refreshTokenValue);
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
@@ -193,9 +213,29 @@ export const refreshToken = async (): Promise<boolean> => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       },
       body: formData
     });
+    
+    // First get the response as text to inspect it
+    const responseText = await response.text();
+    
+    // Check if the response is HTML instead of JSON
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON during token refresh. Falling back to client credentials.');
+      return authenticateWithClientCredentials();
+    }
+    
+    // Parse the text response
+    let responseData: any;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Failed to parse JSON response during token refresh:', error);
+      console.error('Raw response:', responseText);
+      return authenticateWithClientCredentials();
+    }
     
     // Handle rate limiting
     if (response.status === 429 || response.status === 420) {
@@ -211,18 +251,20 @@ export const refreshToken = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      console.error('Token refresh failed:', await response.json());
-      return false;
+      console.error('Token refresh failed:', responseData);
+      // Try client credentials as fallback
+      return authenticateWithClientCredentials();
     }
     
-    const tokenData = await response.json();
+    const tokenData = responseData;
     storeTokens(tokenData);
     clearRateLimit();
     
     return true;
   } catch (error) {
     console.error('Error refreshing token:', error);
-    return false;
+    // Try client credentials as fallback on error
+    return authenticateWithClientCredentials();
   }
 };
 
@@ -254,6 +296,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   const headers = {
     'Authorization': `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     ...options.headers,
   };
   
@@ -281,12 +324,30 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       return callPodioApi(endpoint, options);
     }
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error_description || `API error: ${response.status}`);
+    // Get response as text first to check for HTML error pages
+    const responseText = await response.text();
+    
+    // Check if the response is HTML instead of JSON
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON from API call');
+      throw new Error('Invalid response from Podio API');
     }
     
-    return await response.json();
+    // Parse JSON response
+    let responseData;
+    try {
+      responseData = responseText ? JSON.parse(responseText) : {};
+    } catch (error) {
+      console.error('Failed to parse API response:', error);
+      console.error('Raw response:', responseText);
+      throw new Error('Invalid JSON response from API');
+    }
+    
+    if (!response.ok) {
+      throw new Error(responseData.error_description || `API error: ${response.status}`);
+    }
+    
+    return responseData;
   } catch (error) {
     console.error('API call error:', error);
     throw error;
