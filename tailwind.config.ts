@@ -22,6 +22,7 @@ export default {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
 				manrope: ['Manrope', 'sans-serif'],
+				playfair: ['Playfair Display', 'serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -29,6 +30,11 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				honey: {
+					DEFAULT: 'hsl(var(--honey-gold))',
+					amber: 'hsl(var(--honey-amber))',
+					light: 'hsl(var(--honey-light))',
+				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
