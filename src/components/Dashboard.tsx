@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, isPodioConfigured, isRateLimited } from '../services/podioApi';
+import { getPackingSpecsForContact, authenticateWithPackingSpecAppToken, isPodioConfigured, isRateLimited, isRateLimitedWithInfo } from '../services/podioAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,15 +48,35 @@ const Dashboard = () => {
   const podioConfigured = isPodioConfigured();
   const apiCallInProgress = useRef(false);
   const apiCallAttempted = useRef(false);
+  const initialLoadCompleted = useRef(false);
   
   // Cache key for storing packing specs
   const getCacheKey = useCallback(() => {
     return user ? `packing_specs_${user.id}` : null;
   }, [user]);
   
+  // Pre-authenticate with PackingSpec app - run once without blocking
+  const ensurePackingSpecAuth = useCallback(async () => {
+    if (apiCallInProgress.current || isRateLimited()) {
+      console.log('Skipping pre-authentication due to ongoing API call or rate limit');
+      return;
+    }
+    
+    try {
+      console.log('Pre-authenticating with Packing Spec app...');
+      await authenticateWithPackingSpecAppToken();
+    } catch (error) {
+      console.error('Pre-authentication with Packing Spec app failed:', error);
+      // Non-blocking failure, will retry on actual API call
+    }
+  }, []);
+  
   // Function to fetch specs data with caching and rate limit awareness
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user, skipping fetch');
+      return;
+    }
     
     if (apiCallInProgress.current) {
       console.log('API call already in progress, skipping duplicate call');
@@ -63,36 +84,25 @@ const Dashboard = () => {
     }
     
     const cacheKey = getCacheKey();
-    if (!cacheKey) return;
+    if (!cacheKey) {
+      console.log('No cache key available, skipping fetch');
+      return;
+    }
     
     // Check if we're rate limited
-    if (isRateLimited()) {
+    const rateLimitInfo = isRateLimitedWithInfo();
+    if (rateLimitInfo.isLimited) {
+      console.log('Rate limited, using cached data if available');
       setIsRateLimitReached(true);
+      
       // Load from cache if available
       const cachedData = getCachedUserData(cacheKey);
       if (cachedData) {
+        console.log('Using cached data during rate limit');
         setSpecs(cachedData as PackingSpec[]);
         setLoading(false);
       }
       return;
-    }
-    
-    // Check cache if not forcing refresh
-    if (!forceRefresh) {
-      const cachedData = getCachedUserData(cacheKey);
-      if (cachedData) {
-        setSpecs(cachedData as PackingSpec[]);
-        setLoading(false);
-        
-        // If we have cached data and haven't attempted an API call yet, 
-        // still attempt one API call to refresh in the background
-        if (!apiCallAttempted.current) {
-          apiCallAttempted.current = true;
-          // Continue with the API call in the background
-        } else {
-          return; // Otherwise just use cache and return
-        }
-      }
     }
     
     // Set timestamp for last fetch attempt to avoid multiple simultaneous calls
@@ -102,22 +112,59 @@ const Dashboard = () => {
       return;
     }
     
+    // Check cache first if not forcing refresh
+    if (!forceRefresh) {
+      const cachedData = getCachedUserData(cacheKey);
+      if (cachedData) {
+        console.log('Using cached data while fetching fresh data');
+        setSpecs(cachedData as PackingSpec[]);
+        setLoading(false);
+        
+        // If this is initial load, mark as completed
+        if (!initialLoadCompleted.current) {
+          initialLoadCompleted.current = true;
+        }
+        
+        // If we've already attempted an API call and we're not forcing refresh
+        // we can return early and not make another API call
+        if (apiCallAttempted.current && !forceRefresh) {
+          console.log('Already attempted API call, using cached data only');
+          return;
+        }
+      }
+    }
+    
     setLastFetchAttempt(now);
     apiCallInProgress.current = true;
+    apiCallAttempted.current = true;
     
-    if (!isRateLimitReached) {
+    // Only show loading state if we don't have any data yet
+    if (!specs.length && !isRateLimitReached) {
       setLoading(true);
     }
     
     try {
+      // Pre-authenticate with Packing Spec app
+      await ensurePackingSpecAuth();
+      
       console.log(`Fetching specs for contact ID: ${user.id}`);
       const data = await getPackingSpecsForContact(user.id);
-      setSpecs(data as PackingSpec[]);
-      setIsRateLimitReached(false);
       
-      // Cache the successful response
-      if (data && data.length > 0) {
-        cacheUserData(cacheKey, data);
+      if (data && Array.isArray(data)) {
+        console.log(`Received ${data.length} packing specs from API`);
+        setSpecs(data as PackingSpec[]);
+        setIsRateLimitReached(false);
+        
+        // Cache the successful response
+        if (data.length > 0) {
+          console.log('Caching packing specs data');
+          cacheUserData(cacheKey, data);
+        }
+        
+        // Mark initial load as completed
+        initialLoadCompleted.current = true;
+      } else {
+        console.warn('Received invalid data from API:', data);
       }
     } catch (error) {
       console.error('Error fetching specs:', error);
@@ -138,19 +185,22 @@ const Dashboard = () => {
           setSpecs(cachedData as PackingSpec[]);
         }
       } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to load your packing specifications',
-          variant: 'destructive',
-        });
+        // Only show error toast if we don't have any cached data
+        if (!specs.length) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load your packing specifications',
+            variant: 'destructive',
+          });
+        }
       }
     } finally {
       setLoading(false);
       apiCallInProgress.current = false;
     }
-  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached]);
+  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
 
-  // Fetch specs only once on initial component mount
+  // Initial fetch when component mounts
   useEffect(() => {
     // Redirect to Podio setup if not configured
     if (!podioConfigured) {
@@ -169,9 +219,21 @@ const Dashboard = () => {
       return;
     }
 
-    // Only fetch if we have a user and we haven't made a fetch attempt already
-    if (user && !apiCallAttempted.current) {
-      apiCallAttempted.current = true;
+    // Only fetch if we have a user and we haven't completed the initial load
+    if (user && !initialLoadCompleted.current) {
+      // Check for cached data first
+      const cacheKey = getCacheKey();
+      if (cacheKey) {
+        const cachedData = getCachedUserData(cacheKey);
+        if (cachedData) {
+          console.log('Using cached data on initial load');
+          setSpecs(cachedData as PackingSpec[]);
+          setLoading(false);
+        }
+      }
+      
+      // Then fetch fresh data
+      console.log('Performing initial fetch of packing specs');
       fetchSpecs();
     }
     
@@ -181,7 +243,7 @@ const Dashboard = () => {
       apiCallAttempted.current = false;
       apiCallInProgress.current = false;
     };
-  }, [user, toast, navigate, podioConfigured, fetchSpecs]);
+  }, [user, toast, navigate, podioConfigured, fetchSpecs, getCacheKey]);
 
   // Only re-fetch on location change if explicitly navigating back to dashboard
   // and it's been at least 5 minutes since the last fetch

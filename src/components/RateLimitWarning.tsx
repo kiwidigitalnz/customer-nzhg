@@ -26,11 +26,18 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
         return;
       }
       
-      setTimeLeft(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000));
-      setRateLimitReason(rateLimitInfo.lastEndpoint ? 
+      // Calculate seconds left
+      const secondsLeft = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      
+      setTimeLeft(secondsLeft);
+      
+      // Generate reason message
+      const reasonMessage = rateLimitInfo.lastEndpoint ? 
         `API rate limit reached for ${rateLimitInfo.lastEndpoint}` : 
-        'API rate limit reached');
-      setIsButtonDisabled(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000) > 0);
+        'API rate limit reached';
+      
+      setRateLimitReason(reasonMessage);
+      setIsButtonDisabled(secondsLeft > 0);
     };
     
     // Check immediately
