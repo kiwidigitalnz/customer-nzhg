@@ -3,11 +3,11 @@ import LoginForm from '../components/LoginForm';
 import MainLayout from '../components/MainLayout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
-import { isPodioConfigured } from '../services/podioApi';
+import { isPodioConfigured } from '../services/podioAuth';
 
 const LoginPage = () => {
-  const podioConfigured = isPodioConfigured();
   const isDevelopment = process.env.NODE_ENV !== 'production';
+  const podioConfigured = isPodioConfigured();
 
   return (
     <MainLayout>
