@@ -1,3 +1,4 @@
+
 // Service for handling Podio OAuth flow
 
 // Define interfaces for error responses from Podio API
@@ -148,24 +149,28 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
-    // Log the full URL and request body for debugging
-    console.log('Sending request to /api/podio-token with body:', formData.toString());
-    
-    // Use the /api/podio-token proxy endpoint with more error handling
-    const response = await fetch('/api/podio-token', {
+    // Make direct request to Podio API (avoiding the proxy that's causing issues)
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData,
-      credentials: 'same-origin', // Include cookies for same-origin requests
     });
     
     console.log('Token response status:', response.status);
     
     // For debugging, log the entire response
     const responseText = await response.text();
-    console.log('Raw response text:', responseText);
+    console.log('Raw response text first 100 chars:', responseText.substring(0, 100));
+    
+    // Check if the response is HTML instead of JSON
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON. Check your client credentials and request format.');
+      return false;
+    }
     
     // Parse the response text as JSON
     let responseData;
@@ -244,7 +249,7 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
   }
 };
 
-// Refresh token - now using the proxy endpoint
+// Refresh token
 export const refreshPodioToken = async (): Promise<boolean> => {
   try {
     // Check for rate limiting first
@@ -280,30 +285,42 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       console.log('Refreshing Podio token using refresh token');
     }
     
-    // Use proxy API endpoint for token requests to avoid CORS issues
+    // Direct request to Podio API
     const formData = new URLSearchParams();
     formData.append('grant_type', 'refresh_token');
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     formData.append('refresh_token', refreshToken);
     
-    // Use the /api/podio-token proxy endpoint
-    const response = await fetch('/api/podio-token', {
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData,
     });
     
+    // Check for HTML response
+    const responseText = await response.text();
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON during token refresh');
+      return await authenticateWithPasswordFlow();
+    }
+    
+    // Parse JSON
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Failed to parse JSON during token refresh:', error);
+      return await authenticateWithPasswordFlow();
+    }
+    
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        // Failed to parse JSON, continue with empty object
-      }
+      let errorData: PodioErrorResponse = responseData;
       
       if (import.meta.env.DEV) {
         console.error('Rate limit reached during token refresh:', errorData);
@@ -332,12 +349,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        // Failed to parse JSON, continue with empty object
-      }
+      let errorData: PodioErrorResponse = responseData;
       
       if (import.meta.env.DEV) {
         console.error('Token refresh failed:', errorData);
@@ -350,7 +362,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     // Reset rate limit on success
     clearRateLimit();
     
-    const tokenData: PodioTokenResponse = await response.json();
+    const tokenData: PodioTokenResponse = responseData;
     
     // Store the new tokens
     localStorage.setItem('podio_access_token', tokenData.access_token);
@@ -419,7 +431,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
       console.log('Exchanging code for tokens with redirect URI:', redirectUri);
     }
     
-    // Use proxy API endpoint for token requests to avoid CORS issues
+    // Direct request to Podio API
     const formData = new URLSearchParams();
     formData.append('grant_type', 'authorization_code');
     formData.append('client_id', clientId);
@@ -427,23 +439,35 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     formData.append('code', code);
     formData.append('redirect_uri', redirectUri);
     
-    // Use the /api/podio-token proxy endpoint
-    const response = await fetch('/api/podio-token', {
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData,
     });
     
+    // Check for HTML response
+    const responseText = await response.text();
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      console.error('Received HTML instead of JSON during token exchange');
+      return false;
+    }
+    
+    // Parse JSON
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Failed to parse JSON during token exchange:', error);
+      return false;
+    }
+    
     // Handle rate limiting
     if (response.status === 420 || response.status === 429) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        // Failed to parse JSON, continue with empty object
-      }
+      let errorData: PodioErrorResponse = responseData;
       
       if (import.meta.env.DEV) {
         console.error('Rate limit reached during token exchange:', errorData);
@@ -464,16 +488,10 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     }
     
     if (!response.ok) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-        if (import.meta.env.DEV) {
-          console.error('Token exchange failed:', errorData);
-        }
-      } catch (e) {
-        if (import.meta.env.DEV) {
-          console.error('Token exchange failed with non-JSON response');
-        }
+      let errorData: PodioErrorResponse = responseData;
+      
+      if (import.meta.env.DEV) {
+        console.error('Token exchange failed:', errorData);
       }
       return false;
     }
@@ -481,7 +499,7 @@ export const exchangeCodeForToken = async (code: string, redirectUri: string): P
     // Reset rate limit on success
     clearRateLimit();
     
-    const tokenData: PodioTokenResponse = await response.json();
+    const tokenData: PodioTokenResponse = responseData;
     
     // Store tokens 
     localStorage.setItem('podio_access_token', tokenData.access_token);

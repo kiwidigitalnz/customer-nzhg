@@ -3,55 +3,12 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { handlePodioImageRequest } from './api/podioImageProxy';
-import { handlePodioTokenRequest } from './api/podioTokenProxy';
 
 // Get current URL
 const url = new URL(window.location.href);
 
-// Handle API routes
-if (url.pathname === '/api/podio-token') {
-  console.log('Handling Podio token request');
-  
-  // For POST requests, we'll read the body in handlePodioTokenRequest
-  // Create a proper request object
-  const tokenRequest = new Request(url.href, {
-    method: 'POST',
-    body: url.searchParams.toString() || null,  // Use search params if present
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json'
-    }
-  });
-  
-  handlePodioTokenRequest(tokenRequest)
-    .then(response => {
-      console.log('Token proxy response status:', response.status);
-      return response.text();
-    })
-    .then(text => {
-      try {
-        // Try to parse as JSON first
-        const data = JSON.parse(text);
-        console.log('Token proxy response data:', data);
-        document.body.innerHTML = JSON.stringify(data);
-        document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
-      } catch (error) {
-        console.error('Error parsing response as JSON:', error);
-        // If not valid JSON, show the raw text
-        document.body.innerHTML = text;
-        document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'text/plain');
-      }
-    })
-    .catch(error => {
-      console.error('Podio token proxy error:', error);
-      document.body.innerHTML = JSON.stringify({
-        error: 'proxy_error',
-        error_description: error instanceof Error ? error.message : 'Unknown error'
-      });
-    });
-}
 // Handle Podio image proxy requests
-else if (url.pathname.startsWith('/api/podio-image/')) {
+if (url.pathname.startsWith('/api/podio-image/')) {
   handlePodioImageRequest(new Request(url.href))
     .then(response => {
       // Handle the response - directly display the image

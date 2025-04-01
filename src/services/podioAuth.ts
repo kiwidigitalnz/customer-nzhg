@@ -118,12 +118,13 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
-    // Make the token request directly to our proxy endpoint
-    const response = await fetch('/api/podio-token', {
+    // Make the token request directly to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData
     });
@@ -136,7 +137,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     
     // Check if the response is HTML instead of JSON
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      console.error('Received HTML instead of JSON. Check your API endpoint configuration.');
+      console.error('Received HTML instead of JSON. Check your client credentials and request format.');
       return false;
     }
     
@@ -209,11 +210,12 @@ export const refreshToken = async (): Promise<boolean> => {
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
-    const response = await fetch('/api/podio-token', {
+    const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData
     });
