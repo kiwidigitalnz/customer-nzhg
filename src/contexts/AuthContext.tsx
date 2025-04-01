@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { authenticateUser, authenticateWithClientCredentials, isRateLimited } from '../services/podioAuth';
+import { authenticateUser, authenticateWithClientCredentials, isRateLimited, validateContactsAppAccess } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
 
 // Session duration (4 hours)
@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const authInProgress = useRef(false);
   const { toast } = useToast();
   const authInitialized = useRef(false);
+  const [permissionError, setPermissionError] = useState(false);
 
   // Check session validity
   const isSessionValid = (): boolean => {
@@ -56,20 +57,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
+    // Skip pre-authentication if we know there's a permission issue
+    if (permissionError) {
+      console.log('Skipping pre-authentication due to known permission issues');
+      return;
+    }
+    
     authInProgress.current = true;
     setLastAuthAttempt(Date.now());
     
     try {
+      // Check if we can access the Contacts app
+      const hasAccess = await validateContactsAppAccess();
+      
+      if (!hasAccess) {
+        console.warn('No access to Contacts app, setting permission error');
+        setPermissionError(true);
+        return;
+      }
+      
       // Try to authenticate with client credentials
       const success = await authenticateWithClientCredentials();
       
       console.log('Pre-authentication result:', success ? 'success' : 'failed');
     } catch (error) {
       console.warn('Error during pre-authentication:', error);
+      
+      // Check for permission errors
+      if ((error as Error).message && (
+          (error as Error).message.includes('permission') || 
+          (error as Error).message.includes('403') ||
+          (error as Error).message.includes('forbidden')
+      )) {
+        setPermissionError(true);
+      }
     } finally {
       authInProgress.current = false;
     }
-  }, [lastAuthAttempt]);
+  }, [lastAuthAttempt, permissionError]);
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -126,6 +151,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    // If we know there's a permission error, return early with a clear message
+    if (permissionError) {
+      setError('The application does not have permission to access the Contacts app. Please contact the administrator.');
+      return false;
+    }
+    
     // Skip if already in progress to prevent duplicate API calls
     if (authInProgress.current) {
       console.log('Login already in progress, skipping duplicate call');
@@ -162,6 +193,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Login failed';
       setError(errorMsg);
+      
+      // Check for permission errors
+      if (errorMsg.includes('permission') || 
+          errorMsg.includes('forbidden') || 
+          errorMsg.includes('403')) {
+        setPermissionError(true);
+      }
       
       setLoading(false);
       authInProgress.current = false;

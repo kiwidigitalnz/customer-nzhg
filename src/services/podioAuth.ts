@@ -205,9 +205,17 @@ export const CONTACT_FIELD_IDS = {
   password: 265834181
 };
 
+// Keep track of permission errors to avoid infinite loops
+let hasContactsAppPermissionError = false;
+
 // User or contact authentication - Fix the infinite retry loop
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
+    // If we've already encountered a permission error, don't try again
+    if (hasContactsAppPermissionError) {
+      throw new Error('The application does not have permission to access the Contacts app');
+    }
+    
     // Check for rate limiting
     if (checkRateLimit()) {
       throw new Error('Rate limited. Please try again later.');
@@ -230,41 +238,59 @@ export const authenticateUser = async (username: string, password: string): Prom
       }
     };
     
-    const response = await callPodioApi(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(filters),
-    });
-    
-    if (!response.items || response.items.length === 0) {
-      throw new Error('User not found');
+    try {
+      const response = await callPodioApi(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(filters),
+      });
+      
+      if (!response.items || response.items.length === 0) {
+        throw new Error('User not found');
+      }
+      
+      // Get the first matching contact
+      const contact = response.items[0];
+      const fields = contact.fields;
+      
+      // Extract the password field to validate
+      const storedPassword = getFieldValueByExternalId(fields, 'password');
+      
+      if (storedPassword !== password) {
+        throw new Error('Invalid password');
+      }
+      
+      // Extract user data
+      const userData = {
+        id: contact.item_id,
+        name: getFieldValueByExternalId(fields, 'name'),
+        email: getFieldValueByExternalId(fields, 'email'),
+        username: getFieldValueByExternalId(fields, 'username'),
+        logoUrl: getLogoUrl(fields)
+      };
+      
+      return userData;
+    } catch (apiError: any) {
+      // Check specifically for permission errors
+      if (apiError.message && (
+          apiError.message.includes('403') || 
+          apiError.message.includes('forbidden') || 
+          apiError.message.includes('permission')
+      )) {
+        // Mark that we have a permission error to prevent future attempts
+        hasContactsAppPermissionError = true;
+        throw new Error('The application does not have permission to access the Contacts app');
+      }
+      
+      // Re-throw other errors
+      throw apiError;
     }
-    
-    // Get the first matching contact
-    const contact = response.items[0];
-    const fields = contact.fields;
-    
-    // Extract the password field to validate
-    const storedPassword = getFieldValueByExternalId(fields, 'password');
-    
-    if (storedPassword !== password) {
-      throw new Error('Invalid password');
-    }
-    
-    // Extract user data
-    const userData = {
-      id: contact.item_id,
-      name: getFieldValueByExternalId(fields, 'name'),
-      email: getFieldValueByExternalId(fields, 'email'),
-      username: getFieldValueByExternalId(fields, 'username'),
-      logoUrl: getLogoUrl(fields)
-    };
-    
-    return userData;
   } catch (error) {
     console.error('Error authenticating user:', error);
+    
     if ((error as Error).message.includes('Rate limit')) {
       setRateLimitWithBackoff(undefined, 'user_authentication');
     }
+    
     throw error;
   }
 };
@@ -409,8 +435,20 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
     // Test if we can access the app
     const response = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
     
+    // Reset the permission error flag if we successfully accessed the app
+    hasContactsAppPermissionError = false;
+    
     return !!response && !!response.app_id;
   } catch (error) {
+    // Check for permission errors
+    if ((error as Error).message && (
+        (error as Error).message.includes('403') || 
+        (error as Error).message.includes('forbidden') || 
+        (error as Error).message.includes('permission')
+    )) {
+      hasContactsAppPermissionError = true;
+    }
+    
     console.error('Error validating Contacts app access:', error);
     return false;
   }
@@ -437,12 +475,19 @@ export const validatePackingSpecAppAccess = async (): Promise<boolean> => {
 
 // API call tracking to prevent infinite loops
 let apiCallsInProgress = new Map<string, boolean>();
+// Track API permission errors to prevent infinite retries
+const permissionErrorEndpoints = new Set<string>();
 
 // Generic function to call Podio API with authentication and rate limit handling
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   const callKey = `${endpoint}_${options.method || 'GET'}`;
   
   try {
+    // Check if we've had a permission error for this endpoint before
+    if (permissionErrorEndpoints.has(endpoint)) {
+      throw new Error(`API access to ${endpoint} is forbidden - permission denied`);
+    }
+    
     // Prevent duplicate API calls
     if (apiCallsInProgress.get(callKey)) {
       console.log(`API call to ${endpoint} already in progress, skipping duplicate`);
@@ -501,8 +546,16 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       throw new Error(`Rate limit reached for ${endpoint}`);
     }
     
-    // Handle auth errors - limit to one retry only
-    if (response.status === 401 || response.status === 403) {
+    // Handle 403 Forbidden - likely a permission issue that won't be solved by retrying
+    if (response.status === 403) {
+      // Store this endpoint as having permission issues to prevent future attempts
+      permissionErrorEndpoints.add(endpoint);
+      const errorText = await response.text();
+      throw new Error(`API access to ${endpoint} is forbidden - ${errorText}`);
+    }
+    
+    // Handle 401 Unauthorized - try refreshing token once
+    if (response.status === 401) {
       console.log('Authentication error. Trying to refresh token...');
       
       // Clear tokens to force a new auth attempt

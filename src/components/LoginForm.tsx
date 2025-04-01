@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, LogIn, User, Lock, EyeOff, Eye } from 'lucide-react';
+import { AlertCircle, LogIn, User, Lock, EyeOff, Eye, ShieldAlert } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
@@ -116,14 +116,26 @@ const LoginForm = () => {
         setLoginAttemptCount(0);
         
         navigate('/dashboard');
+      } else if (error && (
+          error.includes('permission') || 
+          error.includes('access') || 
+          error.includes('403')
+      )) {
+        // Special handling for permission errors
+        setPodioAPIError(error);
+        toast({
+          title: 'API Permission Error',
+          description: 'The application lacks necessary access permissions',
+          variant: 'destructive',
+        });
       } else {
-        setPodioAPIError('Invalid username or password');
+        setPodioAPIError(error || 'Invalid username or password');
       }
     } catch (loginErr) {
       // Handle specific unauthorized errors differently
       const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
       
-      if (errorMessage.includes('access user data')) {
+      if (errorMessage.includes('access') || errorMessage.includes('permission') || errorMessage.includes('403')) {
         setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
       } else if (errorMessage.includes('Rate limit')) {
         setPodioAPIError('Rate limit reached. Please try again later.');
@@ -160,6 +172,16 @@ const LoginForm = () => {
     return null;
   };
 
+  // Check if the error is a permission error
+  const isPermissionError = () => {
+    return podioAPIError && (
+      podioAPIError.includes('permission') || 
+      podioAPIError.includes('access') ||
+      podioAPIError.includes('403') ||
+      podioAPIError.includes('forbidden')
+    );
+  };
+
   const rateLimitMessage = getRateLimitMessage();
   const displayError = podioAPIError || error || rateLimitMessage;
   const isLoading = loading || authenticating;
@@ -187,6 +209,17 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isPermissionError() && (
+          <Alert variant="destructive" className="mb-4">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>API Permission Error</AlertTitle>
+            <AlertDescription>
+              <p>{podioAPIError}</p>
+              <p className="mt-2 text-sm">This is likely a configuration issue with the Podio API access. Please contact your administrator.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username" className="flex items-center gap-2">
@@ -199,7 +232,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={isDisabled}
+              disabled={isDisabled || isPermissionError()}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -216,7 +249,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                disabled={isDisabled}
+                disabled={isDisabled || isPermissionError()}
                 autoComplete="current-password"
                 className="border-gray-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
               />
@@ -235,13 +268,11 @@ const LoginForm = () => {
             </div>
           </div>
           
-          {displayError && (
+          {displayError && !isPermissionError() && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>
-                {podioAPIError ? "Permission Error" : 
-                 rateLimitMessage ? "Rate Limit Reached" : 
-                 "Login Error"}
+                {rateLimitMessage ? "Rate Limit Reached" : "Login Error"}
               </AlertTitle>
               <AlertDescription>{displayError}</AlertDescription>
             </Alert>
@@ -251,7 +282,7 @@ const LoginForm = () => {
             ref={loginButtonRef}
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={isDisabled}
+            disabled={isDisabled || isPermissionError()}
           >
             {isLoading && (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-25 border-t-white"></span>
