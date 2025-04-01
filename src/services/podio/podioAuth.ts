@@ -20,7 +20,7 @@ export {
   setApiRateLimit as setRateLimit,
   clearApiRateLimit as clearRateLimit,
   cacheData as cacheUserData,
-  getCachedUserData as getCachedData
+  getCachedData as getCachedUserData
 };
 
 // Storage keys for Podio tokens and settings
@@ -323,7 +323,7 @@ const getLogoUrl = (fields: any[]): string | undefined => {
   }
 };
 
-// Main client credentials authentication (simplified from multiple methods)
+// Main client credentials authentication
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
     // Check if we're rate limited
