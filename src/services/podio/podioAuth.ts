@@ -6,7 +6,6 @@ import {
   ensureValidToken 
 } from '../auth/authService';
 import {
-  authenticateWithPasswordFlow,
   getPodioClientId,
   getPodioClientSecret,
   startPodioOAuthFlow,
@@ -24,11 +23,6 @@ export { refreshToken as refreshPodioToken };
 export const isRateLimited = checkRateLimit;
 export const setRateLimit = setApiRateLimit;
 export const clearRateLimit = clearApiRateLimit;
-
-interface PodioCredentials {
-  username: string;
-  password: string;
-}
 
 // Storage keys for Podio tokens and settings
 const STORAGE_KEYS = {
@@ -216,12 +210,6 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     // Store tokens
     storeTokens(tokenData);
     
-    // Also store the app-specific token if available
-    const contactsAppToken = getContactsAppToken();
-    if (contactsAppToken) {
-      storeContactsAppToken(contactsAppToken);
-    }
-    
     clearRateLimit();
     
     return true;
@@ -231,8 +219,8 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
-// New function to authenticate with the Contacts app token
-export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
+// New function to authenticate with username and password
+export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<boolean> => {
   try {
     // Check if we're rate limited
     if (isRateLimited()) {
@@ -241,21 +229,22 @@ export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
     }
     
     const clientId = getClientId();
-    const contactsAppToken = getContactsAppToken();
+    const clientSecret = getClientSecret();
     
-    if (!clientId || !contactsAppToken) {
-      console.error('Missing Podio client ID or contacts app token');
+    if (!clientId || !clientSecret) {
+      console.error('Missing Podio client credentials');
       return false;
     }
     
-    console.log('Authenticating with Podio using Contacts app token...');
+    console.log('Authenticating with Podio using password flow...');
     
-    // Create form data for app authentication flow
+    // Create form data for password authentication flow
     const formData = new URLSearchParams();
-    formData.append('grant_type', 'app');
-    formData.append('app_id', PODIO_CONTACTS_APP_ID.toString());
-    formData.append('app_token', contactsAppToken);
+    formData.append('grant_type', 'password');
+    formData.append('username', username);
+    formData.append('password', password);
     formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
     
     // Make the token request directly to Podio's token endpoint
     const response = await fetch('https://podio.com/oauth/token', {
@@ -268,15 +257,15 @@ export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
       body: formData
     });
     
-    console.log('App token response status:', response.status);
+    console.log('Password auth response status:', response.status);
     
-    // Get the response as text to inspect it
+    // First get the response as text to inspect it
     const responseText = await response.text();
-    console.log('App token response first 100 chars:', responseText.substring(0, 100));
+    console.log('Password auth response first 100 chars:', responseText.substring(0, 100));
     
     // Check if the response is HTML instead of JSON
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      console.error('Received HTML instead of JSON. Check your app credentials and request format.');
+      console.error('Received HTML instead of JSON. Check your credentials and request format.');
       return false;
     }
     
@@ -298,7 +287,7 @@ export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      console.error('App authentication failed:', responseData);
+      console.error('Password authentication failed:', responseData);
       return false;
     }
     
@@ -306,197 +295,32 @@ export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
     const tokenData = responseData;
     
     if (!tokenData.access_token) {
-      console.error('Invalid app token data received:', tokenData);
+      console.error('Invalid token data received:', tokenData);
       return false;
     }
     
-    // Store app token
-    storeAppToken(tokenData);
+    // Store tokens
+    storeTokens(tokenData);
     
     clearRateLimit();
     
     return true;
   } catch (error) {
-    console.error('Error during app authentication:', error);
+    console.error('Error during password authentication:', error);
     return false;
-  }
-};
-
-// Ensure we have a valid token before making API calls
-export const ensureAuthenticated = async (): Promise<boolean> => {
-  if (hasValidTokens()) {
-    return true;
-  }
-  
-  const refreshTokenValue = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  if (refreshTokenValue) {
-    return await refreshToken();
-  }
-  
-  return await authenticateWithClientCredentials();
-};
-
-// Ensure we have a valid app token for Contacts
-export const ensureContactsAppAuthenticated = async (): Promise<boolean> => {
-  if (hasValidAppToken()) {
-    return true;
-  }
-  
-  return await authenticateWithContactsAppToken();
-};
-
-// Modified API call function to use the app token for contacts app
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  // Determine which authentication to use based on the endpoint
-  const isContactsEndpoint = endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
-                           endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`);
-  
-  console.log(isContactsEndpoint ? 'Using specific contacts app token for request' : 'Using general access token for request');
-  
-  // For contacts app endpoints, use app authentication
-  if (isContactsEndpoint) {
-    const isAppAuthenticated = await ensureContactsAppAuthenticated();
-    if (!isAppAuthenticated) {
-      throw new Error('Invalid contacts app token');
-    }
-    
-    // Use the app access token
-    const appAccessToken = localStorage.getItem(STORAGE_KEYS.APP_ACCESS_TOKEN);
-    
-    // Add authorization header
-    const headers = {
-      'Authorization': `Bearer ${appAccessToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'NZHG-Customer-Portal/1.0',
-      ...options.headers,
-    };
-    
-    try {
-      console.log(`Making API call to Contacts endpoint: ${endpoint} with app token`);
-      const response = await fetch(`https://api.podio.com/${endpoint}`, {
-        ...options,
-        headers,
-      });
-      
-      // Handle rate limiting
-      if (response.status === 429 || response.status === 420) {
-        const retryAfter = response.headers.get('Retry-After');
-        setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
-        throw new Error('Rate limit reached');
-      }
-      
-      // If app authentication failed, try to reauthenticate
-      if (response.status === 401) {
-        console.log('App token invalid, trying to reauthenticate');
-        
-        // Clear existing token and try again
-        localStorage.removeItem(STORAGE_KEYS.APP_ACCESS_TOKEN);
-        localStorage.removeItem(STORAGE_KEYS.APP_TOKEN_EXPIRY);
-        
-        const reauth = await authenticateWithContactsAppToken();
-        if (!reauth) {
-          throw new Error('Invalid contacts app token');
-        }
-        
-        // Retry with new token
-        return callPodioApi(endpoint, options);
-      }
-      
-      if (!response.ok) {
-        let errorMessage = `API error: ${response.status}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error_description || errorMessage;
-        } catch (e) {
-          // Cannot parse as JSON
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      // Get response as JSON
-      return await response.json();
-    } catch (error) {
-      console.error('API call error:', error);
-      throw error;
-    }
-  } else {
-    // For non-contacts endpoints, use client credentials
-    const isAuthenticated = await ensureAuthenticated();
-    if (!isAuthenticated) {
-      throw new Error('Not authenticated with Podio');
-    }
-    
-    // Use general access token
-    const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    
-    // Add authorization header
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'NZHG-Customer-Portal/1.0',
-      ...options.headers,
-    };
-    
-    try {
-      const response = await fetch(`https://api.podio.com/${endpoint}`, {
-        ...options,
-        headers,
-      });
-      
-      // Handle rate limiting
-      if (response.status === 429 || response.status === 420) {
-        const retryAfter = response.headers.get('Retry-After');
-        setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
-        throw new Error('Rate limit reached');
-      }
-      
-      // If token is invalid, try refreshing it
-      if (response.status === 401) {
-        console.log('Token invalid, trying to refresh');
-        
-        const refreshed = await refreshToken();
-        if (!refreshed) {
-          throw new Error('Authentication failed');
-        }
-        
-        // Retry with new token
-        return callPodioApi(endpoint, options);
-      }
-      
-      if (!response.ok) {
-        let errorMessage = `API error: ${response.status}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error_description || errorMessage;
-        } catch (e) {
-          // Cannot parse as JSON
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      // Get response as JSON
-      return await response.json();
-    } catch (error) {
-      console.error('API call error:', error);
-      throw error;
-    }
   }
 };
 
 // Function to check if we can access the Contacts app
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
-    // First authenticate with the app token
-    const authenticated = await authenticateWithContactsAppToken();
-    if (!authenticated) {
-      console.error('Failed to authenticate with Contacts app token');
-      return false;
+    // First ensure we have valid tokens
+    if (!hasValidTokens()) {
+      const authenticated = await authenticateWithClientCredentials();
+      if (!authenticated) {
+        console.error('Failed to authenticate with Podio');
+        return false;
+      }
     }
     
     // Try to get the app details
@@ -516,6 +340,87 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
   }
 };
 
+// Ensure we have a valid token before making API calls
+export const ensureAuthenticated = async (): Promise<boolean> => {
+  if (hasValidTokens()) {
+    return true;
+  }
+  
+  const refreshTokenValue = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  if (refreshTokenValue) {
+    return await refreshToken();
+  }
+  
+  return await authenticateWithClientCredentials();
+};
+
+// Modified API call function to use access tokens
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  // Ensure we have valid tokens first
+  const isAuthenticated = await ensureAuthenticated();
+  if (!isAuthenticated) {
+    throw new Error('Not authenticated with Podio');
+  }
+  
+  // Use the access token
+  const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  
+  // Add authorization header
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'User-Agent': 'NZHG-Customer-Portal/1.0',
+    ...options.headers,
+  };
+  
+  try {
+    const response = await fetch(`https://api.podio.com/${endpoint}`, {
+      ...options,
+      headers,
+    });
+    
+    // Handle rate limiting
+    if (response.status === 429 || response.status === 420) {
+      const retryAfter = response.headers.get('Retry-After');
+      setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      throw new Error('Rate limit reached');
+    }
+    
+    // If token is invalid, try refreshing it
+    if (response.status === 401) {
+      console.log('Token invalid, trying to refresh');
+      
+      const refreshed = await refreshToken();
+      if (!refreshed) {
+        throw new Error('Authentication failed');
+      }
+      
+      // Retry with new token
+      return callPodioApi(endpoint, options);
+    }
+    
+    if (!response.ok) {
+      let errorMessage = `API error: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error_description || errorMessage;
+      } catch (e) {
+        // Cannot parse as JSON
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    // Get response as JSON
+    return await response.json();
+  } catch (error) {
+    console.error('API call error:', error);
+    throw error;
+  }
+};
+
 // This function authenticates a user by checking the Podio contacts app
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
@@ -526,29 +431,17 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error('Rate limited. Try again later.');
     }
     
-    // Authenticate with Podio client credentials first (for general access)
-    const isAuthenticated = await authenticateWithClientCredentials();
-    if (!isAuthenticated) {
-      throw new Error('Could not authenticate with Podio');
-    }
-    
-    // Store the contacts app token if available
-    const contactsAppToken = getContactsAppToken();
-    if (contactsAppToken) {
-      storeContactsAppToken(contactsAppToken);
-    }
-    
-    // Authenticate with the Contacts app token
-    const appAuthenticated = await authenticateWithContactsAppToken();
-    if (!appAuthenticated) {
-      throw new Error('Invalid contacts app token');
+    // First, authenticate with username and password
+    const authSuccess = await authenticateWithPasswordFlow(username, password);
+    if (!authSuccess) {
+      throw new Error('Invalid username or password');
     }
     
     // Search for user by username in the Contacts app
     console.log(`Searching for user: ${username}`);
     
     try {
-      // Use the filter endpoint with the app token
+      // Use the filter endpoint
       const filters = {
         filters: {
           "customer-portal-username": username
@@ -562,40 +455,20 @@ export const authenticateUser = async (username: string, password: string): Prom
       });
       
       if (!searchResponse.items || searchResponse.items.length === 0) {
-        throw new Error('User not found');
+        throw new Error('User profile not found in contacts');
       }
       
       // Get the first matching contact
       const contact = searchResponse.items[0];
       
-      // Helper function to get field value
-      const getFieldValue = (fields: any[], externalId: string): string => {
-        const field = fields.find(f => f.external_id === externalId);
-        if (!field || !field.values) return '';
-        
-        if (field.type === 'text') {
-          return field.values[0].value || '';
-        }
-        
-        return '';
-      };
-      
       // Get user details
       const contactData = {
         id: contact.item_id,
-        name: getFieldValue(contact.fields, 'title') || 'Unknown',
-        email: getFieldValue(contact.fields, 'email') || '',
-        username: getFieldValue(contact.fields, 'customer-portal-username') || '',
-        logoUrl: getFieldValue(contact.fields, 'logo-url') || ''
+        name: getFieldValueByExternalId(contact.fields, 'title') || 'Unknown',
+        email: getFieldValueByExternalId(contact.fields, 'email') || '',
+        username: getFieldValueByExternalId(contact.fields, 'customer-portal-username') || '',
+        logoUrl: getFieldValueByExternalId(contact.fields, 'logo-url') || ''
       };
-      
-      // Get the stored password
-      const storedPassword = getFieldValue(contact.fields, 'customer-portal-password');
-      
-      // Simple password check (in a real app, use proper hashing)
-      if (password !== storedPassword) {
-        throw new Error('Invalid password');
-      }
       
       return contactData;
     } catch (error) {
@@ -606,6 +479,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     console.error('User authentication error:', error);
     throw error;
   }
+};
+
+// Backward compatibility for authenticateWithContactsAppToken
+export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
+  console.log('Function authenticateWithContactsAppToken is deprecated, using client credentials instead');
+  return await authenticateWithClientCredentials();
 };
 
 // Podio Contact Field IDs

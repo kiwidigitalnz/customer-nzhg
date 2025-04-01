@@ -1,7 +1,13 @@
+
 // Service for handling file uploads to Podio
 
 // Import the renamed function from podioAuth
-import { callPodioApi, hasValidPodioTokens } from '../podioApi';
+import { callPodioApi, hasValidPodioTokens } from './podioAuth';
+
+// Function to check if we should proceed without signature
+export const shouldProceedWithoutSignature = (manualApproverName: string): boolean => {
+  return !!manualApproverName && manualApproverName.trim().length > 0;
+};
 
 // Function to upload a file to Podio
 export const uploadFileToPodio = async (file: File): Promise<number | null> => {

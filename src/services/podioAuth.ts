@@ -1,7 +1,7 @@
 
 // Core authentication service for Podio integration
 
-// Re-exporting functions from podioApi to maintain backward compatibility
+// Re-exporting functions from podioAuth to maintain backward compatibility
 export {
   isPodioConfigured,
   authenticateUser,
@@ -18,7 +18,8 @@ export {
   refreshPodioToken,
   clearPodioTokens,
   CONTACT_FIELD_IDS,
-  authenticateWithContactsAppToken
+  authenticateWithContactsAppToken,
+  authenticateWithPasswordFlow
 } from './podio/podioAuth';
 
 // For backward compatibility - Re-export types

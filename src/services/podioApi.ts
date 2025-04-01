@@ -14,11 +14,10 @@ export {
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
   CONTACT_FIELD_IDS,
-  authenticateWithContactsAppToken,
-  getContactsAppToken,
   isRateLimited,
   setRateLimit,
-  clearRateLimit
+  clearRateLimit,
+  authenticateWithPasswordFlow
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
@@ -51,7 +50,8 @@ export type { CommentItem } from './podio/podioComments';
 
 // Export file upload related functions
 export {
-  uploadFileToPodio
+  uploadFileToPodio,
+  shouldProceedWithoutSignature
 } from './podio/podioFiles';
 
 // Export field helper functions

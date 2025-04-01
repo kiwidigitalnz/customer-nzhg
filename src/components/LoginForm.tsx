@@ -12,10 +12,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimited, 
-  authenticateWithClientCredentials, 
-  validateContactsAppAccess,
-  getContactsAppToken 
-} from '../services/podioApi';
+  authenticateWithClientCredentials,
+  validateContactsAppAccess
+} from '../services/podioAuth';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -93,17 +92,6 @@ const LoginForm = () => {
     console.log(`Attempting login with username: ${username}`);
     
     try {
-      // Check if we have the Contacts app token
-      const contactsAppToken = getContactsAppToken();
-      if (!contactsAppToken) {
-        toast({
-          title: 'Configuration Error',
-          description: 'Missing Contacts app token. Please check your configuration.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
       // First ensure we're connected to Podio
       setConnectingToPodio(true);
       const podioConnected = await authenticateWithClientCredentials();
@@ -147,7 +135,7 @@ const LoginForm = () => {
         const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
         
         if (errorMessage.includes('Invalid contacts app token') || errorMessage.includes('Invalid app token')) {
-          setPodioAPIError('The Contacts app token is invalid. Please check your configuration.');
+          setPodioAPIError('Authentication error. Please check your Podio configuration.');
         } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication') || errorMessage.includes('access user data')) {
           setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
         } else {
@@ -165,7 +153,7 @@ const LoginForm = () => {
       
       // Check for specific permission issues related to Podio API
       if (errorMessage.includes('Invalid contacts app token')) {
-        setPodioAPIError('The Contacts app token is invalid. Please check your configuration.');
+        setPodioAPIError('Authentication error. Please check your Podio configuration.');
       } else if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
         setPodioAPIError('The application does not have permission to access contact data. Please check your Podio API credentials and permissions.');
       } else {
