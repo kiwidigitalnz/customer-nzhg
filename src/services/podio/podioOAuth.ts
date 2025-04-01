@@ -1,4 +1,3 @@
-
 // Service for handling Podio OAuth flow
 
 // Define interfaces for error responses from Podio API
@@ -68,9 +67,88 @@ export const getPodioApiDomain = (): string => {
 // Rate limit handling
 const RATE_LIMIT_KEY = 'podio_rate_limit_until';
 const RATE_LIMIT_COUNTER_KEY = 'podio_rate_limit_counter';
+const RATE_LIMIT_REASON_KEY = 'podio_rate_limit_reason';
 const MIN_RETRY_DELAY = 2000; // Start with 2 seconds
 const MAX_RETRY_DELAY = 300000; // Maximum 5 minutes
 const MAX_RETRIES_BEFORE_LONG_TIMEOUT = 5;
+
+// Data caching 
+const CACHE_PREFIX = 'podio_data_cache_';
+const CACHE_EXPIRY_PREFIX = 'podio_data_expiry_';
+const DEFAULT_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Cache user data with expiration
+export const cacheUserData = (key: string, data: any, duration: number = DEFAULT_CACHE_DURATION): void => {
+  if (!key || !data) return;
+  
+  try {
+    // Prefix the key for isolation
+    const cacheKey = `${CACHE_PREFIX}${key}`;
+    const expiryKey = `${CACHE_EXPIRY_PREFIX}${key}`;
+    
+    // Calculate expiration timestamp
+    const expires = Date.now() + duration;
+    
+    // Store data and expiry
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+    localStorage.setItem(expiryKey, expires.toString());
+    
+    if (import.meta.env.DEV) {
+      console.log(`Cached data for key "${key}" (expires in ${Math.round(duration/1000)} seconds)`);
+    }
+  } catch (error) {
+    console.error('Error caching user data:', error);
+  }
+};
+
+// Get cached user data if not expired
+export const getCachedUserData = (key: string): any | null => {
+  if (!key) return null;
+  
+  try {
+    // Prefix the key for isolation
+    const cacheKey = `${CACHE_PREFIX}${key}`;
+    const expiryKey = `${CACHE_EXPIRY_PREFIX}${key}`;
+    
+    // Check if cache exists
+    const cachedData = localStorage.getItem(cacheKey);
+    const expiryTime = localStorage.getItem(expiryKey);
+    
+    if (!cachedData || !expiryTime) return null;
+    
+    // Check if cache has expired
+    const expiry = parseInt(expiryTime, 10);
+    if (Date.now() > expiry) {
+      // Clean up expired cache
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(expiryKey);
+      return null;
+    }
+    
+    // Return valid cached data
+    return JSON.parse(cachedData);
+  } catch (error) {
+    console.error('Error retrieving cached user data:', error);
+    return null;
+  }
+};
+
+// Clear cache for a specific key
+export const clearCache = (key: string): void => {
+  if (!key) return;
+  
+  try {
+    // Prefix the key for isolation
+    const cacheKey = `${CACHE_PREFIX}${key}`;
+    const expiryKey = `${CACHE_EXPIRY_PREFIX}${key}`;
+    
+    // Remove both data and expiry
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(expiryKey);
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+  }
+};
 
 // Check if we're currently rate limited
 export const isRateLimited = (): boolean => {
@@ -79,6 +157,26 @@ export const isRateLimited = (): boolean => {
   
   const limitTime = parseInt(limitUntil, 10);
   return Date.now() < limitTime;
+};
+
+// Get detailed rate limit information
+export const isRateLimitedWithInfo = (): { limited: boolean, remainingSeconds: number, reason: string } => {
+  const limitUntil = localStorage.getItem(RATE_LIMIT_KEY);
+  const reason = localStorage.getItem(RATE_LIMIT_REASON_KEY) || 'Too many requests';
+  
+  if (!limitUntil) {
+    return { limited: false, remainingSeconds: 0, reason };
+  }
+  
+  const limitTime = parseInt(limitUntil, 10);
+  const now = Date.now();
+  
+  if (now < limitTime) {
+    const remainingSeconds = Math.ceil((limitTime - now) / 1000);
+    return { limited: true, remainingSeconds, reason };
+  }
+  
+  return { limited: false, remainingSeconds: 0, reason };
 };
 
 // Set rate limit with exponential backoff and jitter
@@ -124,7 +222,23 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   }
 };
 
-// Clear rate limit
+// Set rate limit with additional information
+export const setRateLimitWithBackoff = (reason: string, retryAfterSecs?: number): void => {
+  // Store the reason
+  localStorage.setItem(RATE_LIMIT_REASON_KEY, reason);
+  
+  // Use the existing rate limit logic
+  setRateLimit(retryAfterSecs);
+};
+
+// Clear rate limit info including the reason
+export const clearRateLimitInfo = (): void => {
+  localStorage.removeItem(RATE_LIMIT_KEY);
+  localStorage.removeItem(RATE_LIMIT_COUNTER_KEY);
+  localStorage.removeItem(RATE_LIMIT_REASON_KEY);
+};
+
+// Clear regular rate limit (backward compatibility)
 export const clearRateLimit = (): void => {
   localStorage.removeItem(RATE_LIMIT_KEY);
   localStorage.removeItem(RATE_LIMIT_COUNTER_KEY);

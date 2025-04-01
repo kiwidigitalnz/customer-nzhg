@@ -1,6 +1,6 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, authenticateWithContactsAppToken, authenticateWithPackingSpecAppToken } from '../services/podioAuth';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { authenticateUser, authenticateWithContactsAppToken, authenticateWithPackingSpecAppToken, isRateLimited } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
 
 // Session duration (4 hours)
@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<ContactData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastAuthAttempt, setLastAuthAttempt] = useState(0);
   const { toast } = useToast();
 
   // Check session validity
@@ -45,6 +46,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('nzhg_session_expiry', expiry.toString());
   };
 
+  // Pre-authenticate with apps - with rate limit and dedupe protection
+  const preAuthenticateApps = useCallback(async () => {
+    // Skip if rate limited or authenticated recently
+    if (isRateLimited() || Date.now() - lastAuthAttempt < 60000) {
+      return;
+    }
+    
+    setLastAuthAttempt(Date.now());
+    
+    try {
+      // Try authenticating with both apps, but don't block on failures
+      await Promise.allSettled([
+        authenticateWithContactsAppToken(),
+        authenticateWithPackingSpecAppToken()
+      ]);
+    } catch (error) {
+      console.warn('Error during pre-authentication:', error);
+    }
+  }, [lastAuthAttempt]);
+
   useEffect(() => {
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
@@ -55,15 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('user_info', JSON.stringify(userData));
         extendSession();
         
-        // Try to pre-authenticate with both apps to ensure tokens are valid
-        // This is done asynchronously and won't block the loading
-        Promise.all([
-          authenticateWithContactsAppToken(),
-          authenticateWithPackingSpecAppToken()
-        ]).catch(error => {
-          console.warn('Error pre-authenticating on session restore:', error);
-        });
-        
+        // Pre-authenticate, but don't block loading
+        preAuthenticateApps();
       } catch (e) {
         // Invalid stored data
         localStorage.removeItem('nzhg_user');
@@ -96,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 60000); // Check every minute
     
     return () => clearInterval(interval);
-  }, [toast, user]);
+  }, [toast, user, preAuthenticateApps]);
 
   const checkSession = (): boolean => {
     return isSessionValid() && !!user;
@@ -107,6 +121,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
+      // Set auth attempt timestamp to prevent duplicates
+      setLastAuthAttempt(Date.now());
+      
       // Try to authenticate with Contacts app token (contacts app needs to be authenticated first)
       const contactsAppAuthSuccess = await authenticateWithContactsAppToken();
       
@@ -118,7 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await authenticateUser(username, password);
       
       // Pre-authenticate with Packing Spec app to avoid issues later
-      // This is done asynchronously and won't block the login process
+      // This doesn't block login flow
       authenticateWithPackingSpecAppToken().catch(() => {
         // Silently handle failure, will retry when needed
       });

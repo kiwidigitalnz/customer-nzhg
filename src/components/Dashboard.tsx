@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioApi';
+import { getPackingSpecsForContact, isPodioConfigured, isRateLimited } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { getCachedUserData, cacheUserData } from '../services/podioAuth';
+import RateLimitWarning from './RateLimitWarning';
 
 interface PackingSpec {
   id: number;
@@ -38,33 +40,99 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRateLimitReached, setIsRateLimitReached] = useState(false);
+  const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const podioConfigured = isPodioConfigured();
-
-  // Function to fetch specs data
-  const fetchSpecs = async () => {
-    if (user) {
-      setLoading(true);
-      try {
-        console.log(`Fetching specs for contact ID: ${user.id}`);
-        const data = await getPackingSpecsForContact(user.id);
-        setSpecs(data as PackingSpec[]);
-      } catch (error) {
-        console.error('Error fetching specs:', error);
+  
+  // Cache key for storing packing specs
+  const getCacheKey = useCallback(() => {
+    return user ? `packing_specs_${user.id}` : null;
+  }, [user]);
+  
+  // Function to fetch specs data with caching and rate limit awareness
+  const fetchSpecs = useCallback(async (forceRefresh = false) => {
+    if (!user) return;
+    
+    const cacheKey = getCacheKey();
+    if (!cacheKey) return;
+    
+    // Check if we're rate limited
+    if (isRateLimited()) {
+      setIsRateLimitReached(true);
+      // Load from cache if available
+      const cachedData = getCachedUserData(cacheKey);
+      if (cachedData) {
+        setSpecs(cachedData as PackingSpec[]);
+        setLoading(false);
+        return;
+      }
+      return;
+    }
+    
+    // Check cache if not forcing refresh
+    if (!forceRefresh) {
+      const cachedData = getCachedUserData(cacheKey);
+      if (cachedData) {
+        setSpecs(cachedData as PackingSpec[]);
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Set timestamp for last fetch attempt to avoid multiple simultaneous calls
+    const now = Date.now();
+    if (now - lastFetchAttempt < 5000 && !forceRefresh) {
+      console.log('Skipping fetch due to recent attempt');
+      return;
+    }
+    
+    setLastFetchAttempt(now);
+    setLoading(true);
+    setIsRateLimitReached(false);
+    
+    try {
+      console.log(`Fetching specs for contact ID: ${user.id}`);
+      const data = await getPackingSpecsForContact(user.id);
+      setSpecs(data as PackingSpec[]);
+      
+      // Cache the successful response
+      if (data && data.length > 0) {
+        cacheUserData(cacheKey, data);
+      }
+    } catch (error) {
+      console.error('Error fetching specs:', error);
+      
+      // Check if rate limited after the call
+      if (isRateLimited()) {
+        setIsRateLimitReached(true);
+        
+        toast({
+          title: 'API Rate Limit Reached',
+          description: 'Too many requests. Using cached data if available.',
+          variant: 'destructive',
+        });
+        
+        // Try to use cached data
+        const cachedData = getCachedUserData(cacheKey);
+        if (cachedData) {
+          setSpecs(cachedData as PackingSpec[]);
+        }
+      } else {
         toast({
           title: 'Error',
           description: 'Failed to load your packing specifications',
           variant: 'destructive',
         });
-      } finally {
-        setLoading(false);
       }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user, toast, getCacheKey, lastFetchAttempt]);
 
-  // Fetch specs when the component mounts or when user changes
+  // Fetch specs only on initial component mount and when user changes
   useEffect(() => {
     // Redirect to Podio setup if not configured
     if (!podioConfigured) {
@@ -83,17 +151,30 @@ const Dashboard = () => {
       return;
     }
 
-    fetchSpecs();
-  }, [user, toast, navigate, podioConfigured]);
+    // Only fetch if we have a user and haven't fetched recently
+    if (user && Date.now() - lastFetchAttempt > 5000) {
+      fetchSpecs();
+    }
+    
+    // Return cleanup function to prevent state updates on unmounted component
+    return () => {
+      // No cleanup needed
+    };
+  }, [user, toast, navigate, podioConfigured, fetchSpecs, lastFetchAttempt]);
 
-  // Re-fetch specs whenever the user navigates back to the dashboard
+  // Only re-fetch on location change if explicitly navigating back to dashboard
+  // and it's been at least 30 seconds since the last fetch
   useEffect(() => {
-    // Only fetch if we already have a user (prevents double fetching on initial load)
-    if (user && location.pathname === '/') {
+    const minimumRefreshInterval = 30000; // 30 seconds
+    
+    if (user && 
+        location.pathname === '/dashboard' && 
+        location.key && // Location key exists on navigation (not initial load)
+        Date.now() - lastFetchAttempt > minimumRefreshInterval) {
       console.log('User navigated back to dashboard, refreshing specs data');
       fetchSpecs();
     }
-  }, [location.pathname, user]);
+  }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 
   // If there's no user or Podio is not configured, show a loading state
   if (!user || !podioConfigured) {
@@ -111,8 +192,8 @@ const Dashboard = () => {
   const approvedSpecs = specs.filter(spec => spec.status === 'approved-by-customer');
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
-  const refreshSpecs = async () => {
-    await fetchSpecs();
+  const refreshSpecs = () => {
+    fetchSpecs(true); // Force refresh
   };
 
   // Function to get initials from company name for avatar fallback
@@ -127,6 +208,13 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
+      {isRateLimitReached && (
+        <RateLimitWarning 
+          onRetry={refreshSpecs}
+          usingCachedData={specs.length > 0}
+        />
+      )}
+      
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
@@ -157,7 +245,7 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {!specs.length && !loading && (
+      {!specs.length && !loading && !isRateLimitReached && (
         <Card className="mb-8 bg-amber-50 border border-amber-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">

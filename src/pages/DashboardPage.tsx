@@ -5,11 +5,14 @@ import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured } from '../services/podioApi';
+import { isPodioConfigured, isRateLimited } from '../services/podioApi';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [podioError, setPodioError] = useState(false);
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Check Podio configuration
@@ -19,13 +22,17 @@ const DashboardPage = () => {
       setPodioError(true);
     }
     
-    // Simulate loading for better UX
+    // Simulate loading for better UX (just brief enough to avoid flicker)
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 300);
+    }, 200);
     
     return () => clearTimeout(timer);
   }, []);
+  
+  const handleReturnHome = () => {
+    navigate('/');
+  };
   
   return (
     <MainLayout requireAuth>
@@ -43,8 +50,18 @@ const DashboardPage = () => {
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Connection Issue</AlertTitle>
-            <AlertDescription>
-              We're having trouble connecting to our data service. Please try again later or contact support.
+            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                We're having trouble connecting to our data service. Please check your Podio configuration settings.
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleReturnHome}
+                className="whitespace-nowrap"
+              >
+                Return Home
+              </Button>
             </AlertDescription>
           </Alert>
           <div className="text-center py-16">
