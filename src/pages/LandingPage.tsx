@@ -6,7 +6,7 @@ import MainLayout from '../components/MainLayout';
 import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart, AlertTriangle, ArrowUpRight, Hexagon, Award, Leaf, Coffee } from 'lucide-react';
 
 interface LandingPageProps {
-  podioAuthError: string | null;
+  podioAuthError?: string | null; // Make this prop optional
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
