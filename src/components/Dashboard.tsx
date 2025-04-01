@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPackingSpecsForContact, isPodioConfigured, isRateLimitedWithInfo } from '../services/podioApi';
@@ -33,6 +34,16 @@ interface PackingSpec {
     createdAt: string;
   }>;
 }
+
+// Function to get initials from company name for avatar fallback
+const getCompanyInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -184,16 +195,6 @@ const Dashboard = () => {
 
   const refreshSpecs = async () => {
     await fetchSpecs();
-  };
-
-  // Function to get initials from company name for avatar fallback
-  const getCompanyInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   return (
