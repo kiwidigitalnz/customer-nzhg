@@ -227,12 +227,13 @@ export const authenticateUser = async (username: string, password: string): Prom
       // Make sure we're using a fresh token for this critical operation
       await authenticateWithPasswordFlow();
       
-      // Filter contacts by username
+      // Filter contacts by username - using the correct Podio filter format
       const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
       
+      // Fix: Use the external_id format for filtering instead of field_id directly
       const filters = {
         filters: {
-          [CONTACT_FIELD_IDS.username]: username
+          "username": username  // Use the external_id (field name) instead of field_id
         }
       };
       

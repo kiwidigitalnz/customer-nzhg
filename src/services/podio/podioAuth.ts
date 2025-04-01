@@ -1,3 +1,4 @@
+
 // This module handles Podio authentication and token management
 import { 
   getPodioClientId,
@@ -262,12 +263,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     console.log(`Authenticating user ${username}`);
     
-    // Filter contacts by username
+    // Filter contacts by username - using external_id (field name) instead of field_id
     const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
     
     const filters = {
       filters: {
-        [CONTACT_FIELD_IDS.username]: username
+        "username": username  // Using field name (external_id) instead of field_id
       }
     };
     
