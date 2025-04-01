@@ -49,12 +49,12 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
           <main className="flex-grow">
             {children}
           </main>
-          <footer className="border-t py-5 bg-white shadow-sm mt-10">
+          <footer className="border-t border-gray-100 py-4 bg-white/80 backdrop-blur-sm mt-auto">
             <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
-              <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
+              <p className="text-xs text-gray-400 mb-1 sm:mb-0">
                 &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-gray-400">
                 Customer Portal v1.0
               </p>
             </div>
@@ -80,12 +80,12 @@ const MainLayout = ({ children, requireAuth = false }: MainLayoutProps) => {
         <main className="flex-grow">
           {children}
         </main>
-        <footer className="border-t py-5 bg-white shadow-sm mt-10">
+        <footer className="border-t border-gray-100 py-4 bg-white/80 backdrop-blur-sm mt-auto">
           <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
+            <p className="text-xs text-gray-400 mb-1 sm:mb-0">
               &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-gray-400">
               Customer Portal v1.0
             </p>
           </div>
