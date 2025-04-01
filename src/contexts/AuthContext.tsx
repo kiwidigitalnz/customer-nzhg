@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { authenticateUser, authenticateWithClientCredentials, isRateLimited } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -135,8 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Set auth attempt timestamp to prevent duplicates
       setLastAuthAttempt(Date.now());
       
-      // Client credentials auth should already be done by the login form component
-      // But ensure we're authenticated
+      // Ensure we're authenticated with client credentials
       const authSuccess = await authenticateWithClientCredentials();
       
       if (!authSuccess) {

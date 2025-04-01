@@ -1,10 +1,11 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 import { 
   isPodioConfigured, 
-  authenticateWithPackingSpecAppToken, 
+  authenticateWithClientCredentials, 
   isRateLimited, 
   isRateLimitedWithInfo,
   getCachedUserData,
@@ -89,10 +90,10 @@ const Dashboard = () => {
     }
     
     try {
-      console.log('Pre-authenticating with Packing Spec app...');
-      await authenticateWithPackingSpecAppToken();
+      console.log('Pre-authenticating with client credentials...');
+      await authenticateWithClientCredentials();
     } catch (error) {
-      console.error('Pre-authentication with Packing Spec app failed:', error);
+      console.error('Pre-authentication failed:', error);
     }
   }, []);
   

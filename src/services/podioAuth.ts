@@ -32,9 +32,9 @@ export {
 } from './podio/podioAuth';
 
 // For backward compatibility - import and re-export
-import { authenticateWithClientCredentials as authClientCred } from './podio/podioAuth';
-export const authenticateWithContactsAppToken = authClientCred;
-export const authenticateWithPackingSpecAppToken = authClientCred;
+import { authenticateWithClientCredentials } from './podio/podioAuth';
+export const authenticateWithContactsAppToken = authenticateWithClientCredentials;
+export const authenticateWithPackingSpecAppToken = authenticateWithClientCredentials;
 
 // For backward compatibility - Re-export types
 export type { 
