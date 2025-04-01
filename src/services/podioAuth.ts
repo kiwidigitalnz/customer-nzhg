@@ -232,8 +232,8 @@ export const ensureAuthenticated = async (): Promise<boolean> => {
     return true;
   }
   
-  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  if (refreshToken) {
+  const refreshTokenValue = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  if (refreshTokenValue) {
     return await refreshToken();
   }
   
