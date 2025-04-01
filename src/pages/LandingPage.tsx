@@ -67,7 +67,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               </div>
               <div className="melita-accent-bar"></div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl hero-heading font-bold text-honey-dark leading-tight tracking-tight">
-                Pure New Zealand <span className="text-gradient-primary">Honey</span> Products
+                Leading New Zealand's <span className="text-gradient-primary">Honey</span> Packing
               </h1>
               <p className="text-xl text-honey-dark/80 font-open max-w-xl">
                 Your gateway to streamlined product approvals, specifications, and quality management through our intuitive customer portal.
