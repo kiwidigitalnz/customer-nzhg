@@ -51,7 +51,7 @@ const LoginForm = () => {
       if (!podioConnected) {
         toast({
           title: 'Connection Error',
-          description: 'Could not connect to Podio. Please try again later.',
+          description: 'Could not connect to Podio. Please check credentials and try again later.',
           variant: 'destructive',
         });
         return;

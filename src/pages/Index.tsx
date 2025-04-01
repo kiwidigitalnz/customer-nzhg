@@ -1,3 +1,4 @@
+
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
@@ -40,7 +41,7 @@ const Index = () => {
           .then(success => {
             console.log('Initial Podio authentication result:', success ? 'Success' : 'Failed');
             if (!success) {
-              setPodioAuthError('Could not connect to Podio');
+              setPodioAuthError('Could not connect to Podio. Please check your client credentials.');
             }
           })
           .catch(err => {
