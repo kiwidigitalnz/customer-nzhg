@@ -17,12 +17,7 @@ export {
   isRateLimited,
   setRateLimit,
   clearRateLimit,
-  authenticateWithPasswordFlow,
-  
-  // Add the missing exports
-  isRateLimitedWithInfo,
-  setRateLimitWithBackoff,
-  clearRateLimitInfo
+  authenticateWithPasswordFlow
 } from './podio/podioAuth';
 
 // Export OAuth-related functions

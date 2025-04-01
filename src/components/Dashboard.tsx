@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, isPodioConfigured, isRateLimitedWithInfo } from '../services/podioApi';
+import { getPackingSpecsForContact, isPodioConfigured } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import RateLimitError from './errors/RateLimitError';
 
 interface PackingSpec {
   id: number;
@@ -34,71 +34,39 @@ interface PackingSpec {
   }>;
 }
 
-const getCompanyInitials = (name: string) => {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-};
-
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [rateLimited, setRateLimited] = useState(false);
-  const [rateLimitResetTime, setRateLimitResetTime] = useState(3600);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const podioConfigured = isPodioConfigured();
 
+  // Function to fetch specs data
   const fetchSpecs = async () => {
     if (user) {
       setLoading(true);
-      setError(null);
-      setRateLimited(false);
-
       try {
-        const rateLimitInfo = isRateLimitedWithInfo();
-        if (rateLimitInfo.isLimited) {
-          setRateLimited(true);
-          setRateLimitResetTime(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000));
-          setLoading(false);
-          return;
-        }
-
         console.log(`Fetching specs for contact ID: ${user.id}`);
         const data = await getPackingSpecsForContact(user.id);
         setSpecs(data as PackingSpec[]);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error fetching specs:', error);
-        
-        if (error.message && error.message.toLowerCase().includes('rate limit')) {
-          setRateLimited(true);
-          setRateLimitResetTime(3600);
-          
-          const waitTimeMatch = error.message.match(/wait (\d+) seconds/);
-          if (waitTimeMatch && waitTimeMatch[1]) {
-            setRateLimitResetTime(parseInt(waitTimeMatch[1], 10));
-          }
-        } else {
-          setError('Failed to load your packing specifications');
-          toast({
-            title: 'Error',
-            description: 'Failed to load your packing specifications',
-            variant: 'destructive',
-          });
-        }
+        toast({
+          title: 'Error',
+          description: 'Failed to load your packing specifications',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     }
   };
 
+  // Fetch specs when the component mounts or when user changes
   useEffect(() => {
+    // Redirect to Podio setup if not configured
     if (!podioConfigured) {
       toast({
         title: 'Podio Not Configured',
@@ -109,6 +77,7 @@ const Dashboard = () => {
       return;
     }
 
+    // Redirect to login if no user
     if (!user) {
       navigate('/login');
       return;
@@ -117,13 +86,16 @@ const Dashboard = () => {
     fetchSpecs();
   }, [user, toast, navigate, podioConfigured]);
 
+  // Re-fetch specs whenever the user navigates back to the dashboard
   useEffect(() => {
+    // Only fetch if we already have a user (prevents double fetching on initial load)
     if (user && location.pathname === '/') {
       console.log('User navigated back to dashboard, refreshing specs data');
       fetchSpecs();
     }
   }, [location.pathname, user]);
 
+  // If there's no user or Podio is not configured, show a loading state
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -135,53 +107,22 @@ const Dashboard = () => {
     );
   }
 
-  if (rateLimited) {
-    return (
-      <div className="container mx-auto px-4 py-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
-              {user?.logoUrl ? (
-                <AvatarImage 
-                  src={user.logoUrl} 
-                  alt={user?.name || 'Company Logo'} 
-                  onError={(e) => {
-                    e.currentTarget.src = '';
-                  }}
-                />
-              ) : null}
-              <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
-                {user?.name ? getCompanyInitials(user.name) : <Building />}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
-              <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
-            </div>
-          </div>
-          <Button 
-            variant="outline" 
-            onClick={logout}
-            className="transition-all hover:-translate-y-1 hover:shadow-md"
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Logout
-          </Button>
-        </div>
-
-        <RateLimitError 
-          retryTime={rateLimitResetTime} 
-          onRetry={fetchSpecs} 
-        />
-      </div>
-    );
-  }
-
   const pendingSpecs = specs.filter(spec => spec.status === 'pending-approval');
   const approvedSpecs = specs.filter(spec => spec.status === 'approved-by-customer');
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = async () => {
     await fetchSpecs();
+  };
+
+  // Function to get initials from company name for avatar fallback
+  const getCompanyInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (

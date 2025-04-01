@@ -5,34 +5,20 @@ import MainLayout from '../components/MainLayout';
 import { Package, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { isPodioConfigured, isRateLimitedWithInfo } from '../services/podioApi';
+import { isPodioConfigured } from '../services/podioApi';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import RateLimitError from '@/components/errors/RateLimitError';
 
 const PackingSpecDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [podioError, setPodioError] = useState(false);
-  const [rateLimited, setRateLimited] = useState(false);
-  const [rateLimitResetTime, setRateLimitResetTime] = useState(3600);
   const navigate = useNavigate();
   
-  const checkPodioStatus = () => {
+  useEffect(() => {
     // Check Podio configuration
     const podioConfigured = isPodioConfigured();
     
     if (!podioConfigured) {
       setPodioError(true);
-      setLoading(false);
-      return;
-    }
-    
-    // Check for rate limiting
-    const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.isLimited) {
-      setRateLimited(true);
-      setRateLimitResetTime(Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000));
-      setLoading(false);
-      return;
     }
     
     // Simulate loading for better UX
@@ -40,23 +26,8 @@ const PackingSpecDetailsPage = () => {
       setLoading(false);
     }, 300);
     
-    return timer;
-  };
-  
-  useEffect(() => {
-    const timer = checkPodioStatus();
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, []);
-  
-  // Function to handle retry after rate limit
-  const handleRetry = () => {
-    setLoading(true);
-    setRateLimited(false);
-    setPodioError(false);
-    checkPodioStatus();
-  };
   
   // Function to handle navigating back to dashboard
   const handleBackToDashboard = () => {
@@ -73,13 +44,6 @@ const PackingSpecDetailsPage = () => {
             icon={<Package className="text-primary/70" />}
             text="Loading specification details..."
             subtext="This may take a moment"
-          />
-        </div>
-      ) : rateLimited ? (
-        <div className="container mx-auto px-4 py-8">
-          <RateLimitError 
-            retryTime={rateLimitResetTime} 
-            onRetry={handleRetry} 
           />
         </div>
       ) : podioError ? (
