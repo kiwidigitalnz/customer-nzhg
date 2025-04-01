@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,7 @@ import { AlertCircle, LogIn, User, Lock, EyeOff, Eye } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
-  isRateLimitedWithInfo, 
-  authenticateWithClientCredentials
+  isRateLimitedWithInfo
 } from '../services/podioAuth';
 
 const LoginForm = () => {
@@ -20,17 +20,45 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const [podioAPIError, setPodioAPIError] = useState<string | null>(null);
+  const [loginAttemptCount, setLoginAttemptCount] = useState(0);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const loginAttemptInProgress = useRef(false);
+  const loginButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Reset error state when inputs change
+  useEffect(() => {
+    if (podioAPIError) {
+      setPodioAPIError(null);
+    }
+  }, [username, password]);
+
+  // Add a cool-down period for multiple login attempts
+  useEffect(() => {
+    if (loginAttemptCount > 3) {
+      const timer = setTimeout(() => {
+        setLoginAttemptCount(0);
+        setPodioAPIError(null);
+      }, 30000); // 30 second cool-down
+      
+      setPodioAPIError(`Too many login attempts. Please wait 30 seconds before trying again.`);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loginAttemptCount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Prevent duplicate login attempts
-    if (loginAttemptInProgress.current) {
+    if (loginAttemptInProgress.current || authenticating) {
       console.log('Login attempt already in progress, preventing duplicate submission');
+      return;
+    }
+    
+    // Check for too many attempts
+    if (loginAttemptCount > 3) {
       return;
     }
     
@@ -66,54 +94,41 @@ const LoginForm = () => {
       loginAttemptInProgress.current = true;
       setAuthenticating(true);
       
-      // Authenticate with client credentials (simplified approach)
-      const authSuccess = await authenticateWithClientCredentials();
+      // Increment attempt counter
+      setLoginAttemptCount(prev => prev + 1);
       
-      if (!authSuccess) {
-        setPodioAPIError('Authentication failed. Please check your Podio API credentials.');
-        setAuthenticating(false);
-        loginAttemptInProgress.current = false;
-        return;
+      // Disable the login button to prevent multiple clicks
+      if (loginButtonRef.current) {
+        loginButtonRef.current.disabled = true;
       }
       
-      // If authentication was successful, try to login the user
-      try {
-        const success = await login(username, password);
-        
-        if (success) {
-          toast({
-            title: 'Login successful',
-            description: 'Welcome back',
-            variant: 'default',
-          });
-          navigate('/dashboard');
-        } else {
-          setPodioAPIError('Invalid username or password');
-        }
-      } catch (loginErr) {
-        // Handle specific unauthorized errors differently
-        const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
-        
-        if (errorMessage.includes('access user data')) {
-          setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
-        } else if (errorMessage.includes('Rate limit')) {
-          setPodioAPIError('Rate limit reached. Please try again later.');
-        } else {
-          toast({
-            title: 'Login Failed',
-            description: errorMessage,
-            variant: 'destructive',
-          });
-        }
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
+      // Try to login the user
+      const success = await login(username, password);
       
-      // Check for specific permission issues related to Podio API
-      if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
-        setPodioAPIError('The application does not have permission to access contact data. Please check your Podio API credentials and permissions.');
+      if (success) {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back',
+          variant: 'default',
+        });
+        
+        // Reset attempt counter on success
+        setLoginAttemptCount(0);
+        
+        navigate('/dashboard');
+      } else {
+        setPodioAPIError('Invalid username or password');
+      }
+    } catch (loginErr) {
+      // Handle specific unauthorized errors differently
+      const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
+      
+      if (errorMessage.includes('access user data')) {
+        setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
       } else if (errorMessage.includes('Rate limit')) {
         setPodioAPIError('Rate limit reached. Please try again later.');
+      } else if (errorMessage.includes('User not found') || errorMessage.includes('Invalid password')) {
+        setPodioAPIError('Invalid username or password');
       } else {
         toast({
           title: 'Login Failed',
@@ -124,6 +139,11 @@ const LoginForm = () => {
     } finally {
       setAuthenticating(false);
       loginAttemptInProgress.current = false;
+      
+      // Re-enable the login button
+      if (loginButtonRef.current) {
+        loginButtonRef.current.disabled = false;
+      }
     }
   };
 
@@ -143,12 +163,14 @@ const LoginForm = () => {
   const rateLimitMessage = getRateLimitMessage();
   const displayError = podioAPIError || error || rateLimitMessage;
   const isLoading = loading || authenticating;
+  const isDisabled = isLoading || isRateLimitedWithInfo().isLimited || loginAttemptCount > 3;
   
   // Generate appropriate loading message
   const getLoadingMessage = () => {
     if (authenticating) return 'Authenticating...';
     if (loading) return 'Logging in...';
     if (isRateLimitedWithInfo().isLimited) return 'Rate limited';
+    if (loginAttemptCount > 3) return 'Too many attempts';
     return 'Log In';
   };
 
@@ -177,7 +199,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={isLoading || isRateLimitedWithInfo().isLimited}
+              disabled={isDisabled}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -194,7 +216,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                disabled={isLoading || isRateLimitedWithInfo().isLimited}
+                disabled={isDisabled}
                 autoComplete="current-password"
                 className="border-gray-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
               />
@@ -226,9 +248,10 @@ const LoginForm = () => {
           )}
           
           <Button 
+            ref={loginButtonRef}
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={isLoading || isRateLimitedWithInfo().isLimited}
+            disabled={isDisabled}
           >
             {isLoading && (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-25 border-t-white"></span>

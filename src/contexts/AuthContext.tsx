@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { authenticateUser, authenticateWithClientCredentials, isRateLimited } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [lastAuthAttempt, setLastAuthAttempt] = useState(0);
   const authInProgress = useRef(false);
   const { toast } = useToast();
+  const authInitialized = useRef(false);
 
   // Check session validity
   const isSessionValid = (): boolean => {
@@ -70,6 +72,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [lastAuthAttempt]);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (authInitialized.current) return;
+    authInitialized.current = true;
+    
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
     if (savedUser && isSessionValid()) {
@@ -80,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         extendSession();
         
         // Pre-authenticate, but don't block loading
-        preAuthenticate();
+        setTimeout(() => preAuthenticate(), 1000);
       } catch (e) {
         // Invalid stored data
         localStorage.removeItem('nzhg_user');
@@ -126,20 +132,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
     
+    // Add a cooldown period between login attempts to prevent hammering the API
+    const now = Date.now();
+    if (now - lastAuthAttempt < 5000) { // 5 second cooldown
+      console.log('Login attempts too frequent, please wait');
+      setError('Please wait a moment before trying again');
+      return false;
+    }
+    
     setLoading(true);
     setError(null);
     authInProgress.current = true;
     
     try {
       // Set auth attempt timestamp to prevent duplicates
-      setLastAuthAttempt(Date.now());
-      
-      // Ensure we're authenticated with client credentials
-      const authSuccess = await authenticateWithClientCredentials();
-      
-      if (!authSuccess) {
-        throw new Error('Failed to authenticate with Podio API');
-      }
+      setLastAuthAttempt(now);
       
       // Call the authenticateUser function to check if user exists in Contacts app
       const userData = await authenticateUser(username, password);
