@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured, isRateLimited, authenticateWithClientCredentials } from '../services/podioAuth';
+import { isPodioConfigured, isRateLimited, authenticateWithClientCredentials, getContactsAppToken } from '../services/podioAuth';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -47,6 +47,17 @@ const LoginForm = () => {
     console.log(`Attempting login with username: ${username}`);
     
     try {
+      // Check if we have the Contacts app token
+      const contactsAppToken = getContactsAppToken();
+      if (!contactsAppToken) {
+        toast({
+          title: 'Configuration Error',
+          description: 'Missing Contacts app token. Please check your configuration.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       // First ensure we're connected to Podio
       setConnectingToPodio(true);
       const podioConnected = await authenticateWithClientCredentials();

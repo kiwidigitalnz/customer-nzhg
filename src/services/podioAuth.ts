@@ -16,6 +16,7 @@ interface PodioErrorResponse {
 // Configuration and helper constants
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'podio_access_token',
+  CONTACTS_APP_TOKEN: 'podio_contacts_app_token',
   REFRESH_TOKEN: 'podio_refresh_token',
   TOKEN_EXPIRY: 'podio_token_expiry',
   CLIENT_ID: 'podio_client_id',
@@ -26,6 +27,11 @@ const STORAGE_KEYS = {
 // App IDs for Podio apps
 export const PODIO_CONTACTS_APP_ID = Number(import.meta.env.VITE_PODIO_CONTACTS_APP_ID) || 26969025;
 export const PODIO_PACKING_SPEC_APP_ID = Number(import.meta.env.VITE_PODIO_PACKING_SPEC_APP_ID) || 29797638;
+
+// Get the contacts app token from environment
+export const getContactsAppToken = (): string | null => {
+  return import.meta.env.VITE_PODIO_CONTACTS_APP_TOKEN || localStorage.getItem(STORAGE_KEYS.CONTACTS_APP_TOKEN);
+};
 
 // Utility to get client ID from environment or localStorage
 export const getClientId = (): string | null => {
@@ -90,6 +96,12 @@ export const storeTokens = (tokenData: PodioTokenResponse): void => {
   localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
   
   console.log(`Tokens stored successfully. Expires in ${Math.round(tokenData.expires_in / 3600)} hours`);
+};
+
+// Store the contacts app token
+export const storeContactsAppToken = (token: string): void => {
+  localStorage.setItem(STORAGE_KEYS.CONTACTS_APP_TOKEN, token);
+  console.log('Contacts app token stored');
 };
 
 // Main authentication functions
@@ -172,6 +184,13 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     
     // Store tokens
     storeTokens(tokenData);
+    
+    // Also store the app-specific token if available
+    const contactsAppToken = getContactsAppToken();
+    if (contactsAppToken) {
+      storeContactsAppToken(contactsAppToken);
+    }
+    
     clearRateLimit();
     
     return true;
@@ -283,7 +302,7 @@ export const ensureAuthenticated = async (): Promise<boolean> => {
   return await authenticateWithClientCredentials();
 };
 
-// API call function
+// Modified API call function to use the app token for contacts app
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // First ensure we're authenticated
   const isAuthenticated = await ensureAuthenticated();
@@ -291,7 +310,18 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     throw new Error('Not authenticated with Podio');
   }
   
-  const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  // Determine which token to use based on the endpoint
+  let accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  
+  // If this is a contacts app endpoint and we have a specific token, use it
+  if (endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
+      endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`)) {
+    const contactsToken = getContactsAppToken();
+    if (contactsToken) {
+      console.log('Using specific contacts app token for request');
+      accessToken = contactsToken;
+    }
+  }
   
   // Add authorization header
   const headers = {
@@ -374,6 +404,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     const isAuthenticated = await authenticateWithClientCredentials();
     if (!isAuthenticated) {
       throw new Error('Could not authenticate with Podio');
+    }
+    
+    // Ensure we have the contacts app token stored
+    const contactsAppToken = getContactsAppToken();
+    if (contactsAppToken) {
+      storeContactsAppToken(contactsAppToken);
     }
     
     // Search for user by username in the Contacts app
