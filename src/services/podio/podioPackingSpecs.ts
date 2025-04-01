@@ -1,9 +1,11 @@
 // This module handles interactions with Podio packing specs
 
-import { callPodioApi, hasValidPodioTokens } from '../podioApi';
-import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
-import { uploadFileToPodio, shouldProceedWithoutSignature } from './podioFiles';
-import { getCommentsFromPodio, CommentItem, addCommentToPodio } from './podioComments';
+import { 
+  callPodioApi, 
+  hasValidTokens,
+  PODIO_PACKING_SPEC_APP_ID
+} from './podioAuth';
+import { getFieldValueByExternalId, getFieldIdValue, getDateFieldValue } from './podioFieldHelpers';
 
 // Packing Spec Field IDs
 export const PACKING_SPEC_FIELD_IDS = {
@@ -135,7 +137,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   try {
     console.log('Fetching packing specs for contact ID:', contactId);
     
-    if (!hasValidPodioTokens()) {
+    if (!hasValidTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     
@@ -207,50 +209,47 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   }
 };
 
-// Get packing spec details for a specific spec ID
-export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
+// Get the details of a specific packing spec
+export const getPackingSpecDetails = async (packingSpecId: number): Promise<PackingSpec | null> => {
   try {
-    console.log('Fetching details for packing spec ID:', specId);
-    
-    if (!hasValidPodioTokens()) {
-      throw new Error('Not authenticated with Podio API');
+    if (!hasValidTokens()) {
+      console.error('Not authenticated with Podio');
+      return null;
     }
-    
-    // Get the item from Podio
-    const endpoint = `item/${specId}`;
-    
-    const response = await callPodioApi(endpoint);
-    
+
+    // Get the item details
+    const response = await callPodioApi(`item/${packingSpecId}`);
+
     if (!response) {
       console.log('No packing spec found with this ID');
       return null;
     }
-    
+
     // Transform Podio item into our PackingSpec format
     const item = response;
     const fields = item.fields;
-    
+
     console.log('Raw Podio response for image fields:', 
       fields.find((f: any) => f.field_id === PACKING_SPEC_FIELD_IDS.label),
       fields.find((f: any) => f.field_id === PACKING_SPEC_FIELD_IDS.shipperSticker)
     );
-    
+
     // Get the customer ID for security checks
     const customerId = getFieldIdValue(fields, PACKING_SPEC_FIELD_IDS.customer);
-    console.log(`Packing spec ${specId} belongs to customer ID:`, customerId);
-    
+    console.log(`Packing spec ${packingSpecId} belongs to customer ID:`, customerId);
+
     // Get comments directly from Podio's comment API
-    const comments = await getCommentsFromPodio(specId);
-    
+    const comments = await getCommentsFromPodio(packingSpecId);
+
     // Extract images from Podio fields
     const labelImages = extractPodioImages(fields, PACKING_SPEC_FIELD_IDS.label);
     const shipperStickerImages = extractPodioImages(fields, PACKING_SPEC_FIELD_IDS.shipperSticker);
-    
+
     console.log('Extracted image data:', {
       labelImages: labelImages ? labelImages.length : 0,
       shipperStickerImages: shipperStickerImages ? shipperStickerImages.length : 0
     });
-    
+
     // Map to our application's format
     const packingSpec: PackingSpec = {
       id: item.item_id,
@@ -309,14 +308,14 @@ export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec
       },
       comments: comments // Use the comments fetched from Podio
     };
-    
+
     // Add console log to debug the updated-by field specifically
     console.log('Updated By value from Podio:', getFieldValueByExternalId(fields, 'updated-by'));
-    
+
     return packingSpec;
   } catch (error) {
-    console.error('Error fetching packing spec details:', error);
-    throw new Error('Failed to fetch packing specification details from Podio');
+    console.error('Error getting packing spec details:', error);
+    return null;
   }
 };
 
@@ -334,7 +333,7 @@ export const updatePackingSpecStatus = async (
   try {
     console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
     
-    if (!hasValidPodioTokens()) {
+    if (!hasValidTokens()) {
       throw new Error('Not authenticated with Podio API');
     }
     

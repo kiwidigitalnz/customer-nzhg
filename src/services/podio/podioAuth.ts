@@ -1,28 +1,24 @@
 
 // This module handles Podio authentication and token management
 import { 
-  AuthErrorType, 
-  createAuthError, 
-  ensureValidToken 
-} from '../auth/authService';
-import {
   getPodioClientId,
   getPodioClientSecret,
-  startPodioOAuthFlow,
   getPodioApiDomain,
-  refreshPodioToken as refreshToken,
   isRateLimited as checkRateLimit,
   setRateLimit as setApiRateLimit,
-  clearRateLimit as clearApiRateLimit
+  clearRateLimit as clearApiRateLimit,
+  refreshPodioToken as refreshToken
 } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 
 // Re-export the refreshPodioToken function so it can be imported by other modules
 export { refreshToken as refreshPodioToken };
-// Re-export rate limiting functions to avoid conflicts
-export const isRateLimited = checkRateLimit;
-export const setRateLimit = setApiRateLimit;
-export const clearRateLimit = clearApiRateLimit;
+// Re-export rate limiting functions
+export { 
+  checkRateLimit as isRateLimited,
+  setApiRateLimit as setRateLimit,
+  clearApiRateLimit as clearRateLimit
+};
 
 // Storage keys for Podio tokens and settings
 const STORAGE_KEYS = {
@@ -210,6 +206,12 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     // Store tokens
     storeTokens(tokenData);
     
+    // Store the contacts app token separately if in environment
+    const contactsAppToken = getContactsAppToken();
+    if (contactsAppToken) {
+      storeContactsAppToken(contactsAppToken);
+    }
+    
     clearRateLimit();
     
     return true;
@@ -219,7 +221,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
-// New function to authenticate with username and password
+// Password authentication flow for user access
 export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<boolean> => {
   try {
     // Check if we're rate limited
@@ -301,6 +303,12 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
     
     // Store tokens
     storeTokens(tokenData);
+    
+    // Store the contacts app token separately if in environment
+    const contactsAppToken = getContactsAppToken();
+    if (contactsAppToken) {
+      storeContactsAppToken(contactsAppToken);
+    }
     
     clearRateLimit();
     
@@ -426,15 +434,9 @@ export const authenticateUser = async (username: string, password: string): Prom
   try {
     console.log(`Authenticating user: ${username}`);
     
-    // Check if we're rate limited
-    if (isRateLimited()) {
-      throw new Error('Rate limited. Try again later.');
-    }
-    
-    // First, authenticate with username and password
-    const authSuccess = await authenticateWithPasswordFlow(username, password);
-    if (!authSuccess) {
-      throw new Error('Invalid username or password');
+    // We should already be authenticated from the password flow
+    if (!hasValidTokens()) {
+      throw new Error('Not authenticated with Podio');
     }
     
     // Search for user by username in the Contacts app

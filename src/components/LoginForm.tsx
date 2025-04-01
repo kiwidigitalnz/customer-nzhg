@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,58 +12,17 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimited, 
-  authenticateWithClientCredentials,
-  validateContactsAppAccess
+  authenticateWithPasswordFlow
 } from '../services/podioAuth';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [connectingToPodio, setConnectingToPodio] = useState(false);
-  const [validatingAppAccess, setValidatingAppAccess] = useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
   const [podioAPIError, setPodioAPIError] = useState<string | null>(null);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Initial Podio configuration check
-  useEffect(() => {
-    const checkPodioConfig = async () => {
-      console.log('Checking Podio configuration');
-      const configured = isPodioConfigured();
-      console.log('Podio configured:', configured);
-      
-      if (configured) {
-        console.log('Attempting initial Podio authentication');
-        setConnectingToPodio(true);
-        
-        try {
-          // First authenticate with client credentials
-          const result = await authenticateWithClientCredentials();
-          console.log('Initial Podio authentication result:', result ? 'Success' : 'Failed');
-          
-          if (result) {
-            // Validate app access
-            setValidatingAppAccess(true);
-            const appAccess = await validateContactsAppAccess();
-            if (!appAccess) {
-              setPodioAPIError('The application does not have permission to access the Contacts app. Please check your Podio API permissions.');
-            }
-            setValidatingAppAccess(false);
-          } else {
-            setPodioAPIError('Could not connect to Podio API. Please check your credentials.');
-          }
-        } catch (err) {
-          console.error('Error during Podio configuration check:', err);
-          setPodioAPIError('Failed to connect to Podio API.');
-        } finally {
-          setConnectingToPodio(false);
-        }
-      }
-    };
-    
-    checkPodioConfig();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +35,12 @@ const LoginForm = () => {
         title: 'Please fill in all fields',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Check if Podio is configured
+    if (!isPodioConfigured()) {
+      setPodioAPIError('Podio API is not configured properly');
       return;
     }
 
@@ -92,34 +57,20 @@ const LoginForm = () => {
     console.log(`Attempting login with username: ${username}`);
     
     try {
-      // First ensure we're connected to Podio
-      setConnectingToPodio(true);
-      const podioConnected = await authenticateWithClientCredentials();
+      setAuthenticating(true);
       
-      if (!podioConnected) {
-        toast({
-          title: 'Connection Error',
-          description: 'Could not connect to Podio. Please check credentials and try again later.',
-          variant: 'destructive',
-        });
-        setConnectingToPodio(false);
-        return;
-      }
-      
-      // Validate Contacts app access
-      setValidatingAppAccess(true);
-      const appAccess = await validateContactsAppAccess();
-      setValidatingAppAccess(false);
-      
-      if (!appAccess) {
-        setPodioAPIError('The application does not have permission to access the Contacts app. Please check your Podio API permissions.');
-        setConnectingToPodio(false);
-        return;
-      }
-      
-      setConnectingToPodio(false);
-      
+      // Authenticate directly with username and password
       try {
+        // First authenticate with password flow to access the APIs
+        const authSuccess = await authenticateWithPasswordFlow(username, password);
+        
+        if (!authSuccess) {
+          setPodioAPIError('Invalid username or password');
+          setAuthenticating(false);
+          return;
+        }
+        
+        // If authentication was successful, try to login the user
         const success = await login(username, password);
         
         if (success) {
@@ -164,8 +115,7 @@ const LoginForm = () => {
         });
       }
     } finally {
-      setConnectingToPodio(false);
-      setValidatingAppAccess(false);
+      setAuthenticating(false);
     }
   };
 
@@ -181,12 +131,11 @@ const LoginForm = () => {
 
   const rateLimitMessage = getRateLimitMessage();
   const displayError = podioAPIError || error || rateLimitMessage;
-  const isLoading = loading || connectingToPodio || validatingAppAccess;
+  const isLoading = loading || authenticating;
   
   // Generate appropriate loading message
   const getLoadingMessage = () => {
-    if (connectingToPodio) return 'Connecting to Podio...';
-    if (validatingAppAccess) return 'Validating app access...';
+    if (authenticating) return 'Authenticating...';
     if (loading) return 'Logging in...';
     if (isRateLimited()) return 'Rate limited';
     return 'Login';

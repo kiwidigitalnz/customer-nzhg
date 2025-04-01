@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Call the new authenticateUser function with username and password
+      // Call the authenticateUser function (we are already authenticated with password flow)
       const userData = await authenticateUser(username, password);
       
       setUser(userData);
