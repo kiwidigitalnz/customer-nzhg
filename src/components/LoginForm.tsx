@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,16 +9,56 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured, isRateLimited, authenticateWithClientCredentials, getContactsAppToken } from '../services/podioAuth';
+import { validateContactsAppAccess, isPodioConfigured, isRateLimited, authenticateWithClientCredentials, getContactsAppToken } from '../services/podioAuth';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [connectingToPodio, setConnectingToPodio] = useState(false);
+  const [validatingAppAccess, setValidatingAppAccess] = useState(false);
   const [podioAPIError, setPodioAPIError] = useState<string | null>(null);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Initial Podio configuration check
+  useEffect(() => {
+    const checkPodioConfig = async () => {
+      console.log('Checking Podio configuration');
+      const configured = isPodioConfigured();
+      console.log('Podio configured:', configured);
+      
+      if (configured) {
+        console.log('Attempting initial Podio authentication');
+        setConnectingToPodio(true);
+        
+        try {
+          // First authenticate with client credentials
+          const result = await authenticateWithClientCredentials();
+          console.log('Initial Podio authentication result:', result ? 'Success' : 'Failed');
+          
+          if (result) {
+            // Validate app access
+            setValidatingAppAccess(true);
+            const appAccess = await validateContactsAppAccess();
+            if (!appAccess) {
+              setPodioAPIError('The application does not have permission to access the Contacts app. Please check your Podio API permissions.');
+            }
+            setValidatingAppAccess(false);
+          } else {
+            setPodioAPIError('Could not connect to Podio API. Please check your credentials.');
+          }
+        } catch (err) {
+          console.error('Error during Podio configuration check:', err);
+          setPodioAPIError('Failed to connect to Podio API.');
+        } finally {
+          setConnectingToPodio(false);
+        }
+      }
+    };
+    
+    checkPodioConfig();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +101,6 @@ const LoginForm = () => {
       // First ensure we're connected to Podio
       setConnectingToPodio(true);
       const podioConnected = await authenticateWithClientCredentials();
-      setConnectingToPodio(false);
       
       if (!podioConnected) {
         toast({
@@ -69,8 +108,22 @@ const LoginForm = () => {
           description: 'Could not connect to Podio. Please check credentials and try again later.',
           variant: 'destructive',
         });
+        setConnectingToPodio(false);
         return;
       }
+      
+      // Validate Contacts app access
+      setValidatingAppAccess(true);
+      const appAccess = await validateContactsAppAccess();
+      setValidatingAppAccess(false);
+      
+      if (!appAccess) {
+        setPodioAPIError('The application does not have permission to access the Contacts app. Please check your Podio API permissions.');
+        setConnectingToPodio(false);
+        return;
+      }
+      
+      setConnectingToPodio(false);
       
       try {
         const success = await login(username, password);
@@ -116,6 +169,9 @@ const LoginForm = () => {
           variant: 'destructive',
         });
       }
+    } finally {
+      setConnectingToPodio(false);
+      setValidatingAppAccess(false);
     }
   };
 
@@ -131,6 +187,16 @@ const LoginForm = () => {
 
   const rateLimitMessage = getRateLimitMessage();
   const displayError = podioAPIError || error || rateLimitMessage;
+  const isLoading = loading || connectingToPodio || validatingAppAccess;
+  
+  // Generate appropriate loading message
+  const getLoadingMessage = () => {
+    if (connectingToPodio) return 'Connecting to Podio...';
+    if (validatingAppAccess) return 'Validating app access...';
+    if (loading) return 'Logging in...';
+    if (isRateLimited()) return 'Rate limited';
+    return 'Login';
+  };
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">
@@ -150,7 +216,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={loading || connectingToPodio || isRateLimited()}
+              disabled={isLoading || isRateLimited()}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -163,7 +229,7 @@ const LoginForm = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
-              disabled={loading || connectingToPodio || isRateLimited()}
+              disabled={isLoading || isRateLimited()}
               autoComplete="current-password"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -184,15 +250,9 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={loading || connectingToPodio || isRateLimited()}
+            disabled={isLoading || isRateLimited()}
           >
-            {connectingToPodio 
-              ? 'Connecting to Podio...' 
-              : loading 
-                ? 'Logging in...' 
-                : isRateLimited() 
-                  ? 'Rate limited' 
-                  : 'Login'}
+            {getLoadingMessage()}
           </Button>
         </form>
       </CardContent>
