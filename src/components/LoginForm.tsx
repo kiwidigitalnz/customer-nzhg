@@ -72,15 +72,30 @@ const LoginForm = () => {
         return;
       }
       
-      const success = await login(username, password);
-      
-      if (success) {
-        toast({
-          title: 'Login successful',
-          description: 'Welcome back',
-          variant: 'default',
-        });
-        navigate('/dashboard');
+      try {
+        const success = await login(username, password);
+        
+        if (success) {
+          toast({
+            title: 'Login successful',
+            description: 'Welcome back',
+            variant: 'default',
+          });
+          navigate('/dashboard');
+        }
+      } catch (loginErr) {
+        // Handle specific unauthorized errors differently
+        const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
+        
+        if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication') || errorMessage.includes('access user data')) {
+          setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API token.');
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        }
       }
     } catch (err) {
       console.error('Login error:', err);

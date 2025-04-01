@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 
 // Types for Podio responses
@@ -347,6 +348,13 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     // If token is invalid, try refreshing once
     if (response.status === 401) {
+      // If we're using the contacts app token and get a 401,
+      // don't retry with the same token - it's likely invalid
+      if (endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
+          endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`)) {
+        throw new Error('Unauthorized: Invalid contacts app token');
+      }
+      
       const refreshed = await refreshToken();
       if (!refreshed) {
         throw new Error('Authentication failed');
@@ -413,15 +421,11 @@ export const authenticateUser = async (username: string, password: string): Prom
     }
     
     // Search for user by username in the Contacts app
-    // We will attempt first to validate credentials, then search for the user
+    // For the contacts app, we'll directly use the filter endpoint without checking the app first
     console.log(`Searching for user: ${username}`);
     
     try {
-      // Get the contacts app directly
-      const appResponse = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
-      console.log('App access successful:', appResponse?.app_id === PODIO_CONTACTS_APP_ID);
-      
-      // Search for the user using the filter endpoint
+      // Use the filter endpoint directly with the stored app token
       const filters = {
         filters: {
           "customer-portal-username": username
