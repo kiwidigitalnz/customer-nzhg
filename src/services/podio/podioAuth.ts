@@ -1,3 +1,4 @@
+
 import Podio from 'podio-js';
 
 // Initialize Podio client with your API keys
@@ -36,6 +37,70 @@ const storeTokens = (tokens: any) => {
 const retrieveTokens = (): any => {
   const tokens = localStorage.getItem('podio_tokens');
   return tokens ? JSON.parse(tokens) : null;
+};
+
+// Rate limiting variables
+let rateLimitExceeded = false;
+let rateLimitExpiry: Date | null = null;
+let lastRateLimitedEndpoint: string | null = null;
+
+// Function to check if rate limit is exceeded
+export const isRateLimited = (): boolean => {
+  return rateLimitExceeded && rateLimitExpiry !== null && rateLimitExpiry > new Date();
+};
+
+// Enhanced rate limit info function
+export const isRateLimitedWithInfo = () => {
+  const isLimited = rateLimitExceeded && rateLimitExpiry !== null && rateLimitExpiry > new Date();
+  return {
+    isLimited,
+    limitUntil: isLimited ? rateLimitExpiry!.getTime() : 0,
+    lastEndpoint: lastRateLimitedEndpoint
+  };
+};
+
+// Function to set rate limit
+export const setRateLimit = (durationInSeconds = 60, endpoint?: string) => {
+  rateLimitExceeded = true;
+  rateLimitExpiry = new Date(Date.now() + durationInSeconds * 1000);
+  lastRateLimitedEndpoint = endpoint || null;
+  console.warn(`Rate limit exceeded${endpoint ? ` for ${endpoint}` : ''}. Will retry after ${rateLimitExpiry.toLocaleTimeString()}`);
+};
+
+// Function to clear rate limit
+export const clearRateLimit = () => {
+  rateLimitExceeded = false;
+  rateLimitExpiry = null;
+  lastRateLimitedEndpoint = null;
+  console.log('Rate limit cleared.');
+};
+
+// Clear rate limit info specifically
+export const clearRateLimitInfo = () => {
+  rateLimitExceeded = false;
+  rateLimitExpiry = null;
+  lastRateLimitedEndpoint = null;
+  console.log('Rate limit info cleared.');
+};
+
+// User data caching
+const userDataCache: Record<string, { data: any, timestamp: number }> = {};
+
+// Cache user data with expiration
+export const cacheUserData = (key: string, data: any, expirationMs = 3600000) => {
+  userDataCache[key] = {
+    data,
+    timestamp: Date.now() + expirationMs
+  };
+};
+
+// Get cached user data if not expired
+export const getCachedUserData = (key: string) => {
+  const cached = userDataCache[key];
+  if (cached && cached.timestamp > Date.now()) {
+    return cached.data;
+  }
+  return null;
 };
 
 // Function to refresh Podio token
@@ -157,6 +222,62 @@ export const CONTACT_FIELD_IDS = {
   logoUrl: 271291967,      // logo-url
   username: 271281606,     // customer-portal-username
   password: 271280804      // customer-portal-password
+};
+
+// Packing Spec field IDs for the Podio Packing Spec app
+export const PACKING_SPEC_FIELD_IDS = {
+  id: 265909594,           // packing-spec-id
+  approvalStatus: 265959138, // approval-status
+  productName: 265909621,  // product-name
+  customer: 265909622,     // customerbrand-name
+  productCode: 265909623,  // product-code
+  versionNumber: 265909624, // version-number
+  updatedBy: 265959736,    // specification-updated-by
+  dateReviewed: 265959737, // date-reviewed
+  umfMgo: 265958814,       // umf-mgo
+  honeyType: 265958813,    // honey-type
+  allergenType: 266035765, // allergen-or-lozenge-type
+  ingredientType: 266035766, // ingredient
+  customerRequirements: 265951759, // customer-requrements
+  countryOfEligibility: 265951757, // country-of-eligibility
+  otherMarkets: 265951758, // other-markets
+  testingRequirements: 265951761, // testing-requirments
+  regulatoryRequirements: 265951760, // reglatory-requirements
+  jarColor: 265952439,     // jar-colour
+  jarMaterial: 265952440,  // jar-material
+  jarShape: 265952442,     // jar-shape
+  jarSize: 265952441,      // jar-size
+  lidSize: 265954653,      // lid-size
+  lidColor: 265954652,     // lid-colour
+  onTheGoPackaging: 266035012, // on-the-go-packaging
+  pouchSize: 266035907,    // pouch-size
+  sealInstructions: 265959436, // seal-instructions
+  shipperSize: 265957893,  // shipper-size
+  customisedCartonType: 266035908, // customised-carton-type
+  labelCode: 265958873,    // label-code
+  labelSpecification: 265959137, // label-soecification (note the typo in Podio field name)
+  label: 265951584,        // label
+  labelLink: 267537366,    // label-link
+  printingInfoLocation: 265958021, // printing-information-located
+  printingColor: 265960110, // printing-colour
+  printingInfoRequired: 265909779, // printing-information-required
+  requiredBestBeforeDate: 265909780, // required-best-before-date
+  dateFormatting: 265951583, // formate-of-dates (note the typo in Podio field name)
+  shipperSticker: 265957894, // shipper-sticker
+  numShipperStickers: 267533778, // number-of-shipper-stickers-on-carton
+  palletType: 265958228,   // pallet-type
+  cartonsPerLayer: 265958229, // cartons-per-layer
+  layersPerPallet: 265958230, // number-of-layers
+  palletSpecs: 265958640,  // pallet
+  palletDocuments: 265958841, // pallet-documents
+  customerApprovalStatus: 266244157, // customer-approval-status
+  customerRequestedChanges: 266244158, // customer-requested-changes
+  approvedByName: 265959428, // approved-by-2
+  approvalDate: 266244156, // approval-date
+  signature: 265959139,    // signature
+  emailForApproval: 265959429, // email-address-to-send-for-approval
+  action: 265959430,       // action
+  updatedBy2: 271320234    // updated-by
 };
 
 // Function to check if Podio is configured
