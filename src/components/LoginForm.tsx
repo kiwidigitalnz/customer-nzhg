@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimited, 
-  authenticateWithPasswordFlow,
+  authenticateWithAppToken,
   authenticateWithClientCredentials
 } from '../services/podioAuth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -33,7 +33,7 @@ const LoginForm = () => {
     showDetails: boolean
   }>({
     steps: [],
-    showDetails: false
+    showDetails: true // Set to true by default for easier debugging
   });
 
   // Add a debug step
@@ -79,6 +79,28 @@ const LoginForm = () => {
     }));
   };
 
+  // Listen for debug events from the podio auth service
+  useEffect(() => {
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key?.startsWith('podio_auth_debug')) {
+        try {
+          const debugData = JSON.parse(event.newValue || '{}');
+          if (debugData.step && debugData.status) {
+            addDebugStep(debugData.step, debugData.status, debugData.details);
+          }
+        } catch (e) {
+          console.error('Failed to parse debug info', e);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageEvent);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -116,55 +138,28 @@ const LoginForm = () => {
     try {
       setAuthenticating(true);
       
-      // Try to authenticate with password flow first
-      let authSuccess = false;
+      // Try to authenticate with app authentication (new approach)
+      addDebugStep('Authenticating with app token', 'pending');
+      let authSuccess = await authenticateWithAppToken();
       
-      addDebugStep('Authenticating with password flow', 'pending');
-      try {
-        // First authenticate with password flow to access the APIs
-        authSuccess = await authenticateWithPasswordFlow(username, password);
-        
-        // Listen for events from the auth service
-        const handleStorageEvent = (event: StorageEvent) => {
-          if (event.key?.startsWith('podio_auth_debug')) {
-            try {
-              const debugData = JSON.parse(event.newValue || '{}');
-              if (debugData.step && debugData.status) {
-                addDebugStep(debugData.step, debugData.status, debugData.details);
-              }
-            } catch (e) {
-              console.error('Failed to parse debug info', e);
-            }
-          }
-        };
-        
-        window.addEventListener('storage', handleStorageEvent);
-        
-        if (authSuccess) {
-          updateLastDebugStep('success', 'Password authentication successful');
-        } else {
-          updateLastDebugStep('error', 'Password authentication failed, but will try client credentials');
-        }
-      } catch (error) {
-        console.error('Password flow authentication failed:', error);
-        updateLastDebugStep('error', `Password flow failed: ${error instanceof Error ? error.message : String(error)}`);
-        // Fall back to client credentials if password flow fails
-        authSuccess = await authenticateWithClientCredentials();
-      }
-      
-      // If password flow fails, try client credentials as fallback
       if (!authSuccess) {
+        updateLastDebugStep('error', 'App authentication failed, falling back to client credentials');
+        
+        // Fall back to client credentials if app auth fails
         addDebugStep('Falling back to client credentials authentication', 'pending');
         authSuccess = await authenticateWithClientCredentials();
+        
         if (authSuccess) {
           updateLastDebugStep('success', 'Client credentials authentication successful');
         } else {
           updateLastDebugStep('error', 'Client credentials authentication failed');
         }
+      } else {
+        updateLastDebugStep('success', 'App authentication successful');
       }
       
       if (!authSuccess) {
-        setPodioAPIError('Authentication failed. Please check your credentials.');
+        setPodioAPIError('Authentication failed. Please check your Podio API credentials.');
         setAuthenticating(false);
         return;
       }

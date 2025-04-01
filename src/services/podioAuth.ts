@@ -7,6 +7,7 @@ export {
   authenticateUser,
   hasValidPodioTokens,
   authenticateWithClientCredentials,
+  authenticateWithAppToken,
   validateContactsAppAccess,
   isRateLimited,
   setRateLimit,

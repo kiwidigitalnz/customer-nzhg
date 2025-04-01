@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   getPodioClientId,
@@ -289,8 +288,8 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
-// Password authentication flow for user access
-export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<boolean> => {
+// App authentication (NEW) - this uses the app_id and app_token approach
+export const authenticateWithAppToken = async (): Promise<boolean> => {
   try {
     // Check if we're rate limited
     if (checkRateLimit()) {
@@ -301,6 +300,8 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
     
     const clientId = getClientId();
     const clientSecret = getClientSecret();
+    const contactsAppId = PODIO_CONTACTS_APP_ID.toString();
+    const contactsAppToken = getContactsAppToken();
     
     if (!clientId || !clientSecret) {
       console.error('Missing Podio client credentials');
@@ -308,22 +309,28 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
       return false;
     }
     
-    console.log('Authenticating with Podio using password flow...');
-    emitDebugInfo('Authenticating with password flow', 'pending');
+    if (!contactsAppToken) {
+      console.error('Missing Contacts app token');
+      emitDebugInfo('Missing Contacts app token', 'error');
+      return false;
+    }
     
-    // Create form data for password authentication flow
+    console.log('Authenticating with Podio using app authentication...');
+    emitDebugInfo('Authenticating with app authentication', 'pending');
+    
+    // Create form data for app authentication
     const formData = new URLSearchParams();
-    formData.append('grant_type', 'password');
-    formData.append('username', username);
-    formData.append('password', password);
+    formData.append('grant_type', 'app');
+    formData.append('app_id', contactsAppId);
+    formData.append('app_token', contactsAppToken);
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
-    emitDebugInfo('Sending password auth request', 'pending', 
+    emitDebugInfo('Sending app auth request', 'pending', 
       `Endpoint: https://podio.com/oauth/token
        Method: POST
-       grant_type: password
-       username: ${username}
+       grant_type: app
+       app_id: ${contactsAppId}
        client_id: ${clientId.substring(0, 5)}...`
     );
     
@@ -338,16 +345,16 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
       body: formData
     });
     
-    console.log('Password auth response status:', response.status);
-    emitDebugInfo('Received password auth response', 'pending', `Status: ${response.status}`);
+    console.log('App auth response status:', response.status);
+    emitDebugInfo('Received app auth response', 'pending', `Status: ${response.status}`);
     
     // First get the response as text to inspect it
     const responseText = await response.text();
-    console.log('Password auth response first 100 chars:', responseText.substring(0, 100));
+    console.log('App auth response first 100 chars:', responseText.substring(0, 100));
     
     // Check if the response is HTML instead of JSON
     if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-      console.error('Received HTML instead of JSON. Check your credentials and request format.');
+      console.error('Received HTML instead of JSON during app auth');
       emitDebugInfo('Invalid response format', 'error', 'Received HTML instead of JSON');
       return false;
     }
@@ -356,8 +363,8 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
     let responseData: any;
     try {
       responseData = JSON.parse(responseText);
-      emitDebugInfo('Parsed password auth response', 'success', 
-        `Response data: ${JSON.stringify(responseData).substring(0, 200)}...`
+      emitDebugInfo('Parsed app auth response', 'success', 
+        `Response data: ${JSON.stringify(responseData).substring(0, 100)}...`
       );
     } catch (error) {
       console.error('Failed to parse JSON response:', error);
@@ -379,24 +386,14 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
       return false;
     }
     
-    // Check for specific error types
     if (!response.ok) {
-      console.error('Password authentication failed:', responseData);
-      
-      emitDebugInfo('Password authentication failed', 'error', 
+      console.error('App authentication failed:', responseData);
+      emitDebugInfo('App authentication failed', 'error', 
         `Status: ${response.status}
          Error: ${responseData.error || 'Unknown error'}
          Error detail: ${responseData.error_detail || 'No detail'}
          Description: ${responseData.error_description || 'No description'}`
       );
-      
-      // If the username is invalid, return false but don't throw
-      if (responseData.error_detail === 'user.invalid.username') {
-        console.log('Invalid username, will try client credentials instead');
-        return false;
-      }
-      
-      // For other errors, return false
       return false;
     }
     
@@ -412,23 +409,25 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
     // Store tokens
     storeTokens(tokenData);
     
-    // Store the contacts app token separately if in environment
-    const contactsAppToken = getContactsAppToken();
-    if (contactsAppToken) {
-      storeContactsAppToken(contactsAppToken);
-    }
-    
     clearApiRateLimit();
-    emitDebugInfo('Password authentication successful', 'success');
+    emitDebugInfo('App authentication successful', 'success');
     
     return true;
   } catch (error) {
-    console.error('Error during password authentication:', error);
-    emitDebugInfo('Password authentication error', 'error', 
+    console.error('Error during app authentication:', error);
+    emitDebugInfo('App authentication error', 'error', 
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     return false;
   }
+};
+
+// Password authentication flow for user access - keep for backward compatibility
+export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<boolean> => {
+  // We'll use app authentication instead of password flow
+  console.log('Password flow is deprecated. Using app authentication instead.');
+  emitDebugInfo('Using app authentication instead of password flow', 'pending');
+  return await authenticateWithAppToken();
 };
 
 // Function to check if we can access the Contacts app
@@ -439,7 +438,14 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
     // First ensure we have valid tokens
     if (!hasValidTokens()) {
       emitDebugInfo('No valid tokens, authenticating', 'pending');
-      const authenticated = await authenticateWithClientCredentials();
+      // Try app authentication first
+      let authenticated = await authenticateWithAppToken();
+      
+      // Fall back to client credentials if app authentication fails
+      if (!authenticated) {
+        authenticated = await authenticateWithClientCredentials();
+      }
+      
       if (!authenticated) {
         console.error('Failed to authenticate with Podio');
         emitDebugInfo('Failed to authenticate', 'error');
@@ -490,10 +496,18 @@ export const ensureAuthenticated = async (): Promise<boolean> => {
     return await refreshToken();
   }
   
-  return await authenticateWithClientCredentials();
+  // Try app authentication first
+  let authenticated = await authenticateWithAppToken();
+  
+  // Fall back to client credentials if needed
+  if (!authenticated) {
+    return await authenticateWithClientCredentials();
+  }
+  
+  return authenticated;
 };
 
-// Modified API call function to use access tokens
+// Modified API call function to use access tokens with the correct OAuth2 format
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   try {
     // Ensure we have valid tokens first
@@ -511,8 +525,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Create new headers object to avoid modifying the original
     const headers = new Headers(options.headers);
     
-    // Set Authorization header
-    headers.set('Authorization', `Bearer ${accessToken}`);
+    // Set Authorization header with OAuth2 format (this is important - it must be "OAuth2" not "Bearer")
+    headers.set('Authorization', `OAuth2 ${accessToken}`);
     headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
     headers.set('User-Agent', 'NZHG-Customer-Portal/1.0');
@@ -528,7 +542,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     emitDebugInfo('Making API call', 'pending', 
       `Endpoint: ${endpoint}
        Method: ${options.method || 'GET'}
-       Token (first 10 chars): ${accessToken.substring(0, 10)}...`
+       Token (first 10 chars): ${accessToken.substring(0, 10)}...
+       Authorization: OAuth2 (correct format for Podio API)`
     );
     
     const response = await fetch(`https://api.podio.com/${endpoint}`, newOptions);
@@ -603,14 +618,19 @@ export const authenticateUser = async (username: string, password: string): Prom
     console.log(`Authenticating user: ${username}`);
     emitDebugInfo(`Authenticating user: ${username}`, 'pending');
     
-    // We should already be authenticated either from the password flow or client credentials
+    // First ensure we have valid tokens by using app authentication
     if (!hasValidTokens()) {
-      emitDebugInfo('No valid tokens, authenticating with client credentials', 'pending');
-      // Try to authenticate with client credentials as fallback
-      const clientAuthSuccess = await authenticateWithClientCredentials();
-      if (!clientAuthSuccess) {
-        emitDebugInfo('Client credentials authentication failed', 'error');
-        throw new Error('Not authenticated with Podio');
+      emitDebugInfo('No valid tokens, authenticating with app token', 'pending');
+      const appAuthSuccess = await authenticateWithAppToken();
+      
+      // Fall back to client credentials if app auth fails
+      if (!appAuthSuccess) {
+        emitDebugInfo('App authentication failed, trying client credentials', 'pending');
+        const clientAuthSuccess = await authenticateWithClientCredentials();
+        if (!clientAuthSuccess) {
+          emitDebugInfo('Client credentials authentication failed', 'error');
+          throw new Error('Not authenticated with Podio');
+        }
       }
     }
     
@@ -695,9 +715,9 @@ export const authenticateUser = async (username: string, password: string): Prom
 
 // Backward compatibility for authenticateWithContactsAppToken
 export const authenticateWithContactsAppToken = async (): Promise<boolean> => {
-  console.log('Function authenticateWithContactsAppToken is deprecated, using client credentials instead');
-  emitDebugInfo('Using client credentials instead of contacts app token', 'pending');
-  return await authenticateWithClientCredentials();
+  console.log('Function authenticateWithContactsAppToken is now using app authentication');
+  emitDebugInfo('Using app authentication', 'pending');
+  return await authenticateWithAppToken();
 };
 
 // Podio Contact Field IDs

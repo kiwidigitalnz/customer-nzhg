@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, authenticateWithClientCredentials } from '../services/podioAuth';
+import { authenticateUser, authenticateWithAppToken } from '../services/podioAuth';
 import { useToast } from '@/components/ui/use-toast';
 
 // Session duration (4 hours)
@@ -124,10 +124,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       emitLoginDebugInfo('Login process started', 'pending');
       
-      // Try to authenticate with client credentials if we're not already authenticated
-      emitLoginDebugInfo('Authenticating with client credentials', 'pending');
-      await authenticateWithClientCredentials();
-      emitLoginDebugInfo('Client credentials authentication completed', 'success');
+      // Try to authenticate with app authentication instead of client credentials
+      emitLoginDebugInfo('Authenticating with app authentication', 'pending');
+      const appAuthSuccess = await authenticateWithAppToken();
+      
+      if (!appAuthSuccess) {
+        emitLoginDebugInfo('App authentication failed', 'error');
+        throw new Error('Failed to authenticate with Podio');
+      }
+      
+      emitLoginDebugInfo('App authentication completed', 'success');
       
       // Call the authenticateUser function to check if user exists in Contacts app
       emitLoginDebugInfo('Checking user in Contacts app', 'pending');

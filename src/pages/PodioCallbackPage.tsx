@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import MainLayout from '../components/MainLayout';
-import { exchangeCodeForToken, getPodioRedirectUri } from '../services/podio/podioOAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PodioCallbackPage = () => {
@@ -20,11 +19,12 @@ const PodioCallbackPage = () => {
       setDebugDetails(prev => [...prev, `${new Date().toISOString().split('T')[1].split('.')[0]} - ${detail}`]);
     };
 
-    // Show a message that we're no longer using this flow
+    // Show a message that we're using app authentication now
     setStatus('success');
-    setMessage('Authentication is now handled automatically. You will be redirected to the login page.');
+    setMessage('Authentication is now handled using app authentication flow. You will be redirected to the login page.');
     addDebugDetail('Callback page loaded');
-    addDebugDetail('OAuth flow is now deprecated in favor of direct client credentials auth');
+    addDebugDetail('OAuth flow is now replaced with direct app authentication');
+    addDebugDetail('This page is kept for backward compatibility');
     
     // Get URL params for debugging
     const urlParams = new URLSearchParams(location.search);
@@ -38,18 +38,7 @@ const PodioCallbackPage = () => {
     } else if (code) {
       addDebugDetail(`Authorization code received: ${code.substring(0, 10)}...`);
       addDebugDetail(`State parameter: ${incomingState || 'None'}`);
-      
-      const savedState = localStorage.getItem('podio_auth_state');
-      if (savedState) {
-        addDebugDetail(`Saved state: ${savedState}`);
-        if (incomingState === savedState) {
-          addDebugDetail('State validation: Success');
-        } else {
-          addDebugDetail('State validation: Failed - potential CSRF attack');
-        }
-      } else {
-        addDebugDetail('Saved state: None - cannot validate against incoming state');
-      }
+      addDebugDetail('Note: This code is not being used since we now use app authentication');
     } else {
       addDebugDetail('No authorization code or error in URL parameters');
     }
@@ -59,43 +48,6 @@ const PodioCallbackPage = () => {
     setTimeout(() => {
       navigate('/', { replace: true });
     }, 3000);
-    
-    // The code below is kept for backward compatibility but won't be executed
-    if (!code) {
-      return;
-    }
-
-    // In a popup scenario, send the code back to the parent window
-    if (window.opener && !window.opener.closed) {
-      addDebugDetail('Window opener detected - sending message back to parent window');
-      window.opener.postMessage({
-        type: 'PODIO_AUTH_CODE',
-        code,
-        state: incomingState
-      }, window.location.origin);
-      
-      // Close this window after a brief delay
-      setTimeout(() => {
-        window.close();
-      }, 2000);
-      
-      return;
-    }
-
-    // Direct navigation flow - process the code here (fallback for manual process)
-    const savedState = localStorage.getItem('podio_auth_state');
-    
-    // Verify state parameter to prevent CSRF attacks
-    if (!incomingState || !savedState || incomingState !== savedState) {
-      return;
-    }
-
-    // Clear the stored state after validation
-    localStorage.removeItem('podio_auth_state');
-    
-    // Exchange the code for tokens
-    const redirectUri = getPodioRedirectUri();
-    exchangeCodeForToken(code, redirectUri);
   }, [location.search, navigate]);
 
   return (
