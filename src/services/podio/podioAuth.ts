@@ -10,9 +10,6 @@ import {
   getPodioClientId,
   getPodioClientSecret,
   startPodioOAuthFlow,
-  isRateLimited,
-  setRateLimit,
-  clearRateLimit,
   getPodioApiDomain,
   refreshPodioToken as refreshToken
 } from './podioOAuth';

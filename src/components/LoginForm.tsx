@@ -9,7 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { validateContactsAppAccess, isPodioConfigured, isRateLimited, authenticateWithClientCredentials, getContactsAppToken } from '../services/podioAuth';
+import { 
+  isPodioConfigured, 
+  isRateLimited, 
+  authenticateWithClientCredentials, 
+  getContactsAppToken,
+  authenticateWithContactsAppToken,
+  validateContactsAppAccess 
+} from '../services/podioApi';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');

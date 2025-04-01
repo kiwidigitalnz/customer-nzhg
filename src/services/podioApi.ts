@@ -5,15 +5,18 @@
 export {
   authenticateUser,
   isPodioConfigured,
-  hasValidPodioTokens,
+  hasValidTokens as hasValidPodioTokens,
   refreshPodioToken,
   callPodioApi,
-  ensureInitialPodioAuth,
-  validatePodioToken,
-  clearPodioTokens,
+  authenticateWithClientCredentials as ensureInitialPodioAuth,
+  validateContactsAppAccess as validatePodioToken,
+  clearTokens as clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
-  CONTACT_FIELD_IDS
+  CONTACT_FIELD_IDS,
+  validateContactsAppAccess,
+  authenticateWithContactsAppToken,
+  getContactsAppToken
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
