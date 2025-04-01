@@ -129,7 +129,7 @@ export const storeContactsAppToken = (token: string): void => {
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
     // Check if we're rate limited
-    if (isRateLimited()) {
+    if (checkRateLimit()) {
       console.log('Rate limited. Try again later.');
       return false;
     }
@@ -186,7 +186,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     // Handle rate limiting specifically
     if (response.status === 429 || response.status === 420) {
       const retryAfter = response.headers.get('Retry-After');
-      setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
       return false;
     }
     
@@ -212,7 +212,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       storeContactsAppToken(contactsAppToken);
     }
     
-    clearRateLimit();
+    clearApiRateLimit();
     
     return true;
   } catch (error) {
@@ -225,7 +225,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<boolean> => {
   try {
     // Check if we're rate limited
-    if (isRateLimited()) {
+    if (checkRateLimit()) {
       console.log('Rate limited. Try again later.');
       return false;
     }
@@ -284,7 +284,7 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
     // Handle rate limiting
     if (response.status === 429 || response.status === 420) {
       const retryAfter = response.headers.get('Retry-After');
-      setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
       return false;
     }
     
@@ -310,7 +310,7 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
       storeContactsAppToken(contactsAppToken);
     }
     
-    clearRateLimit();
+    clearApiRateLimit();
     
     return true;
   } catch (error) {
@@ -391,7 +391,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Handle rate limiting
     if (response.status === 429 || response.status === 420) {
       const retryAfter = response.headers.get('Retry-After');
-      setRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
       throw new Error('Rate limit reached');
     }
     
