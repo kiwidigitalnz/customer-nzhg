@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 
 // Types for Podio responses
@@ -299,6 +298,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     'Authorization': `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'User-Agent': 'NZHG-Customer-Portal/1.0',
     ...options.headers,
   };
   
@@ -346,6 +346,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     }
     
     if (!response.ok) {
+      console.error('API error:', responseData);
       throw new Error(responseData.error_description || `API error: ${response.status}`);
     }
     
@@ -356,66 +357,87 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
 };
 
-// User authentication
+// User authentication - modified to work with different authentication method
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
-    // Ensure we have authenticated with Podio first
-    const isAuthenticated = await ensureAuthenticated();
+    // First, try to authenticate with username and password directly
+    console.log(`Authenticating user: ${username}`);
+    
+    const clientId = getClientId();
+    const clientSecret = getClientSecret();
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Missing Podio client credentials');
+    }
+    
+    // Attempt to authenticate with app credentials
+    const isAuthenticated = await authenticateWithClientCredentials();
     if (!isAuthenticated) {
-      throw new Error('Could not connect to Podio');
+      throw new Error('Could not authenticate with Podio');
     }
     
     // Search for user by username in the Contacts app
-    const filters = {
-      filters: {
-        "customer-portal-username": username
-      }
-    };
-    
+    // We will attempt first to validate credentials, then search for the user
     console.log(`Searching for user: ${username}`);
     
-    const searchResponse = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/filter/`, {
-      method: 'POST',
-      body: JSON.stringify(filters),
-    });
-    
-    if (!searchResponse.items || searchResponse.items.length === 0) {
-      throw new Error('User not found');
-    }
-    
-    // Get the first matching contact
-    const contact = searchResponse.items[0];
-    
-    // Helper function to get field value
-    const getFieldValue = (fields: any[], externalId: string): string => {
-      const field = fields.find(f => f.external_id === externalId);
-      if (!field || !field.values) return '';
+    try {
+      // Get the contacts app directly
+      const appResponse = await callPodioApi(`app/${PODIO_CONTACTS_APP_ID}`);
+      console.log('App access successful:', appResponse?.app_id === PODIO_CONTACTS_APP_ID);
       
-      if (field.type === 'text') {
-        return field.values[0].value || '';
+      // Search for the user using the filter endpoint
+      const filters = {
+        filters: {
+          "customer-portal-username": username
+        }
+      };
+      
+      const searchResponse = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/filter/`, {
+        method: 'POST',
+        body: JSON.stringify(filters),
+      });
+      
+      if (!searchResponse.items || searchResponse.items.length === 0) {
+        throw new Error('User not found');
       }
       
-      return '';
-    };
-    
-    // Get user details
-    const contactData = {
-      id: contact.item_id,
-      name: getFieldValue(contact.fields, 'title') || 'Unknown',
-      email: getFieldValue(contact.fields, 'email') || '',
-      username: getFieldValue(contact.fields, 'customer-portal-username') || '',
-      logoUrl: getFieldValue(contact.fields, 'logo-url') || ''
-    };
-    
-    // Get the stored password
-    const storedPassword = getFieldValue(contact.fields, 'customer-portal-password');
-    
-    // Simple password check (in a real app, use proper hashing)
-    if (password !== storedPassword) {
-      throw new Error('Invalid password');
+      // Get the first matching contact
+      const contact = searchResponse.items[0];
+      
+      // Helper function to get field value
+      const getFieldValue = (fields: any[], externalId: string): string => {
+        const field = fields.find(f => f.external_id === externalId);
+        if (!field || !field.values) return '';
+        
+        if (field.type === 'text') {
+          return field.values[0].value || '';
+        }
+        
+        return '';
+      };
+      
+      // Get user details
+      const contactData = {
+        id: contact.item_id,
+        name: getFieldValue(contact.fields, 'title') || 'Unknown',
+        email: getFieldValue(contact.fields, 'email') || '',
+        username: getFieldValue(contact.fields, 'customer-portal-username') || '',
+        logoUrl: getFieldValue(contact.fields, 'logo-url') || ''
+      };
+      
+      // Get the stored password
+      const storedPassword = getFieldValue(contact.fields, 'customer-portal-password');
+      
+      // Simple password check (in a real app, use proper hashing)
+      if (password !== storedPassword) {
+        throw new Error('Invalid password');
+      }
+      
+      return contactData;
+    } catch (error) {
+      console.error('Failed to search for user:', error);
+      throw new Error('Cannot access user data. Check permissions or configuration.');
     }
-    
-    return contactData;
   } catch (error) {
     console.error('User authentication error:', error);
     throw error;

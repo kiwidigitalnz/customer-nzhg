@@ -15,12 +15,16 @@ const LoginForm = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [connectingToPodio, setConnectingToPodio] = useState(false);
+  const [podioAPIError, setPodioAPIError] = useState<string | null>(null);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Reset error state
+    setPodioAPIError(null);
     
     if (!username || !password) {
       toast({
@@ -70,11 +74,18 @@ const LoginForm = () => {
     } catch (err) {
       console.error('Login error:', err);
       
-      toast({
-        title: 'Login Failed',
-        description: err instanceof Error ? err.message : 'An error occurred during login',
-        variant: 'destructive',
-      });
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
+      
+      // Check for specific permission issues related to Podio API
+      if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
+        setPodioAPIError('The application does not have permission to access contact data. Please check your Podio API credentials and permissions.');
+      } else {
+        toast({
+          title: 'Login Failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -89,6 +100,7 @@ const LoginForm = () => {
   };
 
   const rateLimitMessage = getRateLimitMessage();
+  const displayError = podioAPIError || error || rateLimitMessage;
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">
@@ -127,11 +139,15 @@ const LoginForm = () => {
             />
           </div>
           
-          {(error || rateLimitMessage) && (
+          {displayError && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{rateLimitMessage ? "Rate Limit Reached" : "Login Error"}</AlertTitle>
-              <AlertDescription>{rateLimitMessage || error}</AlertDescription>
+              <AlertTitle>
+                {podioAPIError ? "Permission Error" : 
+                 rateLimitMessage ? "Rate Limit Reached" : 
+                 "Login Error"}
+              </AlertTitle>
+              <AlertDescription>{displayError}</AlertDescription>
             </Alert>
           )}
           

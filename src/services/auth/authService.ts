@@ -1,4 +1,3 @@
-
 import { refreshPodioToken, isPodioConfigured } from '../podioApi';
 import { toast } from '@/hooks/use-toast';
 
@@ -151,11 +150,20 @@ export const handleAuthError = (error: AuthError): void => {
       break;
       
     case AuthErrorType.AUTHENTICATION:
-      toast({
-        title: 'Authentication Failed',
-        description: 'Invalid credentials. Please try again.',
-        variant: 'destructive',
-      });
+      // Check for API permission errors
+      if (error.message.includes('Authentication') && error.message.includes('not allowed')) {
+        toast({
+          title: 'API Permission Error',
+          description: 'The application does not have permission to access required data. Please contact your administrator.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Authentication Failed',
+          description: 'Invalid credentials. Please try again.',
+          variant: 'destructive',
+        });
+      }
       break;
       
     case AuthErrorType.TOKEN:
