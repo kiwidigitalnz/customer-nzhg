@@ -1,4 +1,3 @@
-
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
@@ -8,23 +7,13 @@ import { handlePodioTokenRequest } from './api/podioTokenProxy';
 // Handle API routes if the URL matches our pattern
 const url = new URL(window.location.href);
 
-// Handle CORS preflight OPTIONS requests
-if (url.pathname === '/api/podio-token' && window.location.method === 'OPTIONS') {
-  new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
-}
-// Handle Podio token proxy requests
-else if (url.pathname === '/api/podio-token') {
+// Handle CORS preflight OPTIONS requests - we use a different approach now
+// since we can't determine the actual method from window.location
+if (url.pathname === '/api/podio-token') {
+  // We'll let the handler deal with CORS and method checking
   console.log('Handling Podio token request');
   handlePodioTokenRequest(new Request(url.href, {
-    method: 'POST',
+    method: 'POST', // Always use POST for token endpoint
     body: window.location.search.substring(1),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -36,6 +25,12 @@ else if (url.pathname === '/api/podio-token') {
         console.log('Proxy response data:', data);
         document.body.innerHTML = JSON.stringify(data);
         document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
+      }).catch(error => {
+        console.error('Error parsing response JSON:', error);
+        document.body.innerHTML = JSON.stringify({
+          error: 'parse_error',
+          error_description: 'Failed to parse response JSON: ' + error.message
+        });
       });
     })
     .catch(error => {

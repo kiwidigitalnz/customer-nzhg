@@ -148,6 +148,9 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
     
+    // Log the full URL and request body for debugging
+    console.log('Sending request to /api/podio-token with body:', formData.toString());
+    
     // Use the /api/podio-token proxy endpoint with more error handling
     const response = await fetch('/api/podio-token', {
       method: 'POST',
@@ -158,26 +161,30 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
       credentials: 'same-origin', // Include cookies for same-origin requests
     });
     
-    if (import.meta.env.DEV) {
-      console.log('Token response status:', response.status);
+    console.log('Token response status:', response.status);
+    
+    // For debugging, log the entire response
+    const responseText = await response.text();
+    console.log('Raw response text:', responseText);
+    
+    // Parse the response text as JSON
+    let responseData;
+    try {
+      responseData = responseText ? JSON.parse(responseText) : {};
+    } catch (error) {
+      console.error('Failed to parse response JSON:', error);
+      return false;
     }
     
     // Handle rate limiting specifically
     if (response.status === 420 || response.status === 429) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        // Failed to parse JSON, continue with empty object
-      }
-      
       if (import.meta.env.DEV) {
-        console.error('Rate limit reached:', errorData);
+        console.error('Rate limit reached:', responseData);
       }
       
       // Extract retry-after information if available
       const retryAfter = response.headers.get('Retry-After') || 
-                         (errorData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1]);
+                         (responseData.error_description?.match(/wait\s+(\d+)\s+seconds/)?.[1]);
       
       if (retryAfter) {
         setRateLimit(parseInt(retryAfter, 10));
@@ -190,18 +197,8 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     }
     
     if (!response.ok) {
-      let errorData: PodioErrorResponse = {};
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        if (import.meta.env.DEV) {
-          console.error('Failed to parse error response:', e);
-        }
-        // Failed to parse JSON, continue with empty object
-      }
-      
       if (import.meta.env.DEV) {
-        console.error('Password flow authentication failed:', errorData);
+        console.error('Password flow authentication failed:', responseData);
       }
       return false;
     }
@@ -209,42 +206,32 @@ export const authenticateWithPasswordFlow = async (): Promise<boolean> => {
     // Reset rate limit on success
     clearRateLimit();
     
-    let tokenData: PodioTokenResponse;
-    try {
-      tokenData = await response.json();
-    } catch (e) {
+    if (!responseData.access_token) {
       if (import.meta.env.DEV) {
-        console.error('Failed to parse token response:', e);
-      }
-      return false;
-    }
-    
-    if (!tokenData.access_token) {
-      if (import.meta.env.DEV) {
-        console.error('Invalid token data received:', tokenData);
+        console.error('Invalid token data received:', responseData);
       }
       return false;
     }
     
     // Store tokens in localStorage
-    localStorage.setItem('podio_access_token', tokenData.access_token);
-    localStorage.setItem('podio_token_type', tokenData.token_type || 'bearer');
+    localStorage.setItem('podio_access_token', responseData.access_token);
+    localStorage.setItem('podio_token_type', responseData.token_type || 'bearer');
     
     // Store refresh token if provided (client_credentials flow might not provide one)
-    if (tokenData.refresh_token) {
-      localStorage.setItem('podio_refresh_token', tokenData.refresh_token);
+    if (responseData.refresh_token) {
+      localStorage.setItem('podio_refresh_token', responseData.refresh_token);
     } else {
       localStorage.removeItem('podio_refresh_token');
     }
     
     // Set expiry to 30 minutes less than actual to ensure we refresh in time
     // Podio's tokens are valid for 8 hours (28800 seconds)
-    const safeExpiryTime = Date.now() + ((tokenData.expires_in - 1800) * 1000);
+    const safeExpiryTime = Date.now() + ((responseData.expires_in - 1800) * 1000);
     localStorage.setItem('podio_token_expiry', safeExpiryTime.toString());
     
     if (import.meta.env.DEV) {
       console.log('Successfully obtained tokens via Password Flow');
-      console.log(`Token will expire in ${Math.round(tokenData.expires_in / 3600)} hours`);
+      console.log(`Token will expire in ${Math.round(responseData.expires_in / 3600)} hours`);
     }
     return true;
   } catch (error) {
