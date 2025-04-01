@@ -1,28 +1,31 @@
+
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { handlePodioImageRequest } from './api/podioImageProxy';
 import { handlePodioTokenRequest } from './api/podioTokenProxy';
 
-// Handle API routes if the URL matches our pattern
+// Get current URL
 const url = new URL(window.location.href);
 
-// Handle CORS preflight OPTIONS requests - we use a different approach now
-// since we can't determine the actual method from window.location
+// Handle API routes
 if (url.pathname === '/api/podio-token') {
-  // We'll let the handler deal with CORS and method checking
   console.log('Handling Podio token request');
-  handlePodioTokenRequest(new Request(url.href, {
-    method: 'POST', // Always use POST for token endpoint
-    body: window.location.search.substring(1),
+  
+  // Create a new request with the current URL and method
+  const tokenRequest = new Request(url.href, {
+    method: 'POST',
+    body: url.searchParams.toString(),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     }
-  }))
+  });
+  
+  handlePodioTokenRequest(tokenRequest)
     .then(response => {
-      console.log('Proxy response status:', response.status);
+      console.log('Token proxy response status:', response.status);
       response.json().then(data => {
-        console.log('Proxy response data:', data);
+        console.log('Token proxy response data:', data);
         document.body.innerHTML = JSON.stringify(data);
         document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
       }).catch(error => {
@@ -37,7 +40,7 @@ if (url.pathname === '/api/podio-token') {
       console.error('Podio token proxy error:', error);
       document.body.innerHTML = JSON.stringify({
         error: 'proxy_error',
-        error_description: error.message
+        error_description: error instanceof Error ? error.message : 'Unknown error'
       });
     });
 }
@@ -73,7 +76,7 @@ else if (url.pathname.startsWith('/api/podio-image/')) {
       console.error('Podio image proxy error:', error);
       document.body.innerHTML = `<div style="color: red; padding: 20px;">
         <h1>Error Loading Image</h1>
-        <p>${error.message}</p>
+        <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
       </div>`;
     });
 } else {

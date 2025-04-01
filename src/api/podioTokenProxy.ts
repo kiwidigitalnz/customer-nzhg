@@ -1,77 +1,74 @@
 
-// Proxy handler for Podio OAuth token requests to avoid CORS issues
+// Simple proxy handler for Podio OAuth token requests to avoid CORS issues
 
-// Function to handle Podio token requests
 export const handlePodioTokenRequest = async (request: Request): Promise<Response> => {
   try {
-    // Only handle POST requests to our proxy endpoint
+    // Handle OPTIONS requests for CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
+    // Only handle POST requests
     if (request.method !== 'POST') {
-      console.log(`Received ${request.method} request, only POST is supported`);
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
     }
     
     // Get the request body
-    let formData: FormData;
-    let urlEncodedData: URLSearchParams;
+    const text = await request.text();
+    console.log('Token request body:', text);
     
-    try {
-      // First try to parse as form data
-      const text = await request.text();
-      console.log('Request body text:', text);
-      
-      // Create URLSearchParams directly from the text
-      urlEncodedData = new URLSearchParams(text);
-      console.log('Parsed URL encoded data:', Object.fromEntries(urlEncodedData.entries()));
-    } catch (error) {
-      console.error('Error parsing request body:', error);
-      return new Response(JSON.stringify({ 
-        error: 'invalid_request',
-        error_description: 'Could not parse request body'
-      }), {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      });
-    }
+    // Create URLSearchParams from the text
+    const formData = new URLSearchParams(text);
     
-    console.log('Sending token request to Podio');
-    console.log('Request body:', urlEncodedData.toString());
+    // Log complete request details
+    console.log('Sending token request to Podio with:', {
+      url: 'https://podio.com/oauth/token',
+      method: 'POST',
+      body: Object.fromEntries(formData.entries())
+    });
     
-    // Forward the request directly to Podio
+    // Forward the request to Podio
     const podioResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: urlEncodedData.toString(),
+      body: formData,
     });
     
     console.log('Podio response status:', podioResponse.status);
-    console.log('Podio response headers:', [...podioResponse.headers.entries()]);
     
-    // Get the response data
+    // For better debugging, log headers
+    const responseHeaders = {};
+    podioResponse.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    console.log('Podio response headers:', responseHeaders);
+    
+    // Get the response text
+    const responseText = await podioResponse.text();
+    console.log('Podio response body:', responseText);
+    
+    // Try to parse as JSON
     let responseData;
     try {
-      const responseText = await podioResponse.text();
-      console.log('Raw response text:', responseText);
-      
-      // Try to parse as JSON
       responseData = responseText ? JSON.parse(responseText) : {};
     } catch (error) {
       console.error('Error parsing Podio response:', error);
-      
       return new Response(JSON.stringify({
         error: 'invalid_response',
         error_description: 'Could not parse Podio response'
@@ -80,22 +77,16 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
     }
     
-    console.log('Token response received successfully');
-    
-    // Forward Podio's response back to the client
+    // Return the Podio response
     return new Response(JSON.stringify(responseData), {
       status: podioResponse.status,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
   } catch (error) {
@@ -111,8 +102,6 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
         },
       }
     );

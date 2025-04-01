@@ -1,16 +1,10 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authenticateUser, isPodioConfigured, ensureInitialPodioAuth } from '../services/podioApi';
+import { authenticateUser } from '../services/podioAuth';
 import { useToast } from '@/components/ui/use-toast';
-import { 
-  AuthErrorType, 
-  createAuthError, 
-  handleAuthError, 
-  isSessionValid, 
-  extendSession,
-  initAuthMonitoring,
-  AuthError
-} from '../services/auth/authService';
+
+// Session duration (4 hours)
+const SESSION_DURATION = 4 * 60 * 60 * 1000;
 
 interface ContactData {
   id: number;
@@ -37,35 +31,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Initialize auth monitoring
-    initAuthMonitoring();
+  // Check session validity
+  const isSessionValid = (): boolean => {
+    const sessionExpiry = localStorage.getItem('nzhg_session_expiry');
+    if (!sessionExpiry) return false;
     
+    return parseInt(sessionExpiry, 10) > Date.now();
+  };
+
+  // Extend session
+  const extendSession = (): void => {
+    const expiry = Date.now() + SESSION_DURATION;
+    localStorage.setItem('nzhg_session_expiry', expiry.toString());
+  };
+
+  useEffect(() => {
     // Check for saved user session
     const savedUser = localStorage.getItem('nzhg_user');
     if (savedUser && isSessionValid()) {
       try {
         const userData = JSON.parse(savedUser);
         setUser(userData);
-        
-        // Also store user info in a consistent location for components to access
         localStorage.setItem('user_info', JSON.stringify(userData));
-        
-        // Extend the session on successful restoration
         extendSession();
       } catch (e) {
-        // Invalid stored data, clean it up
+        // Invalid stored data
         localStorage.removeItem('nzhg_user');
         localStorage.removeItem('user_info');
         localStorage.removeItem('nzhg_session_expiry');
       }
     } else if (savedUser && !isSessionValid()) {
-      // Session expired, clean up
+      // Session expired
       localStorage.removeItem('nzhg_user');
       localStorage.removeItem('user_info');
       localStorage.removeItem('nzhg_session_expiry');
       
-      // Show a friendly message that session expired
       toast({
         title: 'Session Expired',
         description: 'Your session has expired. Please log in again.',
@@ -73,7 +73,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     setLoading(false);
-  }, [toast]);
+    
+    // Set up periodic session checks
+    const interval = setInterval(() => {
+      if (user && !isSessionValid()) {
+        logout();
+        toast({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please log in again.',
+        });
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [toast, user]);
 
   const checkSession = (): boolean => {
     return isSessionValid() && !!user;
@@ -83,79 +96,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     
-    // We don't need to check Podio configuration here since that's now done in LoginForm
-    // The Password Flow authentication is handled before the login attempt
-    
     try {
-      console.log('Login attempt for:', username);
+      const userData = await authenticateUser(username, password);
       
-      // Enhanced error handling for network issues
-      try {
-        const userData = await authenticateUser({ username, password });
-        
-        if (userData) {
-          console.log('Authentication successful, user data:', userData);
-          setUser(userData);
-          
-          // Store in both locations for consistency
-          localStorage.setItem('nzhg_user', JSON.stringify(userData));
-          localStorage.setItem('user_info', JSON.stringify(userData));
-          
-          // Set session expiry
-          extendSession();
-          
-          setLoading(false);
-          return true;
-        } else {
-          const authError = createAuthError(
-            AuthErrorType.AUTHENTICATION,
-            'No matching contact found with these credentials'
-          );
-          
-          handleAuthError(authError);
-          setError(authError.message);
-          setLoading(false);
-          return false;
-        }
-      } catch (networkErr) {
-        // Check if it's a network error
-        if (networkErr instanceof Error && 
-            (networkErr.message.includes('network') || 
-             networkErr.message.includes('connection'))) {
-          const authError = createAuthError(
-            AuthErrorType.NETWORK,
-            'Network error. Please check your connection.'
-          );
-          
-          handleAuthError(authError);
-          setError(authError.message);
-          setLoading(false);
-          return false;
-        }
-        
-        // Re-throw for other error handling
-        throw networkErr;
-      }
+      setUser(userData);
+      localStorage.setItem('nzhg_user', JSON.stringify(userData));
+      localStorage.setItem('user_info', JSON.stringify(userData));
+      extendSession();
+      
+      setLoading(false);
+      return true;
     } catch (err) {
-      // Handle authentication errors
-      if (err && typeof err === 'object' && 'type' in err && 'message' in err) {
-        // It's already an AuthError
-        handleAuthError(err as AuthError);
-        setError((err as AuthError).message);
-      } else {
-        const errorMsg = err instanceof Error 
-          ? `Login error: ${err.message}` 
-          : 'An unknown error occurred during login';
-        
-        const authError = createAuthError(
-          AuthErrorType.UNKNOWN,
-          errorMsg
-        );
-        
-        handleAuthError(authError);
-        setError(errorMsg);
-      }
-      
+      const errorMsg = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMsg);
       setLoading(false);
       return false;
     }

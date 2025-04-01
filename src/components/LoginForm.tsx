@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ensureInitialPodioAuth, isRateLimited } from '../services/podioApi';
+import { isPodioConfigured, isRateLimited, authenticateWithClientCredentials } from '../services/podioAuth';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -30,14 +30,11 @@ const LoginForm = () => {
       return;
     }
 
-    // Check if we're rate limited first
+    // Check if we're rate limited
     if (isRateLimited()) {
-      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
-      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-      
       toast({
         title: 'Rate Limit Reached',
-        description: `Please wait ${waitSecs} seconds before trying again.`,
+        description: 'Please wait before trying again.',
         variant: 'destructive',
       });
       return;
@@ -46,29 +43,17 @@ const LoginForm = () => {
     console.log(`Attempting login with username: ${username}`);
     
     try {
-      // First ensure we're connected to Podio using Password Flow
+      // First ensure we're connected to Podio
       setConnectingToPodio(true);
-      const podioConnected = await ensureInitialPodioAuth();
+      const podioConnected = await authenticateWithClientCredentials();
       setConnectingToPodio(false);
       
       if (!podioConnected) {
-        // Check if failure was due to rate limiting
-        if (isRateLimited()) {
-          const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
-          const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-          
-          toast({
-            title: 'Rate Limit Reached',
-            description: `Please wait ${waitSecs} seconds before trying again.`,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Connection Error',
-            description: 'Could not connect to the service. Please try again later.',
-            variant: 'destructive',
-          });
-        }
+        toast({
+          title: 'Connection Error',
+          description: 'Could not connect to Podio. Please try again later.',
+          variant: 'destructive',
+        });
         return;
       }
       
@@ -83,24 +68,17 @@ const LoginForm = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      console.error('Unhandled login error:', err);
+      console.error('Login error:', err);
       
-      // Check if error is due to rate limiting
-      if (err && typeof err === 'object' && 'message' in err && 
-          typeof err.message === 'string' && err.message.includes('rate limit')) {
-        const waitMatch = err.message.match(/wait\s+(\d+)\s+seconds/i);
-        const waitSecs = waitMatch ? waitMatch[1] : '60';
-        
-        toast({
-          title: 'Rate Limit Reached',
-          description: `Please wait ${waitSecs} seconds before trying again.`,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Login Failed',
+        description: err instanceof Error ? err.message : 'An error occurred during login',
+        variant: 'destructive',
+      });
     }
   };
 
-  // Generate a message for rate limiting if needed
+  // Generate a message if rate limited
   const getRateLimitMessage = () => {
     if (isRateLimited()) {
       const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
@@ -163,7 +141,7 @@ const LoginForm = () => {
             disabled={loading || connectingToPodio || isRateLimited()}
           >
             {connectingToPodio 
-              ? 'Connecting to service...' 
+              ? 'Connecting to Podio...' 
               : loading 
                 ? 'Logging in...' 
                 : isRateLimited() 
