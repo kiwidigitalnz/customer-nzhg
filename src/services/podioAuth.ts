@@ -31,11 +31,10 @@ export {
   getCachedUserData
 } from './podio/podioAuth';
 
-// For backward compatibility - maintain old function names
-export {
-  authenticateWithClientCredentials as authenticateWithContactsAppToken,
-  authenticateWithClientCredentials as authenticateWithPackingSpecAppToken
-};
+// For backward compatibility - import and re-export
+import { authenticateWithClientCredentials as authClientCred } from './podio/podioAuth';
+export const authenticateWithContactsAppToken = authClientCred;
+export const authenticateWithPackingSpecAppToken = authClientCred;
 
 // For backward compatibility - Re-export types
 export type { 
