@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPackingSpecsForContact, isPodioConfigured, isRateLimitedWithInfo } from '../services/podioApi';
@@ -35,7 +34,6 @@ interface PackingSpec {
   }>;
 }
 
-// Function to get initials from company name for avatar fallback
 const getCompanyInitials = (name: string) => {
   return name
     .split(' ')
@@ -57,7 +55,6 @@ const Dashboard = () => {
   const location = useLocation();
   const podioConfigured = isPodioConfigured();
 
-  // Function to fetch specs data
   const fetchSpecs = async () => {
     if (user) {
       setLoading(true);
@@ -65,7 +62,6 @@ const Dashboard = () => {
       setRateLimited(false);
 
       try {
-        // Check for rate limiting before making API call
         const rateLimitInfo = isRateLimitedWithInfo();
         if (rateLimitInfo.isLimited) {
           setRateLimited(true);
@@ -80,12 +76,10 @@ const Dashboard = () => {
       } catch (error: any) {
         console.error('Error fetching specs:', error);
         
-        // Check if error is due to rate limiting
         if (error.message && error.message.toLowerCase().includes('rate limit')) {
           setRateLimited(true);
-          setRateLimitResetTime(3600); // Default to 1 hour if not specified
+          setRateLimitResetTime(3600);
           
-          // Try to extract the wait time from error message
           const waitTimeMatch = error.message.match(/wait (\d+) seconds/);
           if (waitTimeMatch && waitTimeMatch[1]) {
             setRateLimitResetTime(parseInt(waitTimeMatch[1], 10));
@@ -104,9 +98,7 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch specs when the component mounts or when user changes
   useEffect(() => {
-    // Redirect to Podio setup if not configured
     if (!podioConfigured) {
       toast({
         title: 'Podio Not Configured',
@@ -117,7 +109,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Redirect to login if no user
     if (!user) {
       navigate('/login');
       return;
@@ -126,16 +117,13 @@ const Dashboard = () => {
     fetchSpecs();
   }, [user, toast, navigate, podioConfigured]);
 
-  // Re-fetch specs whenever the user navigates back to the dashboard
   useEffect(() => {
-    // Only fetch if we already have a user (prevents double fetching on initial load)
     if (user && location.pathname === '/') {
       console.log('User navigated back to dashboard, refreshing specs data');
       fetchSpecs();
     }
   }, [location.pathname, user]);
 
-  // If there's no user or Podio is not configured, show a loading state
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -147,7 +135,6 @@ const Dashboard = () => {
     );
   }
 
-  // If rate limited, show rate limit error
   if (rateLimited) {
     return (
       <div className="container mx-auto px-4 py-8 animate-fade-in">
