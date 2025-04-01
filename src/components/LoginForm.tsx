@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,9 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   isPodioConfigured, 
   isRateLimitedWithInfo, 
-  authenticateWithContactsAppToken,
-  authenticateWithPackingSpecAppToken,
-  authenticateWithClientCredentials,
+  authenticateWithClientCredentials
 } from '../services/podioAuth';
 
 const LoginForm = () => {
@@ -69,25 +66,15 @@ const LoginForm = () => {
       loginAttemptInProgress.current = true;
       setAuthenticating(true);
       
-      // Try to authenticate with Contacts app token
-      let contactsAuthSuccess = await authenticateWithContactsAppToken();
+      // Authenticate with client credentials (simplified approach)
+      const authSuccess = await authenticateWithClientCredentials();
       
-      if (!contactsAuthSuccess) {
-        // Fall back to client credentials if app auth fails
-        contactsAuthSuccess = await authenticateWithClientCredentials();
-      }
-      
-      if (!contactsAuthSuccess) {
+      if (!authSuccess) {
         setPodioAPIError('Authentication failed. Please check your Podio API credentials.');
         setAuthenticating(false);
         loginAttemptInProgress.current = false;
         return;
       }
-      
-      // Pre-authenticate with Packing Spec app in parallel (don't wait for it)
-      authenticateWithPackingSpecAppToken().catch(() => {
-        // Silently fail, we'll try again later when needed
-      });
       
       // If authentication was successful, try to login the user
       try {
@@ -107,9 +94,7 @@ const LoginForm = () => {
         // Handle specific unauthorized errors differently
         const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
         
-        if (errorMessage.includes('Invalid contacts app token') || errorMessage.includes('Invalid app token')) {
-          setPodioAPIError('Authentication error. Please check your Podio configuration.');
-        } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication') || errorMessage.includes('access user data')) {
+        if (errorMessage.includes('access user data')) {
           setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
         } else if (errorMessage.includes('Rate limit')) {
           setPodioAPIError('Rate limit reached. Please try again later.');
@@ -125,9 +110,7 @@ const LoginForm = () => {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
       
       // Check for specific permission issues related to Podio API
-      if (errorMessage.includes('Invalid contacts app token')) {
-        setPodioAPIError('Authentication error. Please check your Podio configuration.');
-      } else if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
+      if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
         setPodioAPIError('The application does not have permission to access contact data. Please check your Podio API credentials and permissions.');
       } else if (errorMessage.includes('Rate limit')) {
         setPodioAPIError('Rate limit reached. Please try again later.');

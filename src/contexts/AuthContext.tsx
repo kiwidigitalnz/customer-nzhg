@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { authenticateUser, authenticateWithContactsAppToken, authenticateWithPackingSpecAppToken, isRateLimited } from '../services/podioAuth';
+import { authenticateUser, authenticateWithClientCredentials, isRateLimited } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
 
 // Session duration (4 hours)
@@ -47,8 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('nzhg_session_expiry', expiry.toString());
   };
 
-  // Pre-authenticate with apps - with rate limit and dedupe protection
-  const preAuthenticateApps = useCallback(async () => {
+  // Pre-authenticate with client credentials - with rate limit and dedupe protection
+  const preAuthenticate = useCallback(async () => {
     // Skip if rate limited, authenticated recently, or auth in progress
     if (isRateLimited() || Date.now() - lastAuthAttempt < 60000 || authInProgress.current) {
       console.log('Skipping pre-authentication due to rate limit, recent attempt, or auth in progress');
@@ -59,14 +59,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLastAuthAttempt(Date.now());
     
     try {
-      // Try authenticating with both apps, but don't block on failures
-      const results = await Promise.allSettled([
-        authenticateWithContactsAppToken(),
-        authenticateWithPackingSpecAppToken()
-      ]);
+      // Try to authenticate with client credentials
+      const success = await authenticateWithClientCredentials();
       
-      console.log('Pre-authentication results:', 
-        results.map((r, i) => `App ${i}: ${r.status === 'fulfilled' ? 'success' : 'failed'}`));
+      console.log('Pre-authentication result:', success ? 'success' : 'failed');
     } catch (error) {
       console.warn('Error during pre-authentication:', error);
     } finally {
@@ -85,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         extendSession();
         
         // Pre-authenticate, but don't block loading
-        preAuthenticateApps();
+        preAuthenticate();
       } catch (e) {
         // Invalid stored data
         localStorage.removeItem('nzhg_user');
@@ -118,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 300000); // Check every 5 minutes
     
     return () => clearInterval(interval);
-  }, [toast, user, preAuthenticateApps]);
+  }, [toast, user, preAuthenticate]);
 
   const checkSession = (): boolean => {
     return isSessionValid() && !!user;
@@ -139,21 +135,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Set auth attempt timestamp to prevent duplicates
       setLastAuthAttempt(Date.now());
       
-      // Try to authenticate with Contacts app token (contacts app needs to be authenticated first)
-      const contactsAppAuthSuccess = await authenticateWithContactsAppToken();
+      // Client credentials auth should already be done by the login form component
+      // But ensure we're authenticated
+      const authSuccess = await authenticateWithClientCredentials();
       
-      if (!contactsAppAuthSuccess) {
-        throw new Error('Failed to authenticate with Podio Contacts app');
+      if (!authSuccess) {
+        throw new Error('Failed to authenticate with Podio API');
       }
       
       // Call the authenticateUser function to check if user exists in Contacts app
       const userData = await authenticateUser(username, password);
-      
-      // Pre-authenticate with Packing Spec app to avoid issues later
-      // This doesn't block login flow
-      authenticateWithPackingSpecAppToken().catch(() => {
-        // Silently handle failure, will retry when needed
-      });
       
       setUser(userData);
       localStorage.setItem('nzhg_user', JSON.stringify(userData));

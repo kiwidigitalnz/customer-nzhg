@@ -7,16 +7,11 @@ export {
   authenticateUser,
   hasValidPodioTokens,
   authenticateWithClientCredentials,
-  authenticateWithAppToken,
-  authenticateWithContactsAppToken,
-  authenticateWithPackingSpecAppToken,
   validateContactsAppAccess,
   validatePackingSpecAppAccess,
   isRateLimited,
   setRateLimit,
   clearRateLimit,
-  getContactsAppToken,
-  getPackingSpecAppToken,
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
   callPodioApi,
@@ -28,7 +23,7 @@ export {
   setCurrentAppContext,
   getCurrentAppContext,
   
-  // Add new rate limiting and caching functions
+  // Rate limiting and caching functions
   setRateLimitWithBackoff,
   clearRateLimitInfo, 
   isRateLimitedWithInfo,
@@ -36,8 +31,13 @@ export {
   getCachedUserData
 } from './podio/podioAuth';
 
+// For backward compatibility - maintain old function names
+export {
+  authenticateWithClientCredentials as authenticateWithContactsAppToken,
+  authenticateWithClientCredentials as authenticateWithPackingSpecAppToken
+};
+
 // For backward compatibility - Re-export types
 export type { 
-  RateLimitInfo  // Export the RateLimitInfo type
+  RateLimitInfo
 } from './podio/podioAuth';
-
