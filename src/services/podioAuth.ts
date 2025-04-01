@@ -314,13 +314,17 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   // Determine which token to use based on the endpoint
   let accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   
-  // If this is a contacts app endpoint and we have a specific token, use it
-  if (endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
-      endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`)) {
+  // Direct API calls to contacts app should always use the specific app token
+  const isContactsEndpoint = endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
+                           endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`);
+  
+  if (isContactsEndpoint) {
     const contactsToken = getContactsAppToken();
     if (contactsToken) {
       console.log('Using specific contacts app token for request');
       accessToken = contactsToken;
+    } else {
+      console.warn('No specific contacts app token found, using general access token');
     }
   }
   
@@ -346,15 +350,15 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       throw new Error('Rate limit reached');
     }
     
-    // If token is invalid, try refreshing once
-    if (response.status === 401) {
-      // If we're using the contacts app token and get a 401,
-      // don't retry with the same token - it's likely invalid
-      if (endpoint.includes(`app/${PODIO_CONTACTS_APP_ID}`) || 
-          endpoint.includes(`item/app/${PODIO_CONTACTS_APP_ID}`)) {
-        throw new Error('Unauthorized: Invalid contacts app token');
-      }
-      
+    // If using the contacts app token and getting a 401, 
+    // it's likely the token is invalid - don't retry
+    if (response.status === 401 && isContactsEndpoint) {
+      throw new Error('Invalid contacts app token');
+    }
+    
+    // If token is invalid but we're not using the contacts app token,
+    // try refreshing the general token and retry
+    if (response.status === 401 && !isContactsEndpoint) {
       const refreshed = await refreshToken();
       if (!refreshed) {
         throw new Error('Authentication failed');
@@ -395,7 +399,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
   }
 };
 
-// User authentication - modified to work with different authentication method
+// User authentication - modified to skip app validation and use filter directly
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     // First, try to authenticate with username and password directly
@@ -418,10 +422,11 @@ export const authenticateUser = async (username: string, password: string): Prom
     const contactsAppToken = getContactsAppToken();
     if (contactsAppToken) {
       storeContactsAppToken(contactsAppToken);
+    } else {
+      throw new Error('Missing Contacts app token');
     }
     
-    // Search for user by username in the Contacts app
-    // For the contacts app, we'll directly use the filter endpoint without checking the app first
+    // Search for user by username in the Contacts app - directly use the filter
     console.log(`Searching for user: ${username}`);
     
     try {
@@ -432,6 +437,7 @@ export const authenticateUser = async (username: string, password: string): Prom
         }
       };
       
+      // Try to make the API call
       const searchResponse = await callPodioApi(`item/app/${PODIO_CONTACTS_APP_ID}/filter/`, {
         method: 'POST',
         body: JSON.stringify(filters),
