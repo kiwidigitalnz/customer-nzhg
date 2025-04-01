@@ -46,7 +46,8 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'NZHG-Customer-Portal/1.0'
       },
       body: formData,
     });
@@ -70,7 +71,7 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
       console.error('Received HTML instead of JSON from Podio token endpoint');
       return new Response(JSON.stringify({
         error: 'invalid_response',
-        error_description: 'Podio returned HTML instead of JSON. Check your client credentials.'
+        error_description: 'Podio returned HTML instead of JSON. This usually indicates an issue with the client credentials or request format.'
       }), {
         status: 502,
         headers: {
@@ -98,12 +99,15 @@ export const handlePodioTokenRequest = async (request: Request): Promise<Respons
       });
     }
     
-    // Return the Podio response
+    // Return the Podio response with proper CORS headers
     return new Response(JSON.stringify(responseData), {
       status: podioResponse.status,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
   } catch (error) {

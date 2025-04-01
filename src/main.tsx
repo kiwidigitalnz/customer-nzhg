@@ -12,20 +12,11 @@ const url = new URL(window.location.href);
 if (url.pathname === '/api/podio-token') {
   console.log('Handling Podio token request');
   
-  // Get the request body from URL search params for GET or from fetch for POST
-  let requestBody: string;
-  
-  if (url.searchParams.toString()) {
-    requestBody = url.searchParams.toString();
-  } else {
-    requestBody = '';
-    // For POST requests, we'll read the body in handlePodioTokenRequest
-  }
-  
-  // Create a new request with the current URL and method
+  // For POST requests, we'll read the body in handlePodioTokenRequest
+  // Create a proper request object
   const tokenRequest = new Request(url.href, {
     method: 'POST',
-    body: requestBody,
+    body: url.searchParams.toString() || null,  // Use search params if present
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Accept': 'application/json'
@@ -35,27 +26,21 @@ if (url.pathname === '/api/podio-token') {
   handlePodioTokenRequest(tokenRequest)
     .then(response => {
       console.log('Token proxy response status:', response.status);
-      response.text().then(text => {
-        try {
-          // Try to parse as JSON first
-          const data = JSON.parse(text);
-          console.log('Token proxy response data:', data);
-          document.body.innerHTML = JSON.stringify(data);
-          document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
-        } catch (error) {
-          console.error('Error parsing response as JSON:', error);
-          // If not valid JSON, show the raw text
-          document.body.innerHTML = text;
-          const contentType = response.headers.get('Content-Type') || 'text/plain';
-          document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', contentType);
-        }
-      }).catch(error => {
-        console.error('Error reading response text:', error);
-        document.body.innerHTML = JSON.stringify({
-          error: 'parse_error',
-          error_description: 'Failed to read response text: ' + error.message
-        });
-      });
+      return response.text();
+    })
+    .then(text => {
+      try {
+        // Try to parse as JSON first
+        const data = JSON.parse(text);
+        console.log('Token proxy response data:', data);
+        document.body.innerHTML = JSON.stringify(data);
+        document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'application/json');
+      } catch (error) {
+        console.error('Error parsing response as JSON:', error);
+        // If not valid JSON, show the raw text
+        document.body.innerHTML = text;
+        document.querySelector('meta[http-equiv="Content-Type"]')?.setAttribute('content', 'text/plain');
+      }
     })
     .catch(error => {
       console.error('Podio token proxy error:', error);
