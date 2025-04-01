@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -23,6 +22,7 @@ export default {
 				inter: ['Inter', 'sans-serif'],
 				manrope: ['Manrope', 'sans-serif'],
 				playfair: ['Playfair Display', 'serif'],
+				open: ['Open Sans', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -32,8 +32,11 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				honey: {
 					DEFAULT: 'hsl(var(--honey-gold))',
+					gold: 'hsl(var(--honey-gold))',
 					amber: 'hsl(var(--honey-amber))',
 					light: 'hsl(var(--honey-light))',
+					dark: 'hsl(var(--honey-dark))',
+					cream: 'hsl(var(--honey-cream))',
 				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',

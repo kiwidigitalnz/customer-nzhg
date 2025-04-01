@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,34 +16,36 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
 
-    /* Updated blues to be more vibrant and professional */
-    --primary: 220 85% 40%;
-    --primary-foreground: 210 40% 98%;
+    /* Updated color palette inspired by Melita Honey */
+    --primary: 33 85% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 45 100% 96%;
+    --secondary-foreground: 33 85% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 39 30% 96%;
+    --muted-foreground: 39 15% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 39 70% 90%;
+    --accent-foreground: 33 85% 25%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 220 85% 40%;
+    --border: 39 30% 90%;
+    --input: 39 30% 90%;
+    --ring: 33 85% 45%;
 
     --radius: 0.5rem;
 
-    /* Enhanced honey-inspired colors - made more subtle */
-    --honey-gold: 43 80% 50%;
-    --honey-amber: 36 70% 45%;
-    --honey-light: 43 70% 95%;
+    /* Honey color palette */
+    --honey-gold: 43 85% 45%;
+    --honey-amber: 36 75% 45%;
+    --honey-light: 43 80% 95%;
+    --honey-dark: 33 70% 35%;
+    --honey-cream: 39 30% 95%;
 
-    /* Status Badge Colors - improved with softer, more consistent hues */
+    /* Status Badge Colors */
     --status-pending-bg: 45 100% 96%;
     --status-pending-text: 45 100% 35%;
     --status-pending-border: 45 100% 85%;
@@ -66,8 +69,8 @@
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 214 100% 50%;
-    --primary-foreground: 210 20% 98%;
+    --primary: 33 85% 45%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 215 27.9% 16.9%;
     --secondary-foreground: 210 20% 98%;
@@ -83,7 +86,7 @@
 
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
-    --ring: 216 12.2% 83.9%;
+    --ring: 33 85% 45%;
   }
 }
 
@@ -93,11 +96,11 @@
   }
 
   body {
-    @apply bg-background text-foreground font-inter;
+    @apply bg-background text-foreground font-open;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-manrope font-bold;
+    @apply font-playfair font-bold;
   }
   
   .hero-heading {
@@ -108,8 +111,8 @@
 /* Background grid pattern */
 .bg-grid-pattern {
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 30px 30px;
 }
 
@@ -168,7 +171,7 @@
 
 /* Text gradient styles */
 .text-gradient-primary {
-  @apply bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent;
+  @apply bg-gradient-to-br from-honey-gold via-honey-amber to-honey-dark bg-clip-text text-transparent;
 }
 
 .text-gradient-honey {
@@ -177,38 +180,38 @@
 
 /* Honey-inspired gradients */
 .bg-honey-gradient {
-  @apply bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500;
+  @apply bg-gradient-to-br from-honey-gold via-honey-amber to-honey-dark;
 }
 
 .bg-hero-gradient {
-  @apply bg-gradient-to-br from-blue-800/90 via-blue-700/90 to-blue-900/90;
+  @apply bg-gradient-to-br from-honey-dark via-honey-amber to-honey-gold;
 }
 
-/* Card styles - adding new subtle styles for feature cards */
+/* Card styles - Melita Honey inspired */
 .feature-card {
-  @apply bg-gradient-to-br from-white to-amber-50/40 p-8 rounded-2xl shadow-sm 
-         border border-gray-100/80 hover:shadow-md transition-all duration-300 
+  @apply bg-honey-light p-6 md:p-8 rounded-xl shadow-sm 
+         border border-honey-amber/20 hover:shadow-md transition-all duration-300 
          hover:translate-y-[-4px];
 }
 
 .feature-card-icon {
-  @apply bg-amber-500/80 text-white p-4 rounded-xl w-fit mb-6 transition-colors;
+  @apply bg-honey-gold text-white p-3 rounded-lg w-fit mb-5 transition-colors;
 }
 
 .feature-card:hover .feature-card-icon {
-  @apply bg-amber-600/90;
+  @apply bg-honey-dark;
 }
 
 /* Testimonial card - more subtle styling */
 .testimonial-card {
-  @apply bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100/80;
+  @apply bg-white rounded-xl shadow-sm overflow-hidden border border-honey-cream;
 }
 
 .testimonial-image {
-  @apply bg-amber-500/30;
+  @apply bg-honey-light;
 }
 
-/* Status badge styles - enhanced with consistent styling */
+/* Status badge styles */
 .status-badge {
   @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors shadow-sm;
 }
@@ -223,4 +226,35 @@
 
 .status-badge-rejected {
   @apply bg-rose-50 text-rose-700 border border-rose-200;
+}
+
+/* Melita Honey inspired components */
+.melita-section {
+  @apply py-16 md:py-24;
+}
+
+.melita-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.melita-heading {
+  @apply text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark leading-tight;
+}
+
+.melita-subheading {
+  @apply text-lg md:text-xl text-muted-foreground font-open max-w-3xl;
+}
+
+.melita-btn-primary {
+  @apply bg-honey-gold hover:bg-honey-dark text-white font-medium rounded-lg px-6 py-3 
+         transition-all shadow-sm hover:shadow-md;
+}
+
+.melita-btn-secondary {
+  @apply bg-honey-light hover:bg-honey-cream text-honey-dark font-medium rounded-lg px-6 py-3
+         transition-all border border-honey-amber/20;
+}
+
+.melita-accent-bar {
+  @apply h-1 w-24 bg-honey-gold rounded-full mb-6;
 }
