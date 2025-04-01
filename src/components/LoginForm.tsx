@@ -14,7 +14,8 @@ import {
   isRateLimited, 
   authenticateWithContactsAppToken,
   authenticateWithPackingSpecAppToken,
-  authenticateWithClientCredentials
+  authenticateWithClientCredentials,
+  isRateLimitedWithInfo
 } from '../services/podioAuth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -123,13 +124,26 @@ const LoginForm = () => {
       return;
     }
 
-    // Check if we're rate limited
-    if (isRateLimited()) {
+    // Check if we're rate limited with more details
+    const rateLimitInfo = isRateLimitedWithInfo();
+    if (rateLimitInfo.isLimited) {
+      const waitTime = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      const retryMessage = rateLimitInfo.retryCount > 1 
+        ? `Multiple attempts detected (${rateLimitInfo.retryCount}). Please wait longer.` 
+        : `Please wait ${waitTime} seconds before trying again.`;
+        
       toast({
         title: 'Rate Limit Reached',
-        description: 'Please wait before trying again.',
+        description: retryMessage,
         variant: 'destructive',
       });
+      
+      addDebugStep('Rate limited', 'error', 
+        `Wait time: ${waitTime} seconds
+         Retry count: ${rateLimitInfo.retryCount}
+         Last endpoint: ${rateLimitInfo.lastEndpoint || 'Unknown'}`
+      );
+      
       return;
     }
 
@@ -207,6 +221,8 @@ const LoginForm = () => {
           setPodioAPIError('Authentication error. Please check your Podio configuration.');
         } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication') || errorMessage.includes('access user data')) {
           setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
+        } else if (errorMessage.includes('Rate limit')) {
+          setPodioAPIError('Rate limit reached. Please try again later.');
         } else {
           toast({
             title: 'Login Failed',
@@ -226,6 +242,8 @@ const LoginForm = () => {
         setPodioAPIError('Authentication error. Please check your Podio configuration.');
       } else if (errorMessage.includes('Authentication') && errorMessage.includes('not allowed')) {
         setPodioAPIError('The application does not have permission to access contact data. Please check your Podio API credentials and permissions.');
+      } else if (errorMessage.includes('Rate limit')) {
+        setPodioAPIError('Rate limit reached. Please try again later.');
       } else {
         toast({
           title: 'Login Failed',
@@ -240,10 +258,13 @@ const LoginForm = () => {
 
   // Generate a message if rate limited
   const getRateLimitMessage = () => {
-    if (isRateLimited()) {
-      const limitUntil = parseInt(localStorage.getItem('podio_rate_limit_until') || '0', 10);
-      const waitSecs = Math.ceil((limitUntil - Date.now()) / 1000);
-      return `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
+    const rateLimitInfo = isRateLimitedWithInfo();
+    if (rateLimitInfo.isLimited) {
+      const waitSecs = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      const retryMessage = rateLimitInfo.retryCount > 1 
+        ? `Rate limited after ${rateLimitInfo.retryCount} attempts. Please wait ${waitSecs} seconds.` 
+        : `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
+      return retryMessage;
     }
     return null;
   };

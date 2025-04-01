@@ -26,7 +26,14 @@ export {
   authenticateWithPasswordFlow,
   PodioAppContext,
   setCurrentAppContext,
-  getCurrentAppContext
+  getCurrentAppContext,
+  
+  // Add new rate limiting and caching functions
+  setRateLimitWithBackoff,
+  clearRateLimitInfo, 
+  isRateLimitedWithInfo,
+  cacheUserData,
+  getCachedUserData
 } from './podio/podioAuth';
 
 // For backward compatibility - Re-export types

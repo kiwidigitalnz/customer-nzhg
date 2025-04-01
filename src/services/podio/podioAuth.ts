@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   getPodioClientId,
@@ -31,7 +30,21 @@ const STORAGE_KEYS = {
   CLIENT_SECRET: 'podio_client_secret',
   CONTACTS_APP_TOKEN: 'podio_contacts_app_token',
   PACKING_SPEC_APP_TOKEN: 'podio_packing_spec_app_token',
-  CURRENT_APP_CONTEXT: 'podio_current_app_context' // Track which app we're using
+  CURRENT_APP_CONTEXT: 'podio_current_app_context', // Track which app we're using
+  USER_CACHE: 'podio_user_cache', // Cache for user data
+  USER_CACHE_EXPIRY: 'podio_user_cache_expiry', // Expiry time for user cache
+  RATE_LIMIT_INFO: 'podio_rate_limit_info' // Store structured rate limit information
+};
+
+// Cache expiry time in milliseconds (30 minutes)
+const USER_CACHE_DURATION = 30 * 60 * 1000;
+
+// Rate limit backoff constants
+const RATE_LIMIT = {
+  MAX_RETRIES: 5,
+  INITIAL_DELAY: 1000, // 1 second
+  MAX_DELAY: 60000, // 1 minute
+  BACKOFF_FACTOR: 2 // Exponential factor
 };
 
 // App context enum for tracking which app we're authenticating with
@@ -43,6 +56,143 @@ export enum PodioAppContext {
 // Get Podio App IDs from environment variables with fallbacks to hardcoded values
 export const PODIO_CONTACTS_APP_ID = Number(import.meta.env.VITE_PODIO_CONTACTS_APP_ID) || 26969025;
 export const PODIO_PACKING_SPEC_APP_ID = Number(import.meta.env.VITE_PODIO_PACKING_SPEC_APP_ID) || 29797638;
+
+// Rate limit information interface
+interface RateLimitInfo {
+  isLimited: boolean;
+  retryAfter: number; // in seconds
+  limitUntil: number; // timestamp
+  retryCount: number;
+  lastEndpoint?: string;
+}
+
+// Get rate limit info or return default
+const getRateLimitInfo = (): RateLimitInfo => {
+  const info = localStorage.getItem(STORAGE_KEYS.RATE_LIMIT_INFO);
+  if (!info) {
+    return {
+      isLimited: false,
+      retryAfter: 0,
+      limitUntil: 0,
+      retryCount: 0
+    };
+  }
+  return JSON.parse(info);
+};
+
+// Set rate limit with exponential backoff
+export const setRateLimitWithBackoff = (retryAfter?: number, endpoint?: string): void => {
+  const info = getRateLimitInfo();
+  
+  // Increment retry count
+  info.retryCount = (info.retryCount || 0) + 1;
+  
+  // Calculate backoff delay
+  let delay = retryAfter ? retryAfter : RATE_LIMIT.INITIAL_DELAY * Math.pow(RATE_LIMIT.BACKOFF_FACTOR, info.retryCount - 1);
+  
+  // Cap at maximum delay
+  delay = Math.min(delay, RATE_LIMIT.MAX_DELAY / 1000);
+  
+  // Set rate limit info
+  info.isLimited = true;
+  info.retryAfter = delay;
+  info.limitUntil = Date.now() + (delay * 1000);
+  info.lastEndpoint = endpoint;
+  
+  localStorage.setItem(STORAGE_KEYS.RATE_LIMIT_INFO, JSON.stringify(info));
+  
+  console.log(`Rate limited with exponential backoff. Retry after ${delay} seconds. Retry count: ${info.retryCount}`);
+  emitDebugInfo('Rate limited with backoff', 'error', 
+    `Retry after: ${delay} seconds
+     Retry count: ${info.retryCount}
+     Endpoint: ${endpoint || 'Unknown'}`
+  );
+  
+  // After delay has passed, clear rate limit automatically
+  setTimeout(() => {
+    clearRateLimitInfo();
+  }, delay * 1000);
+};
+
+// Clear rate limit info
+export const clearRateLimitInfo = (): void => {
+  localStorage.removeItem(STORAGE_KEYS.RATE_LIMIT_INFO);
+  console.log('Rate limit cleared');
+  emitDebugInfo('Rate limit cleared', 'success');
+};
+
+// Check if rate limited with more details
+export const isRateLimitedWithInfo = (): RateLimitInfo => {
+  const info = getRateLimitInfo();
+  
+  if (info.isLimited && info.limitUntil > Date.now()) {
+    return info;
+  }
+  
+  // If rate limit has expired, clear it
+  if (info.isLimited) {
+    clearRateLimitInfo();
+  }
+  
+  return {
+    isLimited: false,
+    retryAfter: 0,
+    limitUntil: 0,
+    retryCount: 0
+  };
+};
+
+// Cache user data
+export const cacheUserData = (username: string, userData: any): void => {
+  try {
+    // Get existing cache or create new one
+    const cacheData = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_CACHE) || '{}');
+    
+    // Add user data to cache
+    cacheData[username] = userData;
+    
+    // Store in localStorage
+    localStorage.setItem(STORAGE_KEYS.USER_CACHE, JSON.stringify(cacheData));
+    
+    // Set expiry
+    const expiry = Date.now() + USER_CACHE_DURATION;
+    localStorage.setItem(STORAGE_KEYS.USER_CACHE_EXPIRY, expiry.toString());
+    
+    console.log(`User data cached for ${username}`);
+    emitDebugInfo('User data cached', 'success', `Username: ${username}`);
+  } catch (error) {
+    console.error('Error caching user data:', error);
+  }
+};
+
+// Get cached user data
+export const getCachedUserData = (username: string): any | null => {
+  try {
+    // Check if cache is valid
+    const expiry = localStorage.getItem(STORAGE_KEYS.USER_CACHE_EXPIRY);
+    if (!expiry || parseInt(expiry, 10) < Date.now()) {
+      // Cache expired
+      localStorage.removeItem(STORAGE_KEYS.USER_CACHE);
+      localStorage.removeItem(STORAGE_KEYS.USER_CACHE_EXPIRY);
+      return null;
+    }
+    
+    // Get cache
+    const cacheData = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_CACHE) || '{}');
+    
+    // Return user data if exists
+    if (cacheData[username]) {
+      console.log(`Using cached user data for ${username}`);
+      emitDebugInfo('Using cached user data', 'success', `Username: ${username}`);
+      return cacheData[username];
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting cached user data:', error);
+    return null;
+  }
+};
 
 // Debugging functions for UI feedback
 const emitDebugInfo = (step: string, status: 'pending' | 'success' | 'error', details?: string) => {
@@ -748,9 +898,23 @@ export const ensureAuthenticated = async (appContext?: PodioAppContext): Promise
   return await authenticateWithClientCredentials();
 };
 
-// Modified API call function to use access tokens with the correct OAuth2 format
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appContext?: PodioAppContext): Promise<any> => {
+// Modified API call function with retry logic
+export const callPodioApi = async (
+  endpoint: string, 
+  options: RequestInit = {}, 
+  appContext?: PodioAppContext,
+  retryCount: number = 0
+): Promise<any> => {
   try {
+    // Check if we're rate limited
+    const rateLimitInfo = isRateLimitedWithInfo();
+    if (rateLimitInfo.isLimited) {
+      const waitTime = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
+      console.log(`Rate limited. Try again in ${waitTime} seconds.`);
+      emitDebugInfo('API call rate limited', 'error', `Wait time: ${waitTime} seconds`);
+      throw new Error(`Rate limit reached. Try again in ${waitTime} seconds.`);
+    }
+    
     // Get the app context to use (from parameter or current context)
     const context = appContext || getCurrentAppContext();
     
@@ -795,11 +959,38 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     // Handle rate limiting with exponential backoff
     if (response.status === 429 || response.status === 420) {
       const retryAfter = response.headers.get('Retry-After');
-      setApiRateLimit(retryAfter ? parseInt(retryAfter, 10) : 60);
+      const retrySeconds = retryAfter ? parseInt(retryAfter, 10) : 60;
+      
+      // Set rate limit with exponential backoff
+      setRateLimitWithBackoff(retrySeconds, endpoint);
+      
       emitDebugInfo('API call rate limited', 'error',
-        `Retry after: ${retryAfter || '60'} seconds`
+        `Retry after: ${retrySeconds} seconds
+         Endpoint: ${endpoint}`
       );
-      throw new Error('Rate limit reached');
+      
+      // If we haven't exceeded max retries, wait and retry
+      if (retryCount < RATE_LIMIT.MAX_RETRIES) {
+        // Calculate delay with exponential backoff
+        const delay = Math.min(
+          retrySeconds * 1000,
+          RATE_LIMIT.INITIAL_DELAY * Math.pow(RATE_LIMIT.BACKOFF_FACTOR, retryCount)
+        );
+        
+        console.log(`Rate limited. Retrying in ${delay/1000} seconds. Retry ${retryCount + 1} of ${RATE_LIMIT.MAX_RETRIES}`);
+        emitDebugInfo('Retrying after delay', 'pending', 
+          `Delay: ${delay/1000} seconds
+           Retry: ${retryCount + 1} of ${RATE_LIMIT.MAX_RETRIES}`
+        );
+        
+        // Wait for the delay
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Retry the request
+        return callPodioApi(endpoint, options, context, retryCount + 1);
+      }
+      
+      throw new Error('Rate limit reached and max retries exceeded');
     }
     
     // If token is invalid, try refreshing it and try with the other app if needed
@@ -812,7 +1003,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       if (refreshed) {
         emitDebugInfo('Token refreshed, retrying API call', 'success');
         // Retry with new token
-        return callPodioApi(endpoint, options, context);
+        return callPodioApi(endpoint, options, context, retryCount);
       }
       
       // If that fails, try switching to the other app context
@@ -833,7 +1024,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       if (authSuccess) {
         emitDebugInfo(`Authenticated with ${otherContext} app, retrying API call`, 'success');
         // Retry with the new context
-        return callPodioApi(endpoint, options, otherContext);
+        return callPodioApi(endpoint, options, otherContext, retryCount);
       }
       
       // If all else fails, try client credentials
@@ -842,7 +1033,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       
       if (clientAuthSuccess) {
         emitDebugInfo('Client credentials authentication successful, retrying API call', 'success');
-        return callPodioApi(endpoint, options, context);
+        return callPodioApi(endpoint, options, context, retryCount);
       }
       
       emitDebugInfo('All authentication methods failed', 'error');
@@ -877,6 +1068,10 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       `Status: ${response.status}
        Response sample: ${JSON.stringify(responseData).substring(0, 100)}...`
     );
+    
+    // Clear rate limit info on successful request
+    clearRateLimitInfo();
+    
     return responseData;
   } catch (error) {
     console.error('API call error:', error);
@@ -892,6 +1087,14 @@ export const authenticateUser = async (username: string, password: string): Prom
   try {
     console.log(`Authenticating user: ${username}`);
     emitDebugInfo(`Authenticating user: ${username}`, 'pending');
+    
+    // Check for cached user data first
+    const cachedUser = getCachedUserData(username);
+    if (cachedUser) {
+      console.log(`Using cached user data for ${username}`);
+      emitDebugInfo('Using cached user data', 'success', `Username: ${username}`);
+      return cachedUser;
+    }
     
     // First authenticate with the Contacts app
     emitDebugInfo('Authenticating with Contacts app', 'pending');
@@ -977,6 +1180,9 @@ export const authenticateUser = async (username: string, password: string): Prom
         logoUrl: getFieldValueByExternalId(contact.fields, 'logo-url') || ''
       };
       
+      // Cache the user data for future requests
+      cacheUserData(username, contactData);
+      
       emitDebugInfo('User authenticated successfully', 'success', 
         `User ID: ${contactData.id}
          Name: ${contactData.name}
@@ -1007,4 +1213,13 @@ export const CONTACT_FIELD_IDS = {
   contactItemId: "item-id",
   logoUrl: "logo-url",
   title: "title"
+};
+
+// Export the new rate limit functions
+export { 
+  setRateLimitWithBackoff,
+  clearRateLimitInfo,
+  isRateLimitedWithInfo,
+  cacheUserData,
+  getCachedUserData
 };
