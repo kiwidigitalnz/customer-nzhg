@@ -373,29 +373,38 @@ export const ensureAuthenticated = async (): Promise<boolean> => {
 
 // Modified API call function to use access tokens
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  // Ensure we have valid tokens first
-  const isAuthenticated = await ensureAuthenticated();
-  if (!isAuthenticated) {
-    throw new Error('Not authenticated with Podio');
-  }
-  
-  // Use the access token
-  const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  
-  // Add authorization header
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'User-Agent': 'NZHG-Customer-Portal/1.0',
-    ...options.headers,
-  };
-  
   try {
-    const response = await fetch(`https://api.podio.com/${endpoint}`, {
+    // Ensure we have valid tokens first
+    const isAuthenticated = await ensureAuthenticated();
+    if (!isAuthenticated) {
+      throw new Error('Not authenticated with Podio');
+    }
+    
+    // Get the access token
+    const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    if (!accessToken) {
+      throw new Error('No access token available');
+    }
+    
+    // Create new headers object to avoid modifying the original
+    const headers = new Headers(options.headers);
+    
+    // Set Authorization header
+    headers.set('Authorization', `Bearer ${accessToken}`);
+    headers.set('Content-Type', 'application/json');
+    headers.set('Accept', 'application/json');
+    headers.set('User-Agent', 'NZHG-Customer-Portal/1.0');
+    
+    // Create a new options object with the updated headers
+    const newOptions = {
       ...options,
-      headers,
-    });
+      headers
+    };
+    
+    // Log the request for debugging
+    console.log(`Making API call to ${endpoint} with token: ${accessToken.substring(0, 10)}...`);
+    
+    const response = await fetch(`https://api.podio.com/${endpoint}`, newOptions);
     
     // Handle rate limiting
     if (response.status === 429 || response.status === 420) {
@@ -464,9 +473,11 @@ export const authenticateUser = async (username: string, password: string): Prom
       };
       
       const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
+      
+      // Make the API call with the correct token
       const searchResponse = await callPodioApi(endpoint, {
         method: 'POST',
-        body: JSON.stringify(filters),
+        body: JSON.stringify(filters)
       });
       
       if (!searchResponse.items || searchResponse.items.length === 0) {
