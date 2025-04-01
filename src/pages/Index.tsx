@@ -1,6 +1,7 @@
+
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import LandingPage from './LandingPage';
 
@@ -9,10 +10,12 @@ const Index = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [hasValidSession, setHasValidSession] = useState(false);
+  const sessionChecked = useRef(false);
   
   useEffect(() => {
-    // Perform session check once on mount
-    if (user) {
+    // Only perform session check once
+    if (!sessionChecked.current && user) {
+      sessionChecked.current = true;
       const isValid = checkSession();
       setHasValidSession(isValid);
       

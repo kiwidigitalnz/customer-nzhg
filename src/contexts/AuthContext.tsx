@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { authenticateUser, authenticateWithContactsAppToken, authenticateWithPackingSpecAppToken, isRateLimited } from '../services/podioAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,6 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastAuthAttempt, setLastAuthAttempt] = useState(0);
+  const authInProgress = useRef(false);
   const { toast } = useToast();
 
   // Check session validity
@@ -48,21 +49,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Pre-authenticate with apps - with rate limit and dedupe protection
   const preAuthenticateApps = useCallback(async () => {
-    // Skip if rate limited or authenticated recently
-    if (isRateLimited() || Date.now() - lastAuthAttempt < 60000) {
+    // Skip if rate limited, authenticated recently, or auth in progress
+    if (isRateLimited() || Date.now() - lastAuthAttempt < 60000 || authInProgress.current) {
+      console.log('Skipping pre-authentication due to rate limit, recent attempt, or auth in progress');
       return;
     }
     
+    authInProgress.current = true;
     setLastAuthAttempt(Date.now());
     
     try {
       // Try authenticating with both apps, but don't block on failures
-      await Promise.allSettled([
+      const results = await Promise.allSettled([
         authenticateWithContactsAppToken(),
         authenticateWithPackingSpecAppToken()
       ]);
+      
+      console.log('Pre-authentication results:', 
+        results.map((r, i) => `App ${i}: ${r.status === 'fulfilled' ? 'success' : 'failed'}`));
     } catch (error) {
       console.warn('Error during pre-authentication:', error);
+    } finally {
+      authInProgress.current = false;
     }
   }, [lastAuthAttempt]);
 
@@ -98,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     setLoading(false);
     
-    // Set up periodic session checks
+    // Set up periodic session checks (only once every 5 minutes)
     const interval = setInterval(() => {
       if (user && !isSessionValid()) {
         logout();
@@ -107,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: 'Your session has expired. Please log in again.',
         });
       }
-    }, 60000); // Check every minute
+    }, 300000); // Check every 5 minutes
     
     return () => clearInterval(interval);
   }, [toast, user, preAuthenticateApps]);
@@ -117,8 +125,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    // Skip if already in progress to prevent duplicate API calls
+    if (authInProgress.current) {
+      console.log('Login already in progress, skipping duplicate call');
+      return false;
+    }
+    
     setLoading(true);
     setError(null);
+    authInProgress.current = true;
     
     try {
       // Set auth attempt timestamp to prevent duplicates
@@ -146,12 +161,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       extendSession();
       
       setLoading(false);
+      authInProgress.current = false;
       return true;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Login failed';
       setError(errorMsg);
       
       setLoading(false);
+      authInProgress.current = false;
       return false;
     }
   };

@@ -5,22 +5,27 @@ import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured, isRateLimited } from '../services/podioApi';
+import { isPodioConfigured, isRateLimited, clearRateLimit } from '../services/podioApi';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import RateLimitWarning from '../components/RateLimitWarning';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [podioError, setPodioError] = useState(false);
+  const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Check Podio configuration
+    // Check Podio configuration and rate limit status
     const podioConfigured = isPodioConfigured();
+    const rateLimited = isRateLimited();
     
     if (!podioConfigured) {
       setPodioError(true);
     }
+    
+    setIsRateLimitReached(rateLimited);
     
     // Simulate loading for better UX (just brief enough to avoid flicker)
     const timer = setTimeout(() => {
@@ -32,6 +37,12 @@ const DashboardPage = () => {
   
   const handleReturnHome = () => {
     navigate('/');
+  };
+  
+  const handleRetry = () => {
+    // Clear rate limit and reload the page
+    clearRateLimit();
+    window.location.reload();
   };
   
   return (
@@ -73,7 +84,17 @@ const DashboardPage = () => {
           </div>
         </div>
       ) : (
-        <Dashboard />
+        <>
+          {isRateLimitReached && (
+            <div className="container mx-auto px-4 pt-6">
+              <RateLimitWarning 
+                onRetry={handleRetry}
+                usingCachedData={true}
+              />
+            </div>
+          )}
+          <Dashboard />
+        </>
       )}
     </MainLayout>
   );

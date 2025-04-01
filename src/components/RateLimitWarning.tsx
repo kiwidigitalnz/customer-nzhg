@@ -2,7 +2,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { isRateLimited } from "../services/podioApi";
+import { isRateLimited, isRateLimitedWithInfo, clearRateLimitInfo } from "../services/podioAuth";
 import { useState, useEffect } from "react";
 
 interface RateLimitWarningProps {
@@ -13,28 +13,22 @@ interface RateLimitWarningProps {
 const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
+  const [rateLimitReason, setRateLimitReason] = useState('API rate limit reached');
   
   // Check localStorage for rate limit info
   useEffect(() => {
     const checkRateLimit = () => {
-      const limitUntilStr = localStorage.getItem('podio_rate_limit_until');
-      if (!limitUntilStr) {
+      const rateLimitInfo = isRateLimitedWithInfo();
+      
+      if (!rateLimitInfo.limited) {
         setTimeLeft(null);
         setIsButtonDisabled(false);
         return;
       }
       
-      const limitUntil = parseInt(limitUntilStr, 10);
-      const now = Date.now();
-      
-      if (now >= limitUntil) {
-        setTimeLeft(null);
-        setIsButtonDisabled(false);
-      } else {
-        const secondsLeft = Math.ceil((limitUntil - now) / 1000);
-        setTimeLeft(secondsLeft);
-        setIsButtonDisabled(true);
-      }
+      setTimeLeft(rateLimitInfo.remainingSeconds);
+      setRateLimitReason(rateLimitInfo.reason || 'API rate limit reached');
+      setIsButtonDisabled(rateLimitInfo.remainingSeconds > 0);
     };
     
     // Check immediately
@@ -60,6 +54,7 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
   
   const handleRetry = () => {
     if (!isRateLimited()) {
+      clearRateLimitInfo(); // Clear all rate limit info
       onRetry();
     }
   };
@@ -72,13 +67,13 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
         <div>
           {usingCachedData ? (
             <p>
-              Podio API rate limit reached. Showing cached data. {timeLeft !== null && (
+              {rateLimitReason}. Showing cached data. {timeLeft !== null && (
                 <>Please wait <strong>{formatTimeLeft()}</strong> before trying again.</>
               )}
             </p>
           ) : (
             <p>
-              Podio API rate limit reached. {timeLeft !== null && (
+              {rateLimitReason}. {timeLeft !== null && (
                 <>Please wait <strong>{formatTimeLeft()}</strong> before trying again.</>
               )}
             </p>

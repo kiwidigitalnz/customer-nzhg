@@ -163,6 +163,8 @@ export const isRateLimited = (): boolean => {
 export const isRateLimitedWithInfo = (): { limited: boolean, remainingSeconds: number, reason: string } => {
   const limitUntil = localStorage.getItem(RATE_LIMIT_KEY);
   const reason = localStorage.getItem(RATE_LIMIT_REASON_KEY) || 'Too many requests';
+  const retryCountStr = localStorage.getItem(RATE_LIMIT_COUNTER_KEY);
+  const retryCount = retryCountStr ? parseInt(retryCountStr, 10) : 0;
   
   if (!limitUntil) {
     return { limited: false, remainingSeconds: 0, reason };
@@ -185,6 +187,7 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   if (retryAfterSecs) {
     const limitTime = Date.now() + (retryAfterSecs * 1000);
     localStorage.setItem(RATE_LIMIT_KEY, limitTime.toString());
+    localStorage.setItem(RATE_LIMIT_REASON_KEY, `Rate limited by Podio for ${retryAfterSecs} seconds`);
     if (import.meta.env.DEV) {
       console.log(`Rate limited by Podio for ${retryAfterSecs} seconds`);
     }
@@ -211,6 +214,7 @@ export const setRateLimit = (retryAfterSecs?: number): void => {
   // If we've exceeded multiple retries, implement a longer timeout
   if (newRetryCount >= MAX_RETRIES_BEFORE_LONG_TIMEOUT) {
     delay = MAX_RETRY_DELAY;
+    localStorage.setItem(RATE_LIMIT_REASON_KEY, `Multiple API failures detected. Implemented longer cooldown period.`);
     console.warn(`Exceeded ${MAX_RETRIES_BEFORE_LONG_TIMEOUT} retries, implementing longer timeout`);
   }
   

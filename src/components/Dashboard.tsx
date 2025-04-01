@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getPackingSpecsForContact, isPodioConfigured, isRateLimited } from '../services/podioApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +45,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const podioConfigured = isPodioConfigured();
+  const apiCallInProgress = useRef(false);
+  const apiCallAttempted = useRef(false);
   
   // Cache key for storing packing specs
   const getCacheKey = useCallback(() => {
@@ -55,6 +56,11 @@ const Dashboard = () => {
   // Function to fetch specs data with caching and rate limit awareness
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user) return;
+    
+    if (apiCallInProgress.current) {
+      console.log('API call already in progress, skipping duplicate call');
+      return;
+    }
     
     const cacheKey = getCacheKey();
     if (!cacheKey) return;
@@ -67,7 +73,6 @@ const Dashboard = () => {
       if (cachedData) {
         setSpecs(cachedData as PackingSpec[]);
         setLoading(false);
-        return;
       }
       return;
     }
@@ -78,25 +83,37 @@ const Dashboard = () => {
       if (cachedData) {
         setSpecs(cachedData as PackingSpec[]);
         setLoading(false);
-        return;
+        
+        // If we have cached data and haven't attempted an API call yet, 
+        // still attempt one API call to refresh in the background
+        if (!apiCallAttempted.current) {
+          apiCallAttempted.current = true;
+          // Continue with the API call in the background
+        } else {
+          return; // Otherwise just use cache and return
+        }
       }
     }
     
     // Set timestamp for last fetch attempt to avoid multiple simultaneous calls
     const now = Date.now();
-    if (now - lastFetchAttempt < 5000 && !forceRefresh) {
+    if (!forceRefresh && now - lastFetchAttempt < 30000) {
       console.log('Skipping fetch due to recent attempt');
       return;
     }
     
     setLastFetchAttempt(now);
-    setLoading(true);
-    setIsRateLimitReached(false);
+    apiCallInProgress.current = true;
+    
+    if (!isRateLimitReached) {
+      setLoading(true);
+    }
     
     try {
       console.log(`Fetching specs for contact ID: ${user.id}`);
       const data = await getPackingSpecsForContact(user.id);
       setSpecs(data as PackingSpec[]);
+      setIsRateLimitReached(false);
       
       // Cache the successful response
       if (data && data.length > 0) {
@@ -129,10 +146,11 @@ const Dashboard = () => {
       }
     } finally {
       setLoading(false);
+      apiCallInProgress.current = false;
     }
-  }, [user, toast, getCacheKey, lastFetchAttempt]);
+  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached]);
 
-  // Fetch specs only on initial component mount and when user changes
+  // Fetch specs only once on initial component mount
   useEffect(() => {
     // Redirect to Podio setup if not configured
     if (!podioConfigured) {
@@ -151,28 +169,31 @@ const Dashboard = () => {
       return;
     }
 
-    // Only fetch if we have a user and haven't fetched recently
-    if (user && Date.now() - lastFetchAttempt > 5000) {
+    // Only fetch if we have a user and we haven't made a fetch attempt already
+    if (user && !apiCallAttempted.current) {
+      apiCallAttempted.current = true;
       fetchSpecs();
     }
     
     // Return cleanup function to prevent state updates on unmounted component
     return () => {
-      // No cleanup needed
+      // Reset api call references
+      apiCallAttempted.current = false;
+      apiCallInProgress.current = false;
     };
-  }, [user, toast, navigate, podioConfigured, fetchSpecs, lastFetchAttempt]);
+  }, [user, toast, navigate, podioConfigured, fetchSpecs]);
 
   // Only re-fetch on location change if explicitly navigating back to dashboard
-  // and it's been at least 30 seconds since the last fetch
+  // and it's been at least 5 minutes since the last fetch
   useEffect(() => {
-    const minimumRefreshInterval = 30000; // 30 seconds
+    const minimumRefreshInterval = 300000; // 5 minutes
     
     if (user && 
         location.pathname === '/dashboard' && 
         location.key && // Location key exists on navigation (not initial load)
         Date.now() - lastFetchAttempt > minimumRefreshInterval) {
-      console.log('User navigated back to dashboard, refreshing specs data');
-      fetchSpecs();
+      console.log('User navigated back to dashboard after 5+ minutes, refreshing specs data');
+      fetchSpecs(true);
     }
   }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 

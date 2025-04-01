@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +25,16 @@ const LoginForm = () => {
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const loginAttemptInProgress = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent duplicate login attempts
+    if (loginAttemptInProgress.current) {
+      console.log('Login attempt already in progress, preventing duplicate submission');
+      return;
+    }
     
     // Reset error state
     setPodioAPIError(null);
@@ -49,22 +55,13 @@ const LoginForm = () => {
 
     // Check if we're rate limited
     const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.isLimited) {
-      const waitTime = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
-      const retryMessage = rateLimitInfo.retryCount > 1 
-        ? `Multiple attempts detected. Please wait ${waitTime} seconds.` 
-        : `Please wait ${waitTime} seconds before trying again.`;
-        
-      toast({
-        title: 'Rate Limit Reached',
-        description: retryMessage,
-        variant: 'destructive',
-      });
-      
+    if (rateLimitInfo.limited) {
+      setPodioAPIError(`Rate limit reached: ${rateLimitInfo.reason}. Please wait ${rateLimitInfo.remainingSeconds} seconds.`);
       return;
     }
     
     try {
+      loginAttemptInProgress.current = true;
       setAuthenticating(true);
       
       // Try to authenticate with Contacts app token
@@ -78,6 +75,7 @@ const LoginForm = () => {
       if (!contactsAuthSuccess) {
         setPodioAPIError('Authentication failed. Please check your Podio API credentials.');
         setAuthenticating(false);
+        loginAttemptInProgress.current = false;
         return;
       }
       
@@ -137,15 +135,15 @@ const LoginForm = () => {
       }
     } finally {
       setAuthenticating(false);
+      loginAttemptInProgress.current = false;
     }
   };
 
   // Generate a message if rate limited
   const getRateLimitMessage = () => {
     const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.isLimited) {
-      const waitSecs = Math.ceil((rateLimitInfo.limitUntil - Date.now()) / 1000);
-      return `Rate limited. Please wait ${waitSecs} seconds before trying again.`;
+    if (rateLimitInfo.limited) {
+      return `Rate limited: ${rateLimitInfo.reason}. Please wait ${rateLimitInfo.remainingSeconds} seconds.`;
     }
     return null;
   };
@@ -158,7 +156,7 @@ const LoginForm = () => {
   const getLoadingMessage = () => {
     if (authenticating) return 'Authenticating...';
     if (loading) return 'Logging in...';
-    if (isRateLimitedWithInfo().isLimited) return 'Rate limited';
+    if (isRateLimitedWithInfo().limited) return 'Rate limited';
     return 'Log In';
   };
 
@@ -187,7 +185,7 @@ const LoginForm = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Your username"
-              disabled={isLoading || isRateLimitedWithInfo().isLimited}
+              disabled={isLoading || isRateLimitedWithInfo().limited}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
@@ -204,7 +202,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                disabled={isLoading || isRateLimitedWithInfo().isLimited}
+                disabled={isLoading || isRateLimitedWithInfo().limited}
                 autoComplete="current-password"
                 className="border-gray-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
               />
@@ -238,7 +236,7 @@ const LoginForm = () => {
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={isLoading || isRateLimitedWithInfo().isLimited}
+            disabled={isLoading || isRateLimitedWithInfo().limited}
           >
             {isLoading && (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-25 border-t-white"></span>
