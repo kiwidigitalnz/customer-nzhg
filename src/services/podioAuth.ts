@@ -38,5 +38,6 @@ export {
 
 // For backward compatibility - Re-export types
 export type { 
-  // Add any types if needed
-} from './podioApi';
+  RateLimitInfo  // Export the RateLimitInfo type
+} from './podio/podioAuth';
+

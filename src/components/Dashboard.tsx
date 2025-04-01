@@ -1,19 +1,7 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecsForContact, authenticateWithPackingSpecAppToken, isPodioConfigured, isRateLimited, isRateLimitedWithInfo } from '../services/podioAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PackageCheck, LogOut, Building, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import PackingSpecList from './PackingSpecList';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { SpecStatus } from './packing-spec/StatusBadge';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { getCachedUserData, cacheUserData } from '../services/podioAuth';
-import RateLimitWarning from './RateLimitWarning';
+import { isPodioConfigured, authenticateWithPackingSpecAppToken, isRateLimited, isRateLimitedWithInfo } from '../services/podioAuth';
+import { getPackingSpecsForContact } from '../services/podioApi';
 
 interface PackingSpec {
   id: number;
@@ -50,12 +38,10 @@ const Dashboard = () => {
   const apiCallAttempted = useRef(false);
   const initialLoadCompleted = useRef(false);
   
-  // Cache key for storing packing specs
   const getCacheKey = useCallback(() => {
     return user ? `packing_specs_${user.id}` : null;
   }, [user]);
   
-  // Pre-authenticate with PackingSpec app - run once without blocking
   const ensurePackingSpecAuth = useCallback(async () => {
     if (apiCallInProgress.current || isRateLimited()) {
       console.log('Skipping pre-authentication due to ongoing API call or rate limit');
@@ -67,11 +53,9 @@ const Dashboard = () => {
       await authenticateWithPackingSpecAppToken();
     } catch (error) {
       console.error('Pre-authentication with Packing Spec app failed:', error);
-      // Non-blocking failure, will retry on actual API call
     }
   }, []);
   
-  // Function to fetch specs data with caching and rate limit awareness
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user) {
       console.log('No user, skipping fetch');
@@ -89,13 +73,11 @@ const Dashboard = () => {
       return;
     }
     
-    // Check if we're rate limited
     const rateLimitInfo = isRateLimitedWithInfo();
     if (rateLimitInfo.isLimited) {
       console.log('Rate limited, using cached data if available');
       setIsRateLimitReached(true);
       
-      // Load from cache if available
       const cachedData = getCachedUserData(cacheKey);
       if (cachedData) {
         console.log('Using cached data during rate limit');
@@ -105,14 +87,12 @@ const Dashboard = () => {
       return;
     }
     
-    // Set timestamp for last fetch attempt to avoid multiple simultaneous calls
     const now = Date.now();
     if (!forceRefresh && now - lastFetchAttempt < 30000) {
       console.log('Skipping fetch due to recent attempt');
       return;
     }
     
-    // Check cache first if not forcing refresh
     if (!forceRefresh) {
       const cachedData = getCachedUserData(cacheKey);
       if (cachedData) {
@@ -120,13 +100,10 @@ const Dashboard = () => {
         setSpecs(cachedData as PackingSpec[]);
         setLoading(false);
         
-        // If this is initial load, mark as completed
         if (!initialLoadCompleted.current) {
           initialLoadCompleted.current = true;
         }
         
-        // If we've already attempted an API call and we're not forcing refresh
-        // we can return early and not make another API call
         if (apiCallAttempted.current && !forceRefresh) {
           console.log('Already attempted API call, using cached data only');
           return;
@@ -138,13 +115,11 @@ const Dashboard = () => {
     apiCallInProgress.current = true;
     apiCallAttempted.current = true;
     
-    // Only show loading state if we don't have any data yet
     if (!specs.length && !isRateLimitReached) {
       setLoading(true);
     }
     
     try {
-      // Pre-authenticate with Packing Spec app
       await ensurePackingSpecAuth();
       
       console.log(`Fetching specs for contact ID: ${user.id}`);
@@ -155,13 +130,11 @@ const Dashboard = () => {
         setSpecs(data as PackingSpec[]);
         setIsRateLimitReached(false);
         
-        // Cache the successful response
         if (data.length > 0) {
           console.log('Caching packing specs data');
           cacheUserData(cacheKey, data);
         }
         
-        // Mark initial load as completed
         initialLoadCompleted.current = true;
       } else {
         console.warn('Received invalid data from API:', data);
@@ -169,7 +142,6 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error fetching specs:', error);
       
-      // Check if rate limited after the call
       if (isRateLimited()) {
         setIsRateLimitReached(true);
         
@@ -179,13 +151,11 @@ const Dashboard = () => {
           variant: 'destructive',
         });
         
-        // Try to use cached data
         const cachedData = getCachedUserData(cacheKey);
         if (cachedData) {
           setSpecs(cachedData as PackingSpec[]);
         }
       } else {
-        // Only show error toast if we don't have any cached data
         if (!specs.length) {
           toast({
             title: 'Error',
@@ -200,9 +170,7 @@ const Dashboard = () => {
     }
   }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
 
-  // Initial fetch when component mounts
   useEffect(() => {
-    // Redirect to Podio setup if not configured
     if (!podioConfigured) {
       toast({
         title: 'Podio Not Configured',
@@ -213,15 +181,12 @@ const Dashboard = () => {
       return;
     }
 
-    // Redirect to login if no user
     if (!user) {
       navigate('/login');
       return;
     }
 
-    // Only fetch if we have a user and we haven't completed the initial load
     if (user && !initialLoadCompleted.current) {
-      // Check for cached data first
       const cacheKey = getCacheKey();
       if (cacheKey) {
         const cachedData = getCachedUserData(cacheKey);
@@ -232,34 +197,28 @@ const Dashboard = () => {
         }
       }
       
-      // Then fetch fresh data
       console.log('Performing initial fetch of packing specs');
       fetchSpecs();
     }
     
-    // Return cleanup function to prevent state updates on unmounted component
     return () => {
-      // Reset api call references
       apiCallAttempted.current = false;
       apiCallInProgress.current = false;
     };
   }, [user, toast, navigate, podioConfigured, fetchSpecs, getCacheKey]);
 
-  // Only re-fetch on location change if explicitly navigating back to dashboard
-  // and it's been at least 5 minutes since the last fetch
   useEffect(() => {
-    const minimumRefreshInterval = 300000; // 5 minutes
+    const minimumRefreshInterval = 300000;
     
     if (user && 
         location.pathname === '/dashboard' && 
-        location.key && // Location key exists on navigation (not initial load)
+        location.key && 
         Date.now() - lastFetchAttempt > minimumRefreshInterval) {
       console.log('User navigated back to dashboard after 5+ minutes, refreshing specs data');
       fetchSpecs(true);
     }
   }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 
-  // If there's no user or Podio is not configured, show a loading state
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -276,10 +235,9 @@ const Dashboard = () => {
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = () => {
-    fetchSpecs(true); // Force refresh
+    fetchSpecs(true);
   };
 
-  // Function to get initials from company name for avatar fallback
   const getCompanyInitials = (name: string) => {
     return name
       .split(' ')

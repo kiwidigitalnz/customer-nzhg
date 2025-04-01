@@ -1,4 +1,3 @@
-
 // This module handles Podio authentication and token management
 import { 
   getPodioClientId,
@@ -292,7 +291,7 @@ export const storePackingSpecAppToken = (token: string): void => {
 // App authentication with client credentials
 export const authenticateWithAppToken = async (appId: number, appToken: string): Promise<boolean> => {
   try {
-    if (isRateLimited()) {
+    if (checkRateLimit()) {
       console.log('Rate limited. Try again later.');
       return false;
     }
@@ -493,7 +492,7 @@ export const CONTACT_FIELD_IDS = {
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     // Check for rate limiting
-    if (isRateLimited()) {
+    if (checkRateLimit()) {
       throw new Error('Rate limited. Please try again later.');
     }
     
@@ -506,7 +505,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     }
     
     // Check cache first
-    const cachedUser = getCachedUserData(username);
+    const cachedUser = getCachedData(username);
     if (cachedUser) {
       console.log('Using cached user data');
       return cachedUser;
@@ -553,7 +552,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     };
     
     // Cache user data
-    cacheUserData(username, userData);
+    cacheData(username, userData);
     
     return userData;
   } catch (error) {
@@ -625,7 +624,7 @@ export const validatePackingSpecAppAccess = async (): Promise<boolean> => {
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   try {
     // Check if we're rate limited
-    if (isRateLimited()) {
+    if (checkRateLimit()) {
       throw new Error('Rate limited');
     }
     
@@ -704,5 +703,3 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     throw error;
   }
 };
-
-// Add other functions exported by the module...
