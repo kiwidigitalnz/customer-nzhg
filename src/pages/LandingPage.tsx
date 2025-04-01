@@ -25,7 +25,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
       )}
       
       {/* Hero Section - Bold design with deeper gradients and more dynamic elements */}
-      <div className="relative overflow-hidden min-h-[85vh] flex items-center bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700">
+      <div className="relative overflow-hidden min-h-[85vh] flex items-center bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800">
         {/* Dynamic background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-400 rounded-full mix-blend-multiply blur-3xl opacity-20 transform translate-x-1/3 -translate-y-1/3"></div>
@@ -50,10 +50,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                   }}
                 />
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-manrope font-bold text-white leading-tight tracking-tight">
                 Elevate Your <span className="text-gradient-primary relative">Honey Products</span>
               </h1>
-              <p className="text-xl text-blue-50 max-w-xl">
+              <p className="text-xl text-blue-50 font-inter max-w-xl">
                 Your gateway to streamlined product approvals, specifications, and quality management through our intuitive customer portal.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -111,8 +111,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <span className="inline-block px-4 py-2 rounded-full bg-blue-100 text-blue-800 font-medium text-sm mb-4">WHY CHOOSE US</span>
-            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">Streamlined Product Management</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-manrope font-bold text-gray-900 mb-4 tracking-tight">Streamlined Product Management</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
               Our portal brings together everything you need to manage your honey products with ease
             </p>
           </div>
@@ -123,8 +123,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="bg-blue-600 text-white p-4 rounded-xl w-fit mb-6 group-hover:bg-blue-700 transition-colors">
                 <FileCheck className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-semibold mb-3 text-gray-800">Product Specifications</h3>
-              <p className="text-gray-600">
+              <h3 className="text-2xl font-manrope font-semibold mb-3 text-gray-800">Product Specifications</h3>
+              <p className="text-gray-600 font-inter">
                 Access and review all your product packing specifications in one secure location. Download detailed reports and stay informed.
               </p>
               <div className="pt-4 mt-auto">
@@ -141,8 +141,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="bg-blue-600 text-white p-4 rounded-xl w-fit mb-6 group-hover:bg-blue-700 transition-colors">
                 <Beaker className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-semibold mb-3 text-gray-800">Quality Approvals</h3>
-              <p className="text-gray-600">
+              <h3 className="text-2xl font-manrope font-semibold mb-3 text-gray-800">Quality Approvals</h3>
+              <p className="text-gray-600 font-inter">
                 Approve honey specifications and packaging details with an intuitive interface. Provide feedback directly to our team.
               </p>
               <div className="pt-4 mt-auto">
@@ -159,8 +159,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="bg-blue-600 text-white p-4 rounded-xl w-fit mb-6 group-hover:bg-blue-700 transition-colors">
                 <LineChart className="h-7 w-7" />
               </div>
-              <h3 className="text-2xl font-semibold mb-3 text-gray-800">Progress Tracking</h3>
-              <p className="text-gray-600">
+              <h3 className="text-2xl font-manrope font-semibold mb-3 text-gray-800">Progress Tracking</h3>
+              <p className="text-gray-600 font-inter">
                 Monitor the status of your honey products throughout the approval process with real-time updates and notifications.
               </p>
               <div className="pt-4 mt-auto">
@@ -180,8 +180,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center text-center mb-12">
             <span className="inline-block px-4 py-2 rounded-full bg-blue-100 text-blue-800 font-medium text-sm mb-4">TESTIMONIALS</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">What Our Clients Say</h2>
-            <p className="text-xl text-gray-600 max-w-3xl">Trusted by honey producers and exporters worldwide</p>
+            <h2 className="text-3xl md:text-4xl font-manrope font-bold text-gray-900 mb-2 tracking-tight">What Our Clients Say</h2>
+            <p className="text-xl text-gray-600 max-w-3xl font-inter">Trusted by honey producers and exporters worldwide</p>
           </div>
           
           <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -207,10 +207,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                     <path d="M108 0L110.694 8.2918H119.413L112.359 13.4164L115.053 21.7082L108 16.5836L100.947 21.7082L103.641 13.4164L96.5873 8.2918H105.306L108 0Z" fill="#FFB800" />
                   </svg>
                 </div>
-                <blockquote className="text-xl italic text-gray-700 mb-6">"The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours in the approval process."</blockquote>
+                <blockquote className="text-xl italic text-gray-700 mb-6 font-inter">"The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours in the approval process."</blockquote>
                 <div>
-                  <p className="font-semibold text-gray-900">Sarah Thompson</p>
-                  <p className="text-gray-600">Export Manager, Canterbury Honey Co.</p>
+                  <p className="font-semibold text-gray-900 font-manrope">Sarah Thompson</p>
+                  <p className="text-gray-600 font-inter">Export Manager, Canterbury Honey Co.</p>
                 </div>
               </div>
             </div>
@@ -219,16 +219,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
       </div>
 
       {/* CTA Section - Bold, attention-grabbing design */}
-      <div className="relative py-20 md:py-28 overflow-hidden bg-blue-600">
+      <div className="relative py-20 md:py-28 overflow-hidden bg-blue-700">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] bg-blue-400 rounded-full mix-blend-multiply blur-3xl opacity-30"></div>
+          <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] bg-blue-600 rounded-full mix-blend-multiply blur-3xl opacity-30"></div>
           <div className="absolute -bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-blue-500 rounded-full mix-blend-multiply blur-3xl opacity-30"></div>
         </div>
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Ready to Manage Your Products?</h2>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-5xl font-manrope font-bold text-white mb-6 tracking-tight">Ready to Manage Your Products?</h2>
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8 font-inter">
               Sign in to access your personalized customer portal and start managing your honey product approvals today.
             </p>
             <Button asChild size="lg" className="bg-white hover:bg-gray-100 text-blue-700 font-semibold text-lg px-10 py-6 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
