@@ -1,36 +1,33 @@
 
-import Podio from 'podio-js';
+// Core authentication service for Podio integration
 
 // Initialize Podio client with your API keys
 const clientId = import.meta.env.VITE_PODIO_CLIENT_ID;
 const clientSecret = import.meta.env.VITE_PODIO_CLIENT_SECRET;
 
-let podio: any;
-
-// Initialize Podio connection
-const initializePodio = () => {
-  if (!podio && clientId && clientSecret) {
-    podio = new Podio({
-      client_id: clientId,
-      client_secret: clientSecret
-    });
-  }
-  return podio;
-};
-
-// Function to get Podio client
-export const getPodioClient = () => {
-  return initializePodio();
-};
-
 // Function to clear tokens from local storage
 export const clearTokens = () => {
   localStorage.removeItem('podio_tokens');
+  localStorage.removeItem('podio_access_token');
+  localStorage.removeItem('podio_refresh_token');
+  localStorage.removeItem('podio_token_expiry');
 };
 
 // Function to store tokens in local storage
 const storeTokens = (tokens: any) => {
   localStorage.setItem('podio_tokens', JSON.stringify(tokens));
+  // Also store individually for easier access
+  if (tokens.access_token) {
+    localStorage.setItem('podio_access_token', tokens.access_token);
+  }
+  if (tokens.refresh_token) {
+    localStorage.setItem('podio_refresh_token', tokens.refresh_token);
+  }
+  if (tokens.expires_in) {
+    // Calculate expiry time (current time + expires_in seconds)
+    const expiryTime = Date.now() + (tokens.expires_in * 1000);
+    localStorage.setItem('podio_token_expiry', expiryTime.toString());
+  }
 };
 
 // Function to retrieve tokens from local storage
@@ -103,20 +100,41 @@ export const getCachedUserData = (key: string) => {
   return null;
 };
 
-// Function to refresh Podio token
+// Function to refresh Podio token - Direct API implementation to avoid VM constructor issue
 export const refreshPodioToken = async (): Promise<any> => {
-  const storedTokens = retrieveTokens();
-  if (!storedTokens || !storedTokens.refresh_token) {
+  const refreshToken = localStorage.getItem('podio_refresh_token');
+  
+  if (!refreshToken) {
     throw new Error('No refresh token available');
   }
 
   try {
-    const podioClient = initializePodio();
-    if (!podioClient) {
-      throw new Error('Podio client not initialized');
+    // Create form data for the token refresh request
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'refresh_token');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('refresh_token', refreshToken);
+
+    // Make the request to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Token refresh failed:', errorData);
+      clearTokens();
+      throw new Error(`Failed to refresh token: ${response.status} ${response.statusText}`);
     }
 
-    const tokens = await podioClient.oauth.refresh(storedTokens.refresh_token);
+    // Parse and store the tokens
+    const tokens = await response.json();
     storeTokens(tokens);
     return tokens;
   } catch (error) {
@@ -126,18 +144,33 @@ export const refreshPodioToken = async (): Promise<any> => {
   }
 };
 
-// Function to authenticate with client credentials
+// Function to authenticate with client credentials - Direct API implementation
 export const authenticateWithClientCredentials = async (): Promise<any> => {
   try {
-    const podioClient = initializePodio();
-    if (!podioClient) {
-      throw new Error('Podio client not initialized');
+    // Create form data for client credentials request
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'client_credentials');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+
+    // Make the request to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Authentication failed:', errorData);
+      throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
     }
 
-    const tokens = await podioClient.oauth.authenticate('client', {
-      client_id: clientId,
-      client_secret: clientSecret
-    });
+    // Parse and store the tokens
+    const tokens = await response.json();
     storeTokens(tokens);
     return tokens;
   } catch (error) {
@@ -146,18 +179,35 @@ export const authenticateWithClientCredentials = async (): Promise<any> => {
   }
 };
 
-// Function to authenticate with password flow
+// Function to authenticate with password flow - Direct API implementation
 export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<any> => {
   try {
-    const podioClient = initializePodio();
-    if (!podioClient) {
-      throw new Error('Podio client not initialized');
+    // Create form data for password authentication
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'password');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('username', username);
+    formData.append('password', password);
+
+    // Make the request to Podio's token endpoint
+    const response = await fetch('https://podio.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Password authentication failed:', errorData);
+      throw new Error(`Password authentication failed: ${response.status} ${response.statusText}`);
     }
 
-    const tokens = await podioClient.oauth.authenticate('password', {
-      username: username,
-      password: password
-    });
+    // Parse and store the tokens
+    const tokens = await response.json();
     storeTokens(tokens);
     return tokens;
   } catch (error) {
@@ -166,18 +216,37 @@ export const authenticateWithPasswordFlow = async (username: string, password: s
   }
 };
 
-// Function to validate access to the contacts app
+// Function to validate access to the contacts app - Direct API implementation
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
-    const podioClient = initializePodio();
-    if (!podioClient) {
-      throw new Error('Podio client not initialized');
+    // Ensure we have valid tokens
+    if (!hasValidTokens()) {
+      await authenticateWithClientCredentials();
     }
 
-    // Check access to the contacts app
-    await podioClient.request('GET', `/app/${import.meta.env.VITE_PODIO_CONTACTS_APP_ID}`);
+    const accessToken = localStorage.getItem('podio_access_token');
+    const contactsAppId = import.meta.env.VITE_PODIO_CONTACTS_APP_ID;
+
+    if (!accessToken) {
+      throw new Error('No access token available');
+    }
+
+    // Make the request to check access to the contacts app
+    const response = await fetch(`https://api.podio.com/app/${contactsAppId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `OAuth2 ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Access validation failed:', await response.text());
+      return false;
+    }
+
     return true;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Access validation failed:', error);
     return false;
   }
@@ -187,7 +256,7 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
 export const PODIO_CONTACTS_APP_ID = import.meta.env.VITE_PODIO_CONTACTS_APP_ID;
 export const PODIO_PACKING_SPEC_APP_ID = import.meta.env.VITE_PODIO_PACKING_SPEC_APP_ID;
 
-// Contact field IDs for the Podio Contacts app - Updated with provided developer fields
+// Contact field IDs for the Podio Contacts app
 export const CONTACT_FIELD_IDS = {
   email: 233245358,        // contact-email
   name: 233245352,         // title (business name)
@@ -269,11 +338,14 @@ export const isPodioConfigured = (): boolean => {
 
 // Function to check if valid tokens exist in local storage
 export const hasValidTokens = (): boolean => {
-  const tokens = retrieveTokens();
-  if (!tokens) return false;
+  const accessToken = localStorage.getItem('podio_access_token');
+  if (!accessToken) return false;
   
-  // Check if the access token is present and not expired
-  return !!(tokens.access_token);
+  // Check if token is expired
+  const expiry = localStorage.getItem('podio_token_expiry');
+  if (!expiry) return false;
+  
+  return Date.now() < parseInt(expiry, 10);
 };
 
 import { getFieldValueByExternalId } from './podioFieldHelpers';
@@ -364,9 +436,9 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
   await ensureValidTokens();
   
   // Get the access token
-  const { access_token } = JSON.parse(localStorage.getItem('podio_tokens') || '{}');
+  const accessToken = localStorage.getItem('podio_access_token');
   
-  if (!access_token) {
+  if (!accessToken) {
     throw new Error('No access token available');
   }
   
@@ -380,7 +452,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
   
   // Set up headers with authentication
   const headers = {
-    'Authorization': `OAuth2 ${access_token}`,
+    'Authorization': `OAuth2 ${accessToken}`,
     'Content-Type': 'application/json',
     ...(appToken ? { 'X-App-Token': appToken } : {}),
     ...(options.headers || {})

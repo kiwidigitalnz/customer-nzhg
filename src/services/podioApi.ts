@@ -14,9 +14,14 @@ export {
   PODIO_CONTACTS_APP_ID,
   PODIO_PACKING_SPEC_APP_ID,
   CONTACT_FIELD_IDS,
+  PACKING_SPEC_FIELD_IDS,
   isRateLimited,
+  isRateLimitedWithInfo,
   setRateLimit,
   clearRateLimit,
+  clearRateLimitInfo,
+  cacheUserData,
+  getCachedUserData,
   authenticateWithPasswordFlow
 } from './podio/podioAuth';
 
@@ -35,7 +40,6 @@ export {
   getPackingSpecsForContact,
   getPackingSpecDetails,
   updatePackingSpecStatus,
-  PACKING_SPEC_FIELD_IDS,
   PODIO_CATEGORIES
 } from './podio/podioPackingSpecs';
 export type { PackingSpec } from './podio/podioPackingSpecs';
