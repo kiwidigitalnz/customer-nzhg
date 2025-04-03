@@ -21,14 +21,11 @@ export {
   clearRateLimit,
   clearRateLimitInfo,
   cacheUserData,
-  getCachedUserData,
-  authenticateWithPasswordFlow
+  getCachedUserData
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
 export {
-  startPodioOAuthFlow,
-  exchangeCodeForToken,
   getPodioClientId,
   getPodioClientSecret,
   getPodioRedirectUri,

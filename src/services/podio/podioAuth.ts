@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 
 // Initialize Podio client with your API keys
@@ -7,7 +6,6 @@ const clientSecret = import.meta.env.VITE_PODIO_CLIENT_SECRET;
 
 // Function to clear tokens from local storage
 export const clearTokens = () => {
-  localStorage.removeItem('podio_tokens');
   localStorage.removeItem('podio_access_token');
   localStorage.removeItem('podio_refresh_token');
   localStorage.removeItem('podio_token_expiry');
@@ -15,8 +13,7 @@ export const clearTokens = () => {
 
 // Function to store tokens in local storage
 const storeTokens = (tokens: any) => {
-  localStorage.setItem('podio_tokens', JSON.stringify(tokens));
-  // Also store individually for easier access
+  // Store individually for easier access
   if (tokens.access_token) {
     localStorage.setItem('podio_access_token', tokens.access_token);
   }
@@ -28,12 +25,6 @@ const storeTokens = (tokens: any) => {
     const expiryTime = Date.now() + (tokens.expires_in * 1000);
     localStorage.setItem('podio_token_expiry', expiryTime.toString());
   }
-};
-
-// Function to retrieve tokens from local storage
-const retrieveTokens = (): any => {
-  const tokens = localStorage.getItem('podio_tokens');
-  return tokens ? JSON.parse(tokens) : null;
 };
 
 // Rate limiting variables
@@ -147,6 +138,8 @@ export const refreshPodioToken = async (): Promise<any> => {
 // Function to authenticate with client credentials - Direct API implementation
 export const authenticateWithClientCredentials = async (): Promise<any> => {
   try {
+    console.log('Authenticating with client credentials');
+    
     // Create form data for client credentials request
     const formData = new URLSearchParams();
     formData.append('grant_type', 'client_credentials');
@@ -165,13 +158,14 @@ export const authenticateWithClientCredentials = async (): Promise<any> => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('Authentication failed:', errorData);
+      console.error('Client credentials authentication failed:', errorData);
       throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
     }
 
     // Parse and store the tokens
     const tokens = await response.json();
     storeTokens(tokens);
+    console.log('Client credentials authentication successful');
     return tokens;
   } catch (error) {
     console.error('Error authenticating with client credentials:', error);
@@ -179,46 +173,11 @@ export const authenticateWithClientCredentials = async (): Promise<any> => {
   }
 };
 
-// Function to authenticate with password flow - Direct API implementation
-export const authenticateWithPasswordFlow = async (username: string, password: string): Promise<any> => {
-  try {
-    // Create form data for password authentication
-    const formData = new URLSearchParams();
-    formData.append('grant_type', 'password');
-    formData.append('client_id', clientId);
-    formData.append('client_secret', clientSecret);
-    formData.append('username', username);
-    formData.append('password', password);
-
-    // Make the request to Podio's token endpoint
-    const response = await fetch('https://podio.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Password authentication failed:', errorData);
-      throw new Error(`Password authentication failed: ${response.status} ${response.statusText}`);
-    }
-
-    // Parse and store the tokens
-    const tokens = await response.json();
-    storeTokens(tokens);
-    return tokens;
-  } catch (error) {
-    console.error('Error authenticating with password flow:', error);
-    throw error;
-  }
-};
-
 // Function to validate access to the contacts app - Direct API implementation
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
+    console.log('Validating access to contacts app');
+    
     // Ensure we have valid tokens
     if (!hasValidTokens()) {
       await authenticateWithClientCredentials();
@@ -245,6 +204,7 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
       return false;
     }
 
+    console.log('Access to contacts app validated successfully');
     return true;
   } catch (error) {
     console.error('Access validation failed:', error);
@@ -350,37 +310,15 @@ export const hasValidTokens = (): boolean => {
 
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 
-// Ensure valid tokens
-const ensureValidTokens = async (): Promise<void> => {
-  if (!hasValidTokens()) {
-    console.warn('No valid tokens found, authenticating with client credentials');
-    await authenticateWithClientCredentials();
-  }
-};
-
-// Function to get logo URL from fields
-const getLogoUrl = (fields: any[]): string | null => {
-  // First try to get the logo URL directly if it exists
-  const logoUrl = getFieldValueByExternalId(fields, 'logo-url');
-  if (logoUrl) return logoUrl;
-  
-  // If no direct URL, try to use the file ID with a proxy
-  const logoField = fields.find(f => f.external_id === 'logo');
-  if (logoField && logoField.values && logoField.values.length > 0) {
-    const fileData = logoField.values[0];
-    if (fileData.file && fileData.file.file_id) {
-      return `/api/podio-image/${fileData.file.file_id}`;
-    }
-  }
-  
-  return null;
-};
-
-// User or contact authentication
+// User or contact authentication - This verifies credentials against Podio contacts database
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
-    console.log('Authenticating user with username:', username);
-    await ensureValidTokens();
+    console.log('Looking up user credentials with username:', username);
+    
+    // Make sure the app is authenticated with Podio first
+    if (!hasValidTokens()) {
+      await authenticateWithClientCredentials();
+    }
     
     const endpoint = `item/app/${PODIO_CONTACTS_APP_ID}/filter/`;
     
@@ -425,6 +363,24 @@ export const authenticateUser = async (username: string, password: string): Prom
   }
 };
 
+// Function to get logo URL from fields
+const getLogoUrl = (fields: any[]): string | null => {
+  // First try to get the logo URL directly if it exists
+  const logoUrl = getFieldValueByExternalId(fields, 'logo-url');
+  if (logoUrl) return logoUrl;
+  
+  // If no direct URL, try to use the file ID with a proxy
+  const logoField = fields.find(f => f.external_id === 'logo');
+  if (logoField && logoField.values && logoField.values.length > 0) {
+    const fileData = logoField.values[0];
+    if (fileData.file && fileData.file.file_id) {
+      return `/api/podio-image/${fileData.file.file_id}`;
+    }
+  }
+  
+  return null;
+};
+
 // Make authenticated API calls to Podio
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appType?: 'contacts' | 'packingspec'): Promise<any> => {
   // Check if we're rate limited
@@ -433,7 +389,9 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
   }
   
   // Ensure we have valid tokens
-  await ensureValidTokens();
+  if (!hasValidTokens()) {
+    await authenticateWithClientCredentials();
+  }
   
   // Get the access token
   const accessToken = localStorage.getItem('podio_access_token');

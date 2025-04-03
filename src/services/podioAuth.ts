@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { 
   getPodioClientId,
@@ -26,6 +25,5 @@ export {
   clearRateLimit,
   clearRateLimitInfo,
   cacheUserData,
-  getCachedUserData,
-  authenticateWithPasswordFlow
+  getCachedUserData
 } from './podio/podioAuth';

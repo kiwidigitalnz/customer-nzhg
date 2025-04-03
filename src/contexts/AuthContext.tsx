@@ -3,13 +3,13 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { 
   authenticateUser, 
   authenticateWithClientCredentials, 
-  clearTokens, 
+  clearPodioTokens, 
   clearRateLimit, 
   refreshPodioToken, 
   isPodioConfigured, 
-  hasValidTokens, 
+  hasValidPodioTokens, 
   setRateLimit 
-} from '@/services/podioAuth';
+} from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSessionStartTime(parsedTime);
             
             // Attempt to refresh Podio token if we have valid tokens
-            if (hasValidTokens()) {
+            if (hasValidPodioTokens()) {
               try {
                 await refreshPodioToken();
               } catch (refreshError) {
@@ -93,6 +93,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Session has expired, clear everything
             console.log('Session expired, logging out');
             clearLocalData();
+          }
+        } else if (isPodioConfigured()) {
+          // If no user is logged in but Podio is configured, still authenticate the app
+          try {
+            if (!hasValidPodioTokens()) {
+              await authenticateWithClientCredentials();
+            }
+          } catch (authError) {
+            console.warn('Failed to authenticate app with client credentials:', authError);
           }
         }
       } catch (error) {
@@ -116,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearLocalData = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionStartTime');
-    clearTokens(); // Clear Podio tokens
+    clearPodioTokens(); // Clear Podio tokens
     clearRateLimit(); // Clear rate limit state
     setUser(null);
     setSessionStartTime(null);
@@ -129,7 +138,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      // Authenticate with Podio
+      // First ensure Podio API is authenticated (client credentials)
+      if (!hasValidPodioTokens()) {
+        await authenticateWithClientCredentials();
+      }
+      
+      // Now lookup the user in the Podio contacts database
       const userData = await authenticateUser(username, password);
       
       // Store user data
@@ -147,9 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const errorMessage = error instanceof Error ? error.message : 'Failed to login';
       setError(errorMessage);
       
-      // Clear any partial data
-      clearLocalData();
-      
       return false;
     } finally {
       setLoading(false);
@@ -163,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       // Clear tokens first
-      clearTokens();
+      clearPodioTokens();
       
       // Attempt to authenticate using client credentials
       await authenticateWithClientCredentials();

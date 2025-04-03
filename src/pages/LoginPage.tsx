@@ -4,7 +4,7 @@ import MainLayout from '../components/MainLayout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Info, Shield } from 'lucide-react';
-import { isPodioConfigured, validateContactsAppAccess } from '../services/podioAuth';
+import { isPodioConfigured, validateContactsAppAccess } from '../services/podioApi';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -55,8 +55,8 @@ const LoginPage = () => {
       const success = await forceReauthenticate();
       if (success) {
         toast({
-          title: "Podio Reauthentication Successful",
-          description: "Your app has been successfully reauthenticated with Podio."
+          title: "Podio App Authentication Successful",
+          description: "Your app has been successfully authenticated with Podio."
         });
         
         // Check access again after reauth
@@ -73,14 +73,14 @@ const LoginPage = () => {
         }
       } else {
         toast({
-          title: "Podio Reauthentication Failed",
-          description: "Failed to reauthenticate with Podio. Please check your API credentials.",
+          title: "Podio Authentication Failed",
+          description: "Failed to authenticate app with Podio. Please check your API credentials.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Reauthentication Error",
+        title: "Authentication Error",
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
@@ -141,7 +141,7 @@ const LoginPage = () => {
               {!reAuthenticating && appAccessStatus !== 'checking' && (
                 <RefreshCw className="mr-1 h-3 w-3" />
               )}
-              Reauthorize with Podio
+              Reconnect to Podio API
             </Button>
           </div>
           
