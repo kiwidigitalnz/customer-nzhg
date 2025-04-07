@@ -21,7 +21,13 @@ serve(async (req) => {
     if (!clientId || !clientSecret) {
       console.error('Podio credentials not configured in environment variables');
       return new Response(
-        JSON.stringify({ error: 'Podio credentials not configured' }),
+        JSON.stringify({ 
+          error: 'Podio credentials not configured', 
+          details: {
+            client_id_present: Boolean(clientId),
+            client_secret_present: Boolean(clientSecret)
+          }
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -54,14 +60,21 @@ serve(async (req) => {
     });
 
     if (!authResponse.ok) {
-      const errorText = await authResponse.text();
+      let errorText = '';
+      try {
+        errorText = await authResponse.text();
+      } catch (e) {
+        errorText = 'Could not read error response';
+      }
+      
       console.error(`Podio authentication failed with status ${authResponse.status}: ${errorText}`);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to authenticate with Podio API', 
-          details: errorText 
+          details: errorText,
+          status: authResponse.status
         }),
-        { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -87,7 +100,12 @@ serve(async (req) => {
       appDetails = await appResponse.json();
       console.log(`Successfully validated access to app: ${appDetails.name}`);
     } else {
-      const errorText = await appResponse.text();
+      let errorText = '';
+      try {
+        errorText = await appResponse.text();
+      } catch (e) {
+        errorText = 'Could not read error response';
+      }
       console.error(`Failed to access app ${app_id}. Status: ${appResponse.status}, Error: ${errorText}`);
     }
 
@@ -108,7 +126,10 @@ serve(async (req) => {
     console.error('Error validating Podio app access:', error);
     
     return new Response(
-      JSON.stringify({ error: 'Failed to validate app access', details: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to validate app access', 
+        details: error.message 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

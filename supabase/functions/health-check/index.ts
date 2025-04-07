@@ -22,20 +22,21 @@ serve(async (req) => {
       if (requestData.check_secrets) {
         console.log('Checking Podio secrets configuration...');
         
-        // Get all secrets
-        const clientId = Deno.env.get('PODIO_CLIENT_ID');
-        const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-        const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID');
-        const packingSpecAppId = Deno.env.get('PODIO_PACKING_SPEC_APP_ID');
-        const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
-        const packingSpecAppToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN');
+        // Get all secrets - directly access the secrets
+        const clientId = Deno.env.get('PODIO_CLIENT_ID') || '';
+        const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET') || '';
+        const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID') || '';
+        const packingSpecAppId = Deno.env.get('PODIO_PACKING_SPEC_APP_ID') || '';
+        const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN') || '';
+        const packingSpecAppToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN') || '';
         
-        console.log('Client ID present:', Boolean(clientId));
-        console.log('Client Secret present:', Boolean(clientSecret));
-        console.log('Contacts App ID present:', Boolean(contactsAppId));
-        console.log('Packing Spec App ID present:', Boolean(packingSpecAppId));
-        console.log('Contacts App Token present:', Boolean(contactsAppToken));
-        console.log('Packing Spec App Token present:', Boolean(packingSpecAppToken));
+        // Log the actual values (first few characters only for security)
+        if (clientId) console.log('Client ID present:', clientId.substring(0, 3) + '...');
+        if (clientSecret) console.log('Client Secret present:', clientSecret.substring(0, 3) + '...');
+        if (contactsAppId) console.log('Contacts App ID present:', contactsAppId);
+        if (packingSpecAppId) console.log('Packing Spec App ID present:', packingSpecAppId);
+        if (contactsAppToken) console.log('Contacts App Token present:', contactsAppToken.substring(0, 3) + '...');
+        if (packingSpecAppToken) console.log('Packing Spec App Token present:', packingSpecAppToken.substring(0, 3) + '...');
         
         const secretsCheck = {
           PODIO_CLIENT_ID: Boolean(clientId),
@@ -46,7 +47,7 @@ serve(async (req) => {
           PODIO_PACKING_SPEC_APP_TOKEN: Boolean(packingSpecAppToken),
         };
         
-        // Test authentication if requested and all secrets are available
+        // Test authentication if requested and all credentials are available
         let authTest = null;
         if (requestData.test_auth && clientId && clientSecret) {
           console.log('Testing Podio authentication...');
@@ -65,6 +66,8 @@ serve(async (req) => {
               }),
             });
             
+            console.log('Podio auth response status:', podioResponse.status);
+            
             if (podioResponse.ok) {
               const authData = await podioResponse.json();
               authTest = {
@@ -75,7 +78,12 @@ serve(async (req) => {
               };
               console.log('Authentication test successful');
             } else {
-              const errorText = await podioResponse.text();
+              let errorText = '';
+              try {
+                errorText = await podioResponse.text();
+              } catch (e) {
+                errorText = 'Could not read error response';
+              }
               authTest = {
                 success: false,
                 status: podioResponse.status,
