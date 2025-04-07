@@ -20,12 +20,22 @@ serve(async (req) => {
 
     if (!clientId || !clientSecret) {
       console.error('Podio credentials not configured in environment variables');
+      console.log('Environment variable details:');
+      console.log('PODIO_CLIENT_ID present:', Boolean(clientId));
+      console.log('PODIO_CLIENT_SECRET present:', Boolean(clientSecret));
+      
+      // Log all environment variables that contain PODIO
+      const envKeys = Object.keys(Deno.env.toObject())
+        .filter(key => key.includes('PODIO'));
+      console.log('Found PODIO environment variables:', envKeys);
+
       return new Response(
         JSON.stringify({ 
           error: 'Podio credentials not configured', 
           details: {
             client_id_present: Boolean(clientId),
-            client_secret_present: Boolean(clientSecret)
+            client_secret_present: Boolean(clientSecret),
+            all_podio_vars: envKeys
           }
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -72,7 +82,9 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Failed to authenticate with Podio API', 
           details: errorText,
-          status: authResponse.status
+          status: authResponse.status,
+          client_id_length: clientId ? clientId.length : 0,
+          client_secret_length: clientSecret ? clientSecret.length : 0
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -118,7 +130,10 @@ serve(async (req) => {
           item_name: appDetails.item_name,
           app_id: appDetails.app_id,
         } : null,
-        statusCode: appResponse.status
+        statusCode: appResponse.status,
+        authSuccess: true,
+        tokenType: authData.token_type,
+        tokenExpiresIn: authData.expires_in
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

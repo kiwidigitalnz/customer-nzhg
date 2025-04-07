@@ -23,21 +23,31 @@ serve(async (req) => {
         console.log('Checking Podio secrets configuration...');
         
         // Get all secrets - directly access the secrets
-        const clientId = Deno.env.get('PODIO_CLIENT_ID') || '';
-        const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET') || '';
-        const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID') || '';
-        const packingSpecAppId = Deno.env.get('PODIO_PACKING_SPEC_APP_ID') || '';
-        const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN') || '';
-        const packingSpecAppToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN') || '';
+        const clientId = Deno.env.get('PODIO_CLIENT_ID');
+        const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+        const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID');
+        const packingSpecAppId = Deno.env.get('PODIO_PACKING_SPEC_APP_ID');
+        const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
+        const packingSpecAppToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN');
         
-        // Log the actual values (first few characters only for security)
-        if (clientId) console.log('Client ID present:', clientId.substring(0, 3) + '...');
-        if (clientSecret) console.log('Client Secret present:', clientSecret.substring(0, 3) + '...');
-        if (contactsAppId) console.log('Contacts App ID present:', contactsAppId);
-        if (packingSpecAppId) console.log('Packing Spec App ID present:', packingSpecAppId);
-        if (contactsAppToken) console.log('Contacts App Token present:', contactsAppToken.substring(0, 3) + '...');
-        if (packingSpecAppToken) console.log('Packing Spec App Token present:', packingSpecAppToken.substring(0, 3) + '...');
+        // Log full environment variable names to check for exact matches
+        console.log('Environment variable names in Deno.env:');
+        for (const key of Object.keys(Deno.env.toObject())) {
+          if (key.includes('PODIO')) {
+            console.log(`Found variable: ${key}`);
+          }
+        }
         
+        // Log raw values (first few characters for secrets)
+        console.log('Raw values check:');
+        console.log('PODIO_CLIENT_ID raw value:', clientId === null ? 'null' : (clientId === undefined ? 'undefined' : `present (${clientId.length} chars)`));
+        console.log('PODIO_CLIENT_SECRET raw value:', clientSecret === null ? 'null' : (clientSecret === undefined ? 'undefined' : `present (${clientSecret.length} chars)`));
+        console.log('PODIO_CONTACTS_APP_ID raw value:', contactsAppId);
+        console.log('PODIO_PACKING_SPEC_APP_ID raw value:', packingSpecAppId);
+        console.log('PODIO_CONTACTS_APP_TOKEN raw value:', contactsAppToken === null ? 'null' : (contactsAppToken === undefined ? 'undefined' : `present (${contactsAppToken.length} chars)`));
+        console.log('PODIO_PACKING_SPEC_APP_TOKEN raw value:', packingSpecAppToken === null ? 'null' : (packingSpecAppToken === undefined ? 'undefined' : `present (${packingSpecAppToken.length} chars)`));
+        
+        // Convert to boolean for the response
         const secretsCheck = {
           PODIO_CLIENT_ID: Boolean(clientId),
           PODIO_CLIENT_SECRET: Boolean(clientSecret),
@@ -106,7 +116,11 @@ serve(async (req) => {
             timestamp: new Date().toISOString(),
             environment: Deno.env.get('ENVIRONMENT') || 'development',
             secrets: secretsCheck,
-            auth_test: authTest
+            auth_test: authTest,
+            diagnostics: {
+              envKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('PODIO')),
+              functionDeployTime: new Date().toISOString()
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
