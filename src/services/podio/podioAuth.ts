@@ -261,13 +261,15 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     };
     
     // Call the Edge Function
-    const { data, error, status } = await supabase.functions.invoke('podio-proxy', {
+    const response = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
       body: payload
     });
     
-    // Handle rate limiting
-    if (status === 429) {
+    const { data, error } = response;
+    
+    // Handle rate limiting - check for 429 in error or message
+    if (error && (error.message?.includes('429') || response.error?.status === 429)) {
       setRateLimit(endpoint);
       throw new Error('Rate limit reached. Please try again later.');
     }
@@ -277,8 +279,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       console.error('Podio API error:', error);
       
       // Handle authentication errors
-      if (status === 401 || status === 403) {
-        if (status === 401) {
+      if (error.message?.includes('401') || error.message?.includes('403')) {
+        if (error.message?.includes('401')) {
           clearTokens();
           throw new Error('Authentication failed. Please log in again.');
         } else {

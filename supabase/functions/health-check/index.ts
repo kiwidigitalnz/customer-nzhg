@@ -13,8 +13,18 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Health check response
+  const data = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: Deno.env.get('ENVIRONMENT') || 'development',
+  };
+
   return new Response(
-    JSON.stringify({ status: 'ok', message: 'Supabase Edge Functions are available' }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    JSON.stringify(data),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
   );
 });
