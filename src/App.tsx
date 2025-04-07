@@ -1,55 +1,54 @@
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import PodioSetupPage from './pages/PodioSetupPage';
+import PackingSpecPage from './pages/PackingSpecPage';
+import SimplePodioSetupPage from './pages/SimplePodioSetupPage';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import React, { useEffect } from 'react';
+// ProtectedRoute component to handle authentication
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
 
-import Index from "./pages/Index";
-import DashboardPage from "./pages/DashboardPage";
-import NotFound from "./pages/NotFound";
-import PackingSpecDetailsPage from "./pages/PackingSpecDetailsPage";
-import LoginPage from "./pages/LoginPage";
-import PodioSetupPage from "./pages/PodioSetupPage";
-import PodioCallbackPage from "./pages/PodioCallbackPage";
+  if (loading) {
+    return <div>Loading...</div>; // Show a loading indicator while checking authentication
+  }
 
-// Create the query client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: true,
-      refetchOnMount: true,
-    },
-  },
-});
+  return isAuthenticated ? (
+    children
+  ) : (
+    <Navigate to="/login" replace /> // Redirect to login page if not authenticated
+  );
+};
 
 const App: React.FC = () => {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/podio-setup" element={<PodioSetupPage />} />
-                <Route path="/podio-callback" element={<PodioCallbackPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/packing-spec/:id" element={<PackingSpecDetailsPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </TooltipProvider>
-          </BrowserRouter>
-        </AuthProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/packing-spec/:id"
+            element={
+              <ProtectedRoute>
+                <PackingSpecPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 
