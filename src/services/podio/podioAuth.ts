@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
@@ -186,6 +187,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       return false;
     }
     
+    // Modified request body - removed the 'scope' parameter as Podio indicates it's not supported
     const response = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -194,8 +196,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
         'client_id': clientId,
-        'client_secret': clientSecret,
-        'scope': 'global'
+        'client_secret': clientSecret
       })
     });
     
