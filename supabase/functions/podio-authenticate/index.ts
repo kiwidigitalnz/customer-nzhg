@@ -19,6 +19,7 @@ serve(async (req) => {
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
+      console.error('Podio credentials not configured in environment variables');
       return new Response(
         JSON.stringify({ error: 'Podio credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -28,6 +29,8 @@ serve(async (req) => {
     // Parse request body to get any additional parameters (scope, etc.)
     const requestData = await req.json().catch(() => ({}));
     const scope = requestData.scope || 'global';
+
+    console.log(`Authenticating with Podio using client credentials. Scope: ${scope}`);
 
     // Call Podio API to authenticate with client credentials
     // As per Podio docs: https://developers.podio.com/authentication/server_side
@@ -44,8 +47,21 @@ serve(async (req) => {
       }),
     });
 
-    // Forward the response from Podio
+    if (!podioResponse.ok) {
+      const errorText = await podioResponse.text();
+      console.error(`Podio authentication failed with status ${podioResponse.status}: ${errorText}`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Podio authentication failed with status ${podioResponse.status}`, 
+          details: errorText 
+        }),
+        { status: podioResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse the response from Podio
     const podioData = await podioResponse.json();
+    console.log('Successfully authenticated with Podio');
 
     // Add additional metadata to help with client-side token management
     const enhancedResponse = {
@@ -57,7 +73,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify(enhancedResponse),
       { 
-        status: podioResponse.status, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

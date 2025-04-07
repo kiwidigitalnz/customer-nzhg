@@ -9,8 +9,9 @@ import MainLayout from '../components/MainLayout';
 import { useNavigate } from 'react-router-dom';
 import { isPodioConfigured, authenticateWithClientCredentials, validateContactsAppAccess } from '@/services/podioAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Info, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, ExternalLink, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 const PodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -20,6 +21,8 @@ const PodioSetupPage = () => {
   const [connecting, setConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
+  const [loadingDebugInfo, setLoadingDebugInfo] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -27,19 +30,22 @@ const PodioSetupPage = () => {
     // Check if Supabase Edge Functions are available
     const checkSupabaseConnection = async () => {
       try {
+        console.log('Checking Supabase connection via health-check function');
         const { data, error } = await supabase.functions.invoke('health-check', {
           method: 'GET'
         });
         
-        setSupabaseConnected(!error);
-        
         if (error) {
           console.error('Supabase health check error:', error);
+          setSupabaseConnected(false);
           toast({
             title: "Supabase Connection Issue",
             description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
             variant: "destructive"
           });
+        } else {
+          console.log('Supabase health check successful:', data);
+          setSupabaseConnected(true);
         }
       } catch (error) {
         console.error('Error checking Supabase connection:', error);
@@ -100,6 +106,43 @@ const PodioSetupPage = () => {
     }
   };
 
+  const getSecretsDebugInfo = async () => {
+    setLoadingDebugInfo(true);
+    try {
+      // Call the edge function to get debug info about the secrets
+      const { data, error } = await supabase.functions.invoke('health-check', {
+        method: 'POST',
+        body: { check_secrets: true }
+      });
+      
+      if (error) {
+        console.error('Error getting debug info:', error);
+        toast({
+          title: "Error",
+          description: "Failed to get debug information",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setDebugInfo(data);
+      
+      toast({
+        title: "Debug Info Retrieved",
+        description: "Successfully retrieved Podio configuration debug info",
+      });
+    } catch (error) {
+      console.error('Error getting debug info:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get debug information",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingDebugInfo(false);
+    }
+  };
+
   const handleConnectPodio = async () => {    
     if (!isPodioConfigured()) {
       toast({
@@ -133,6 +176,33 @@ const PodioSetupPage = () => {
           description: "Connected to Podio API successfully",
           variant: "default"
         });
+        
+        // Now check if we have access to the Contacts app
+        try {
+          const hasAccess = await validateContactsAppAccess();
+          
+          if (hasAccess) {
+            toast({
+              title: "App Access Confirmed",
+              description: "Successfully confirmed access to the Contacts app",
+              variant: "default"
+            });
+          } else {
+            toast({
+              title: "App Access Issue",
+              description: "Connected to Podio API, but could not access the Contacts app. Check app permissions.",
+              variant: "destructive"
+            });
+          }
+        } catch (appError) {
+          console.error('Error checking app access:', appError);
+          toast({
+            title: "App Access Check Failed",
+            description: "Could not verify access to the Contacts app",
+            variant: "destructive"
+          });
+        }
+        
       } else {
         setConnectionStatus('error');
         setConnectionError("Failed to authenticate with Podio. Please check your credentials.");
@@ -173,6 +243,13 @@ const PodioSetupPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="mb-4 flex items-center gap-2">
+              <span>Supabase Connection:</span>
+              <Badge variant={supabaseConnected ? "success" : "destructive"}>
+                {supabaseConnected ? "Connected" : "Not Connected"}
+              </Badge>
+            </div>
+            
             {!supabaseConnected && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -235,6 +312,8 @@ const PodioSetupPage = () => {
                   <li>PODIO_CLIENT_SECRET</li>
                   <li>PODIO_CONTACTS_APP_TOKEN</li>
                   <li>PODIO_PACKING_SPEC_APP_TOKEN</li>
+                  <li>PODIO_CONTACTS_APP_ID</li>
+                  <li>PODIO_PACKING_SPEC_APP_ID</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -251,6 +330,34 @@ const PodioSetupPage = () => {
               </ol>
               <p className="mt-2 text-amber-800 font-medium">Important:</p>
               <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>{window.location.origin}</strong></p>
+            </div>
+
+            {/* Debug section */}
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-medium mb-2">Debug Tools</h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={getSecretsDebugInfo}
+                disabled={loadingDebugInfo || !supabaseConnected}
+                className="w-full mb-2"
+              >
+                {loadingDebugInfo && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+                Check Supabase Secrets Configuration
+              </Button>
+              
+              {Object.keys(debugInfo).length > 0 && (
+                <div className="bg-slate-50 p-3 rounded text-xs font-mono">
+                  <p className="font-semibold mb-1">Secrets Status:</p>
+                  <ul className="space-y-1">
+                    {Object.entries(debugInfo.secrets || {}).map(([key, value]) => (
+                      <li key={key}>
+                        {key}: <span className={value ? "text-green-600" : "text-red-600"}>{value ? "✓" : "✗"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
@@ -274,7 +381,12 @@ const PodioSetupPage = () => {
                 disabled={connecting || !supabaseConnected}
                 variant={connectionStatus === 'success' ? 'outline' : 'default'}
               >
-                {connecting ? 'Connecting...' : 'Connect to Podio'}
+                {connecting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : 'Connect to Podio'}
               </Button>
             </div>
           </CardFooter>

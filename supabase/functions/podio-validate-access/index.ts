@@ -19,6 +19,7 @@ serve(async (req) => {
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
+      console.error('Podio credentials not configured in environment variables');
       return new Response(
         JSON.stringify({ error: 'Podio credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -36,6 +37,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Validating access to Podio app ID: ${app_id}`);
+
     // First, get an access token using client credentials
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
@@ -51,14 +54,21 @@ serve(async (req) => {
     });
 
     if (!authResponse.ok) {
+      const errorText = await authResponse.text();
+      console.error(`Podio authentication failed with status ${authResponse.status}: ${errorText}`);
       return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with Podio API' }),
+        JSON.stringify({ 
+          error: 'Failed to authenticate with Podio API', 
+          details: errorText 
+        }),
         { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const authData = await authResponse.json();
     const accessToken = authData.access_token;
+
+    console.log('Successfully obtained access token for app validation');
 
     // Test access to the app by making a request to get app details
     const appResponse = await fetch(`https://api.podio.com/app/${app_id}`, {
@@ -75,6 +85,10 @@ serve(async (req) => {
     
     if (hasAccess) {
       appDetails = await appResponse.json();
+      console.log(`Successfully validated access to app: ${appDetails.name}`);
+    } else {
+      const errorText = await appResponse.text();
+      console.error(`Failed to access app ${app_id}. Status: ${appResponse.status}, Error: ${errorText}`);
     }
 
     return new Response(

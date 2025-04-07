@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
@@ -135,6 +134,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
   
   try {
+    console.log('Refreshing Podio token');
     const { data, error } = await supabase.functions.invoke('podio-refresh-token', {
       method: 'POST',
       body: {
@@ -164,6 +164,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
     }
     
+    console.log('Token refreshed successfully');
     return true;
   } catch (error) {
     console.error('Failed to refresh token:', error);
@@ -174,6 +175,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 // Authenticate with client credentials via Edge Function
 export const authenticateWithClientCredentials = async (scope: string = 'global'): Promise<boolean> => {
   try {
+    console.log(`Authenticating with client credentials. Scope: ${scope}`);
     const { data, error } = await supabase.functions.invoke('podio-authenticate', {
       method: 'POST',
       body: { scope }
@@ -201,6 +203,7 @@ export const authenticateWithClientCredentials = async (scope: string = 'global'
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
     }
     
+    console.log('Successfully authenticated with client credentials');
     return true;
   } catch (error) {
     console.error('Failed to authenticate with client credentials:', error);
@@ -211,6 +214,7 @@ export const authenticateWithClientCredentials = async (scope: string = 'global'
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
+    console.log(`Authenticating user: ${username}`);
     // Call the Edge Function to authenticate the user
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
@@ -222,6 +226,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     });
     
     if (error) {
+      console.error('User authentication failed:', error);
       throw new Error(error.message || 'Authentication failed');
     }
     
@@ -245,6 +250,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     };
     
     localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    console.log('User authenticated successfully');
     
     return userData;
   } catch (error) {
@@ -256,6 +262,7 @@ export const authenticateUser = async (username: string, password: string): Prom
 // Validate access to the Contacts app
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
+    console.log(`Validating access to Contacts app: ${PODIO_CONTACTS_APP_ID}`);
     // Use the Edge Function to validate app access
     const { data, error } = await supabase.functions.invoke('podio-validate-access', {
       method: 'POST',
@@ -269,6 +276,7 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
       return false;
     }
     
+    console.log(`Access validation result:`, data);
     return data.hasAccess || false;
   } catch (error) {
     console.error('Failed to validate Contacts app access:', error);
