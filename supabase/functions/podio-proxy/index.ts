@@ -37,7 +37,8 @@ serve(async (req) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       accessToken = authHeader.substring(7);
     } else {
-      // Get one from client credentials
+      // Get one from client credentials - this aligns with Podio server-side auth
+      // https://developers.podio.com/authentication/server_side
       const clientId = Deno.env.get('PODIO_CLIENT_ID');
       const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
       
@@ -57,12 +58,17 @@ serve(async (req) => {
           'grant_type': 'client_credentials',
           'client_id': clientId,
           'client_secret': clientSecret,
+          'scope': 'global', // Default scope as per Podio docs
         }),
       });
       
       if (!authResponse.ok) {
+        const errorText = await authResponse.text();
         return new Response(
-          JSON.stringify({ error: 'Failed to obtain authentication token' }),
+          JSON.stringify({ 
+            error: 'Failed to obtain authentication token',
+            details: errorText
+          }),
           { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -82,6 +88,11 @@ serve(async (req) => {
       headers['X-Podio-App'] = appToken;
     }
 
+    // Log request details (for debugging)
+    console.log(`Making Podio API request to: ${endpoint}`);
+    console.log(`Method: ${method}`);
+    console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
+
     // Make the actual request to Podio API
     const podioResponse = await fetch(`https://api.podio.com${endpoint}`, {
       method,
@@ -90,7 +101,50 @@ serve(async (req) => {
     });
 
     // Get response data
-    const responseData = await podioResponse.json().catch(() => ({}));
+    let responseData;
+    const contentType = podioResponse.headers.get('Content-Type') || '';
+    
+    if (contentType.includes('application/json')) {
+      responseData = await podioResponse.json().catch(() => ({}));
+    } else {
+      const text = await podioResponse.text();
+      responseData = { text };
+    }
+
+    // Check for rate limiting
+    if (podioResponse.status === 429) {
+      const rateLimitReset = podioResponse.headers.get('X-Rate-Limit-Reset');
+      console.warn(`Rate limit reached. Reset at: ${rateLimitReset}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit reached', 
+          details: 'Too many requests to Podio API',
+          reset: rateLimitReset
+        }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check for auth errors
+    if (podioResponse.status === 401 || podioResponse.status === 403) {
+      console.warn(`Authentication error: ${podioResponse.status}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: podioResponse.status === 401 ? 'Authentication failed' : 'Access denied',
+          details: responseData,
+          status: podioResponse.status
+        }),
+        { 
+          status: podioResponse.status, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     // Return the response from Podio
     return new Response(

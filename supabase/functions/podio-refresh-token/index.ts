@@ -37,6 +37,7 @@ serve(async (req) => {
     }
 
     // Call Podio API to refresh the token
+    // As per Podio docs: https://developers.podio.com/authentication/server_side
     const podioResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -52,9 +53,16 @@ serve(async (req) => {
 
     // Forward the response from Podio
     const podioData = await podioResponse.json();
+    
+    // Add additional metadata to help with client-side token management
+    const enhancedResponse = {
+      ...podioData,
+      received_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + (podioData.expires_in * 1000)).toISOString(),
+    };
 
     return new Response(
-      JSON.stringify(podioData),
+      JSON.stringify(enhancedResponse),
       { 
         status: podioResponse.status, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

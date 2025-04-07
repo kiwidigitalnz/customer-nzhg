@@ -65,6 +65,7 @@ serve(async (req) => {
     }
 
     // First authenticate with client credentials
+    // This follows Podio server-side auth flow: https://developers.podio.com/authentication/server_side
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -74,6 +75,7 @@ serve(async (req) => {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
+        'scope': 'global',
       }),
     });
 
@@ -139,6 +141,7 @@ serve(async (req) => {
       logoUrl: getFieldValueByExternalId(userItem, 'logo-url'),
       access_token: accessToken,
       expires_in: authData.expires_in,
+      expires_at: new Date(Date.now() + (authData.expires_in * 1000)).toISOString(),
     };
 
     return new Response(

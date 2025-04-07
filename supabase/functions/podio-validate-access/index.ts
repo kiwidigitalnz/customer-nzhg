@@ -17,7 +17,6 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
 
     if (!clientId || !clientSecret) {
       return new Response(
@@ -32,12 +31,12 @@ serve(async (req) => {
 
     if (!app_id) {
       return new Response(
-        JSON.stringify({ error: 'app_id is required' }),
+        JSON.stringify({ error: 'App ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // First authenticate with client credentials
+    // First, get an access token using client credentials
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -47,12 +46,13 @@ serve(async (req) => {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
+        'scope': 'global',
       }),
     });
 
     if (!authResponse.ok) {
       return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with Podio API', details: await authResponse.text() }),
+        JSON.stringify({ error: 'Failed to authenticate with Podio API' }),
         { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -60,28 +60,38 @@ serve(async (req) => {
     const authData = await authResponse.json();
     const accessToken = authData.access_token;
 
-    // Try to fetch a single item from the app to validate access
-    const validateResponse = await fetch(`https://api.podio.com/item/app/${app_id}/filter/`, {
-      method: 'POST',
+    // Test access to the app by making a request to get app details
+    const appResponse = await fetch(`https://api.podio.com/app/${app_id}`, {
+      method: 'GET',
       headers: {
         'Authorization': `OAuth2 ${accessToken}`,
         'Content-Type': 'application/json',
-        'X-Podio-App': contactsAppToken || '',
       },
-      body: JSON.stringify({
-        limit: 1
-      }),
     });
 
-    // Return access validation result
-    const hasAccess = validateResponse.ok;
+    // Check if we have access to the app
+    const hasAccess = appResponse.ok;
+    let appDetails = null;
     
+    if (hasAccess) {
+      appDetails = await appResponse.json();
+    }
+
     return new Response(
-      JSON.stringify({ hasAccess }),
+      JSON.stringify({ 
+        hasAccess,
+        appId: app_id,
+        appDetails: hasAccess ? {
+          name: appDetails.name,
+          item_name: appDetails.item_name,
+          app_id: appDetails.app_id,
+        } : null,
+        statusCode: appResponse.status
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error validating app access:', error);
+    console.error('Error validating Podio app access:', error);
     
     return new Response(
       JSON.stringify({ error: 'Failed to validate app access', details: error.message }),

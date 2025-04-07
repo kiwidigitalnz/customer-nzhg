@@ -25,7 +25,12 @@ serve(async (req) => {
       );
     }
 
+    // Parse request body to get any additional parameters (scope, etc.)
+    const requestData = await req.json().catch(() => ({}));
+    const scope = requestData.scope || 'global';
+
     // Call Podio API to authenticate with client credentials
+    // As per Podio docs: https://developers.podio.com/authentication/server_side
     const podioResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -35,14 +40,22 @@ serve(async (req) => {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
+        'scope': scope, // Added scope parameter as per Podio docs
       }),
     });
 
     // Forward the response from Podio
     const podioData = await podioResponse.json();
 
+    // Add additional metadata to help with client-side token management
+    const enhancedResponse = {
+      ...podioData,
+      received_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + (podioData.expires_in * 1000)).toISOString(),
+    };
+
     return new Response(
-      JSON.stringify(podioData),
+      JSON.stringify(enhancedResponse),
       { 
         status: podioResponse.status, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

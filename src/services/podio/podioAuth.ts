@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
@@ -147,14 +148,21 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       return false;
     }
     
-    // Store the new tokens
+    // Store the new tokens with proper expiry handling
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
     localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, data.refresh_token);
     
-    // Calculate token expiry time (subtract 5 minutes for safety)
-    const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-    const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
-    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    // Use the enhanced response to set accurate expiry time
+    // But still subtract 5 minutes as a safety buffer
+    if (data.expires_at) {
+      const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    } else {
+      // Fallback to old calculation method
+      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
+      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    }
     
     return true;
   } catch (error) {
@@ -164,10 +172,11 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 };
 
 // Authenticate with client credentials via Edge Function
-export const authenticateWithClientCredentials = async (): Promise<boolean> => {
+export const authenticateWithClientCredentials = async (scope: string = 'global'): Promise<boolean> => {
   try {
     const { data, error } = await supabase.functions.invoke('podio-authenticate', {
-      method: 'POST'
+      method: 'POST',
+      body: { scope }
     });
     
     if (error) {
@@ -175,15 +184,22 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
       return false;
     }
     
-    // Store the tokens
+    // Store the tokens with proper expiry handling
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
     // Client credentials flow doesn't provide a refresh token
     localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
     
-    // Calculate token expiry time (subtract 5 minutes for safety)
-    const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-    const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
-    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    // Use the enhanced response to set accurate expiry time
+    // But still subtract 5 minutes as a safety buffer
+    if (data.expires_at) {
+      const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    } else {
+      // Fallback to old calculation method
+      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
+      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    }
     
     return true;
   } catch (error) {
@@ -209,10 +225,28 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error(error.message || 'Authentication failed');
     }
     
-    // Store user data in localStorage
-    localStorage.setItem(USER_DATA_KEY, JSON.stringify(data));
+    // Store access token from user auth
+    if (data.access_token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
+      
+      // Calculate token expiry time (subtract 5 minutes for safety)
+      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
+      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    }
     
-    return data;
+    // Store user data in localStorage
+    const userData = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      username: data.username,
+      logoUrl: data.logoUrl
+    };
+    
+    localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    
+    return userData;
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
