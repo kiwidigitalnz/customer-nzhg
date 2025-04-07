@@ -7,11 +7,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import MainLayout from '../components/MainLayout';
 import { useNavigate } from 'react-router-dom';
-import { authenticateWithClientCredentials, isPodioConfigured } from '@/services/podioAuth';
+import { isPodioConfigured, authenticateWithClientCredentials, validateContactsAppAccess } from '@/services/podioAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, ExternalLink } from 'lucide-react';
 
 const PodioSetupPage = () => {
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [saving, setSaving] = useState(false);
@@ -20,6 +21,34 @@ const PodioSetupPage = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if Supabase Edge Functions are available
+    const checkSupabaseConnection = async () => {
+      try {
+        const response = await fetch('/api/health-check', { method: 'GET' });
+        setSupabaseConnected(response.ok);
+        
+        if (!response.ok) {
+          toast({
+            title: "Supabase Connection Issue",
+            description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error checking Supabase connection:', error);
+        setSupabaseConnected(false);
+        toast({
+          title: "Supabase Connection Issue",
+          description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    checkSupabaseConnection();
+  }, [toast]);
 
   useEffect(() => {
     // Load stored credentials if available
@@ -48,7 +77,7 @@ const PodioSetupPage = () => {
       
       toast({
         title: "Success",
-        description: "Podio API credentials saved",
+        description: "Podio API credentials saved locally. Remember to add them to Supabase secrets!",
         variant: "default"
       });
 
@@ -71,6 +100,15 @@ const PodioSetupPage = () => {
       toast({
         title: "Error",
         description: "Please save Client ID and Secret first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!supabaseConnected) {
+      toast({
+        title: "Supabase Not Connected",
+        description: "Supabase Edge Functions are required for Podio integration. Please set up Supabase first.",
         variant: "destructive"
       });
       return;
@@ -130,6 +168,17 @@ const PodioSetupPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {!supabaseConnected && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Supabase Required</AlertTitle>
+                <AlertDescription>
+                  <p>Supabase Edge Functions are required for Podio integration to work properly.</p>
+                  <p className="mt-2">Please connect your project to Supabase using the Supabase button at the top right of your Lovable interface.</p>
+                </AlertDescription>
+              </Alert>
+            )}
+          
             {connectionStatus === 'success' && (
               <Alert className="mb-4">
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -168,6 +217,23 @@ const PodioSetupPage = () => {
               />
             </div>
             
+            <Alert className="bg-blue-50 border-blue-100">
+              <Info className="h-4 w-4 text-blue-500" />
+              <AlertTitle className="text-blue-700">Important</AlertTitle>
+              <AlertDescription className="text-blue-600 text-sm">
+                <p>After saving credentials locally, you must add them to Supabase secrets for production use.</p>
+                <p className="mt-2">
+                  Required Supabase secrets:
+                </p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>PODIO_CLIENT_ID</li>
+                  <li>PODIO_CLIENT_SECRET</li>
+                  <li>PODIO_CONTACTS_APP_TOKEN</li>
+                  <li>PODIO_PACKING_SPEC_APP_TOKEN</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+            
             <div className="bg-amber-50 p-4 rounded-md text-sm">
               <p className="font-medium text-amber-800">Podio API Setup Instructions:</p>
               <ol className="list-decimal list-inside mt-2 space-y-1 text-amber-700">
@@ -188,7 +254,7 @@ const PodioSetupPage = () => {
               onClick={handleSaveCredentials}
               disabled={saving}
             >
-              {saving ? 'Saving...' : 'Save Credentials'}
+              {saving ? 'Saving...' : 'Save Credentials Locally'}
             </Button>
             
             <div className="space-x-2">
@@ -200,7 +266,7 @@ const PodioSetupPage = () => {
               
               <Button 
                 onClick={handleConnectPodio}
-                disabled={connecting}
+                disabled={connecting || !supabaseConnected}
                 variant={connectionStatus === 'success' ? 'outline' : 'default'}
               >
                 {connecting ? 'Connecting...' : 'Connect to Podio'}

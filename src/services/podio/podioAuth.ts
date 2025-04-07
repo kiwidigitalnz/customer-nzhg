@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
@@ -124,7 +123,7 @@ export const hasValidTokens = (): boolean => {
   return expiryTime > now;
 };
 
-// Refresh the access token using the refresh token
+// Call the Supabase Edge Function to refresh the token
 export const refreshPodioToken = async (): Promise<boolean> => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
   
@@ -134,19 +133,13 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
   
   try {
-    const clientId = getPodioClientId();
-    const clientSecret = getPodioClientSecret();
-    
-    const response = await fetch('https://podio.com/oauth/token', {
+    const response = await fetch('/api/podio-refresh-token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/json'
       },
-      body: new URLSearchParams({
-        'grant_type': 'refresh_token',
-        'client_id': clientId,
-        'client_secret': clientSecret,
-        'refresh_token': refreshToken
+      body: JSON.stringify({
+        refresh_token: refreshToken
       })
     });
     
@@ -176,28 +169,11 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
 };
 
-// Authenticate with client credentials (server-to-server)
+// Authenticate with client credentials via Edge Function
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
-    const clientId = getPodioClientId();
-    const clientSecret = getPodioClientSecret();
-    
-    if (!clientId || !clientSecret) {
-      console.error('Missing client credentials');
-      return false;
-    }
-    
-    // Modified request body - removed the 'scope' parameter as Podio indicates it's not supported
-    const response = await fetch('https://podio.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        'grant_type': 'client_credentials',
-        'client_id': clientId,
-        'client_secret': clientSecret
-      })
+    const response = await fetch('/api/podio-authenticate', {
+      method: 'POST'
     });
     
     if (!response.ok) {
@@ -228,59 +204,25 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
-    // Ensure app authentication is done first
-    if (!hasValidTokens()) {
-      const appAuthSuccess = await authenticateWithClientCredentials();
-      if (!appAuthSuccess) {
-        throw new Error('Could not authenticate the application with Podio');
-      }
-    }
-    
-    // Use app token to search for the user by username
-    const userResponse = await callPodioApi(
-      `/item/app/${PODIO_CONTACTS_APP_ID}/filter/`, 
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          filters: {
-            [CONTACT_FIELD_IDS.username]: { "from": username, "to": username }
-          }
-        })
+    // Call the Edge Function to authenticate the user
+    const response = await fetch('/api/podio-user-auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      PODIO_CONTACTS_APP_TOKEN
-    );
+      body: JSON.stringify({
+        username,
+        password,
+        app_id: PODIO_CONTACTS_APP_ID
+      })
+    });
     
-    if (!userResponse.items || userResponse.items.length === 0) {
-      throw new Error('User not found');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Authentication failed');
     }
     
-    const userItem = userResponse.items[0];
-    
-    // Extract stored password hash from Podio
-    const storedPasswordValue = getFieldValueByExternalId(
-      userItem, 
-      'password'
-    );
-    
-    if (!storedPasswordValue) {
-      throw new Error('Invalid password field');
-    }
-    
-    // In a real implementation, you would use bcrypt.compare here
-    // For this stub, we'll just check if passwords match directly
-    // In production, this should use proper password comparison
-    if (storedPasswordValue !== password) {
-      throw new Error('Invalid password');
-    }
-    
-    // Get user data
-    const userData = {
-      id: userItem.item_id,
-      name: getFieldValueByExternalId(userItem, 'name'),
-      email: getFieldValueByExternalId(userItem, 'email'),
-      username: getFieldValueByExternalId(userItem, 'username'),
-      logoUrl: getFieldValueByExternalId(userItem, 'logo-url')
-    };
+    const userData = await response.json();
     
     // Store user data in localStorage
     localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
@@ -295,34 +237,26 @@ export const authenticateUser = async (username: string, password: string): Prom
 // Validate access to the Contacts app
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
-    // Ensure we have valid tokens
-    if (!hasValidTokens()) {
-      const success = await authenticateWithClientCredentials();
-      if (!success) {
-        return false;
-      }
-    }
-    
-    // Try to fetch a single item from the Contacts app
-    const response = await callPodioApi(
-      `/item/app/${PODIO_CONTACTS_APP_ID}/filter/`,
-      { 
-        method: 'POST',
-        body: JSON.stringify({
-          limit: 1
-        })
+    // Use the Edge Function to validate app access
+    const response = await fetch('/api/podio-validate-access', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      PODIO_CONTACTS_APP_TOKEN
-    );
+      body: JSON.stringify({
+        app_id: PODIO_CONTACTS_APP_ID
+      })
+    });
     
-    return Boolean(response && !response.error);
+    const data = await response.json();
+    return data.hasAccess || false;
   } catch (error) {
     console.error('Failed to validate Contacts app access:', error);
     return false;
   }
 };
 
-// Generic function to call the Podio API
+// Generic function to call the Podio API via Edge Function
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appToken?: string): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
@@ -330,58 +264,38 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
   }
   
   try {
-    // Check if we have valid tokens, if not, try to refresh
-    if (!hasValidTokens()) {
-      const refreshSuccess = await refreshPodioToken();
-      if (!refreshSuccess) {
-        // If refresh fails, try client credentials auth
-        const authSuccess = await authenticateWithClientCredentials();
-        if (!authSuccess) {
-          throw new Error('Authentication failed');
-        }
-      }
-    }
-    
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-    
-    // Set up request headers
-    const headers = new Headers({
-      'Authorization': `OAuth2 ${token}`,
-      'Content-Type': 'application/json'
-    });
-    
-    // Add app token if provided
-    if (appToken) {
-      headers.append('X-PODIO-APP', appToken);
-    }
-    
-    // Combine default options with provided options
-    const requestOptions = {
-      ...options,
-      headers: {
-        ...Object.fromEntries(headers.entries()),
-        ...options.headers
+    // Prepare the request payload
+    const payload = {
+      endpoint,
+      options: {
+        method: options.method || 'GET',
+        body: options.body, // This will be stringified again in the Edge Function
+        appToken
       }
     };
     
-    // Make the API call
-    const response = await fetch(`https://api.podio.com${endpoint}`, requestOptions);
+    // Call the Edge Function
+    const response = await fetch('/api/podio-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
     
     // Handle rate limiting
     if (response.status === 429) {
-      // Set rate limit
       setRateLimit(endpoint);
       throw new Error('Rate limit reached. Please try again later.');
     }
     
-    // Handle authentication errors
-    if (response.status === 401 || response.status === 403) {
-      // Try to refresh the token once
-      const refreshSuccess = await refreshPodioToken();
-      if (refreshSuccess) {
-        // Retry the request with the new token
-        return callPodioApi(endpoint, options, appToken);
-      } else {
+    // Handle other error responses
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Podio API error:', errorData);
+      
+      // Handle authentication errors
+      if (response.status === 401 || response.status === 403) {
         if (response.status === 401) {
           clearTokens();
           throw new Error('Authentication failed. Please log in again.');
@@ -389,13 +303,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
           throw new Error('Access denied. You do not have permission to access this resource.');
         }
       }
-    }
-    
-    // Handle other error responses
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Podio API error:', errorData);
-      throw new Error(errorData.error_description || 'Podio API error');
+      
+      throw new Error(errorData.message || 'Podio API error');
     }
     
     // Parse and return response
