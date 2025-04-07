@@ -11,9 +11,10 @@ export interface CommentItem {
 // Get comments for a specific item from Podio
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    const response = await callPodioApi();
+    // Pass the correct endpoint to get comments for a specific item
+    const response = await callPodioApi(`/comment/item/${itemId}/`);
     
-    if (!response || !Array.isArray(response.items)) {
+    if (!response || !Array.isArray(response.comments)) {
       return [];
     }
     
@@ -35,7 +36,13 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
 // Add a comment to a Podio item
 export const addCommentToPodio = async (itemId: number, comment: string): Promise<boolean> => {
   try {
-    const response = await callPodioApi();
+    // Pass correct endpoint and options for adding a comment
+    const response = await callPodioApi(`/comment/item/${itemId}/`, {
+      method: 'POST',
+      body: JSON.stringify({
+        value: comment
+      })
+    });
     
     // Simulate a successful comment addition
     return true;
