@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PodioSetupPage from './pages/PodioSetupPage';
-import PackingSpecPage from './pages/PackingSpecPage';
+import PackingSpecPage from './pages/PackingSpecDetailsPage';
 import SimplePodioSetupPage from './pages/SimplePodioSetupPage';
 
 // ProtectedRoute component to handle authentication

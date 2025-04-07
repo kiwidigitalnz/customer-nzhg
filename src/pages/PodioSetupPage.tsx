@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -245,7 +244,7 @@ const PodioSetupPage = () => {
           <CardContent className="space-y-4">
             <div className="mb-4 flex items-center gap-2">
               <span>Supabase Connection:</span>
-              <Badge variant={supabaseConnected ? "success" : "destructive"}>
+              <Badge variant={supabaseConnected ? "default" : "destructive"}>
                 {supabaseConnected ? "Connected" : "Not Connected"}
               </Badge>
             </div>
