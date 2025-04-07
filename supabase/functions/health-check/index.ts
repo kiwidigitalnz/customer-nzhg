@@ -14,56 +14,78 @@ serve(async (req) => {
   }
 
   try {
-    // If it's a POST request, assume we're doing more than a basic health check
+    const envKeys = Object.keys(Deno.env.toObject()).sort();
+    
+    // Basic response for GET requests
+    if (req.method === 'GET') {
+      return new Response(
+        JSON.stringify({
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          environment: Deno.env.get('ENVIRONMENT') || 'development'
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Check for POST with specific checks
     if (req.method === 'POST') {
       const requestData = await req.json().catch(() => ({}));
+      const response = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+      };
       
-      // Check Podio environment variables if requested
+      // Check secrets configuration
       if (requestData.check_secrets) {
-        console.log('Checking Podio secrets configuration...');
+        // Check for required Podio secrets
+        const requiredSecrets = [
+          'PODIO_CLIENT_ID',
+          'PODIO_CLIENT_SECRET',
+          'PODIO_CONTACTS_APP_TOKEN',
+          'PODIO_PACKING_SPEC_APP_TOKEN',
+          'PODIO_CONTACTS_APP_ID',
+          'PODIO_PACKING_SPEC_APP_ID'
+        ];
         
-        // Get all secrets - directly access the secrets
+        const podioKeys = envKeys.filter(key => key.includes('PODIO'));
+        console.log('Found Podio-related keys:', podioKeys);
+        
+        // Debug log values (safely)
+        podioKeys.forEach(key => {
+          const value = Deno.env.get(key);
+          console.log(`Key: ${key}, Value: ${value ? 'present (length: ' + value.length + ')' : 'null or empty'}`);
+        });
+        
+        const secretsStatus = {};
+        requiredSecrets.forEach(secret => {
+          const value = Deno.env.get(secret);
+          secretsStatus[secret] = Boolean(value);
+        });
+        
+        response['secrets'] = secretsStatus;
+        response['available_keys'] = podioKeys;
+      }
+
+      // Try authentication against Podio API
+      if (requestData.test_auth) {
         const clientId = Deno.env.get('PODIO_CLIENT_ID');
         const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-        const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID');
-        const packingSpecAppId = Deno.env.get('PODIO_PACKING_SPEC_APP_ID');
-        const contactsAppToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
-        const packingSpecAppToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN');
         
-        // Log full environment variable names to check for exact matches
-        console.log('Environment variable names in Deno.env:');
-        for (const key of Object.keys(Deno.env.toObject())) {
-          if (key.includes('PODIO')) {
-            console.log(`Found variable: ${key}`);
-          }
-        }
-        
-        // Log raw values (first few characters for secrets)
-        console.log('Raw values check:');
-        console.log('PODIO_CLIENT_ID raw value:', clientId === null ? 'null' : (clientId === undefined ? 'undefined' : `present (${clientId.length} chars)`));
-        console.log('PODIO_CLIENT_SECRET raw value:', clientSecret === null ? 'null' : (clientSecret === undefined ? 'undefined' : `present (${clientSecret.length} chars)`));
-        console.log('PODIO_CONTACTS_APP_ID raw value:', contactsAppId);
-        console.log('PODIO_PACKING_SPEC_APP_ID raw value:', packingSpecAppId);
-        console.log('PODIO_CONTACTS_APP_TOKEN raw value:', contactsAppToken === null ? 'null' : (contactsAppToken === undefined ? 'undefined' : `present (${contactsAppToken.length} chars)`));
-        console.log('PODIO_PACKING_SPEC_APP_TOKEN raw value:', packingSpecAppToken === null ? 'null' : (packingSpecAppToken === undefined ? 'undefined' : `present (${packingSpecAppToken.length} chars)`));
-        
-        // Convert to boolean for the response
-        const secretsCheck = {
-          PODIO_CLIENT_ID: Boolean(clientId),
-          PODIO_CLIENT_SECRET: Boolean(clientSecret),
-          PODIO_CONTACTS_APP_ID: Boolean(contactsAppId),
-          PODIO_PACKING_SPEC_APP_ID: Boolean(packingSpecAppId),
-          PODIO_CONTACTS_APP_TOKEN: Boolean(contactsAppToken),
-          PODIO_PACKING_SPEC_APP_TOKEN: Boolean(packingSpecAppToken),
-        };
-        
-        // Test authentication if requested and all credentials are available
-        let authTest = null;
-        if (requestData.test_auth && clientId && clientSecret) {
-          console.log('Testing Podio authentication...');
+        if (!clientId || !clientSecret) {
+          response['auth_test'] = {
+            success: false,
+            error: 'Missing Podio client credentials',
+            client_id_present: Boolean(clientId),
+            client_secret_present: Boolean(clientSecret)
+          };
+        } else {
           try {
-            // Call Podio API to authenticate with client credentials
-            const podioResponse = await fetch('https://podio.com/oauth/token', {
+            // Test actual authentication
+            const authResponse = await fetch('https://podio.com/oauth/token', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -76,76 +98,56 @@ serve(async (req) => {
               }),
             });
             
-            console.log('Podio auth response status:', podioResponse.status);
-            
-            if (podioResponse.ok) {
-              const authData = await podioResponse.json();
-              authTest = {
+            if (!authResponse.ok) {
+              const errorText = await authResponse.text();
+              response['auth_test'] = {
+                success: false,
+                error: errorText,
+                status: authResponse.status
+              };
+            } else {
+              const authData = await authResponse.json();
+              response['auth_test'] = {
                 success: true,
                 token_type: authData.token_type,
                 expires_in: authData.expires_in,
-                scope: authData.scope
+                scope: authData.scope || 'global'
               };
-              console.log('Authentication test successful');
-            } else {
-              let errorText = '';
-              try {
-                errorText = await podioResponse.text();
-              } catch (e) {
-                errorText = 'Could not read error response';
-              }
-              authTest = {
-                success: false,
-                status: podioResponse.status,
-                error: errorText
-              };
-              console.error('Authentication test failed:', podioResponse.status, errorText);
             }
           } catch (error) {
-            console.error('Error testing authentication:', error);
-            authTest = {
+            response['auth_test'] = {
               success: false,
               error: error.message
             };
           }
         }
-        
-        return new Response(
-          JSON.stringify({
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-            environment: Deno.env.get('ENVIRONMENT') || 'development',
-            secrets: secretsCheck,
-            auth_test: authTest,
-            diagnostics: {
-              envKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('PODIO')),
-              functionDeployTime: new Date().toISOString()
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
       }
+      
+      return new Response(
+        JSON.stringify(response),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
     
-    // Default health check response
+    // Fallback for unsupported methods
     return new Response(
-      JSON.stringify({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: Deno.env.get('ENVIRONMENT') || 'development'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Error in health check function:', error);
-    return new Response(
-      JSON.stringify({
-        status: 'error',
-        message: error.message,
-        timestamp: new Date().toISOString()
-      }),
+      JSON.stringify({ error: 'Method not allowed' }),
       { 
-        status: 500,
+        status: 405, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error('Health check error:', error);
+    
+    return new Response(
+      JSON.stringify({ error: 'Health check failed', details: error.message }),
+      { 
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

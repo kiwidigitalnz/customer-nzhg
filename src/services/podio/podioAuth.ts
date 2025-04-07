@@ -1,15 +1,14 @@
 // Core authentication service for Podio integration
-import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
 
 // Constants
-export const PODIO_CONTACTS_APP_ID = import.meta.env.VITE_PODIO_CONTACTS_APP_ID || '';
-export const PODIO_PACKING_SPEC_APP_ID = import.meta.env.VITE_PODIO_PACKING_SPEC_APP_ID || '';
+export const PODIO_CONTACTS_APP_ID = '26969025';
+export const PODIO_PACKING_SPEC_APP_ID = '29797638';
 
 // App-specific tokens
-const PODIO_CONTACTS_APP_TOKEN = import.meta.env.VITE_PODIO_CONTACTS_APP_TOKEN || '';
-const PODIO_PACKING_SPEC_APP_TOKEN = import.meta.env.VITE_PODIO_PACKING_SPEC_APP_TOKEN || '';
+const PODIO_CONTACTS_APP_TOKEN = '';
+const PODIO_PACKING_SPEC_APP_TOKEN = '';
 
 // Contact field IDs for the Podio Contacts app
 export const CONTACT_FIELD_IDS = {
@@ -101,11 +100,10 @@ export const clearTokens = (): void => {
   localStorage.removeItem(USER_DATA_KEY);
 };
 
-// Check if Podio API is configured
+// Check if Podio API is configured - we're now assuming Supabase is configured correctly
+// since we're using edge functions for all API calls
 export const isPodioConfigured = (): boolean => {
-  const clientId = getPodioClientId();
-  const clientSecret = getPodioClientSecret();
-  return Boolean(clientId && clientSecret);
+  return true; // We're using Supabase edge functions now, so this is always true
 };
 
 // Check if we have valid tokens

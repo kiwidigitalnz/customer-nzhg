@@ -1,22 +1,14 @@
 
 // Service for handling Podio API credentials and environment variables
 
-// Get client ID from environment
+// These functions now return empty strings since we're using Edge Functions
+// and the client doesn't need these values directly anymore
 export const getPodioClientId = (): string => {
-  const clientId = import.meta.env.VITE_PODIO_CLIENT_ID;
-  if (!clientId) {
-    console.warn('Podio client ID not found in environment variables');
-  }
-  return clientId || '';
+  return '';
 };
 
-// Get client secret from environment
 export const getPodioClientSecret = (): string => {
-  const clientSecret = import.meta.env.VITE_PODIO_CLIENT_SECRET;
-  if (!clientSecret) {
-    console.warn('Podio client secret not found in environment variables');
-  }
-  return clientSecret || '';
+  return '';
 };
 
 // Get the redirect URI based on the current environment
