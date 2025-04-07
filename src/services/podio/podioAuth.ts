@@ -1,6 +1,7 @@
 // Core authentication service for Podio integration
 import { getPodioClientId, getPodioClientSecret, getPodioRedirectUri } from './podioOAuth';
 import { getFieldValueByExternalId } from './podioFieldHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 // Constants
 export const PODIO_CONTACTS_APP_ID = import.meta.env.VITE_PODIO_CONTACTS_APP_ID || '';
@@ -133,25 +134,18 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
   
   try {
-    const response = await fetch('/api/podio-refresh-token', {
+    const { data, error } = await supabase.functions.invoke('podio-refresh-token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+      body: {
         refresh_token: refreshToken
-      })
+      }
     });
     
-    if (!response.ok) {
-      // If refresh fails, clear tokens and return false
-      const errorData = await response.json();
-      console.error('Token refresh failed:', errorData);
+    if (error) {
+      console.error('Token refresh failed:', error);
       clearTokens();
       return false;
     }
-    
-    const data = await response.json();
     
     // Store the new tokens
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
@@ -172,17 +166,14 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 // Authenticate with client credentials via Edge Function
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/podio-authenticate', {
+    const { data, error } = await supabase.functions.invoke('podio-authenticate', {
       method: 'POST'
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Client credentials authentication failed:', errorData);
+    if (error) {
+      console.error('Client credentials authentication failed:', error);
       return false;
     }
-    
-    const data = await response.json();
     
     // Store the tokens
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
@@ -205,29 +196,23 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     // Call the Edge Function to authenticate the user
-    const response = await fetch('/api/podio-user-auth', {
+    const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+      body: {
         username,
         password,
         app_id: PODIO_CONTACTS_APP_ID
-      })
+      }
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Authentication failed');
+    if (error) {
+      throw new Error(error.message || 'Authentication failed');
     }
     
-    const userData = await response.json();
-    
     // Store user data in localStorage
-    localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    localStorage.setItem(USER_DATA_KEY, JSON.stringify(data));
     
-    return userData;
+    return data;
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
@@ -238,17 +223,18 @@ export const authenticateUser = async (username: string, password: string): Prom
 export const validateContactsAppAccess = async (): Promise<boolean> => {
   try {
     // Use the Edge Function to validate app access
-    const response = await fetch('/api/podio-validate-access', {
+    const { data, error } = await supabase.functions.invoke('podio-validate-access', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+      body: {
         app_id: PODIO_CONTACTS_APP_ID
-      })
+      }
     });
     
-    const data = await response.json();
+    if (error) {
+      console.error('Failed to validate Contacts app access:', error);
+      return false;
+    }
+    
     return data.hasAccess || false;
   } catch (error) {
     console.error('Failed to validate Contacts app access:', error);
@@ -275,28 +261,24 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     };
     
     // Call the Edge Function
-    const response = await fetch('/api/podio-proxy', {
+    const { data, error, status } = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      body: payload
     });
     
     // Handle rate limiting
-    if (response.status === 429) {
+    if (status === 429) {
       setRateLimit(endpoint);
       throw new Error('Rate limit reached. Please try again later.');
     }
     
     // Handle other error responses
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Podio API error:', errorData);
+    if (error) {
+      console.error('Podio API error:', error);
       
       // Handle authentication errors
-      if (response.status === 401 || response.status === 403) {
-        if (response.status === 401) {
+      if (status === 401 || status === 403) {
+        if (status === 401) {
           clearTokens();
           throw new Error('Authentication failed. Please log in again.');
         } else {
@@ -304,11 +286,10 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
         }
       }
       
-      throw new Error(errorData.message || 'Podio API error');
+      throw new Error(error.message || 'Podio API error');
     }
     
-    // Parse and return response
-    const data = await response.json();
+    // Return data
     return data;
   } catch (error) {
     console.error('Podio API call failed:', error);

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { isPodioConfigured, authenticateWithClientCredentials, validateContactsAppAccess } from '@/services/podioAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Info, ExternalLink } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const PodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -26,10 +27,14 @@ const PodioSetupPage = () => {
     // Check if Supabase Edge Functions are available
     const checkSupabaseConnection = async () => {
       try {
-        const response = await fetch('/api/health-check', { method: 'GET' });
-        setSupabaseConnected(response.ok);
+        const { data, error } = await supabase.functions.invoke('health-check', {
+          method: 'GET'
+        });
         
-        if (!response.ok) {
+        setSupabaseConnected(!error);
+        
+        if (error) {
+          console.error('Supabase health check error:', error);
           toast({
             title: "Supabase Connection Issue",
             description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
