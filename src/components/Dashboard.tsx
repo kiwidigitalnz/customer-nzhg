@@ -12,12 +12,11 @@ import {
 } from '../services/podioAuth';
 import { getPackingSpecsForContact } from '../services/podioApi';
 import { 
-  AlertTriangle, 
-  AlertCircle, 
   Building, 
   LogOut, 
   PackageCheck, 
-  CheckCircle 
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { 
   Card, 
@@ -325,22 +324,6 @@ const Dashboard = () => {
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
-
-      {!specs.length && !loading && !isRateLimitReached && (
-        <Card className="mb-8 bg-amber-50 border border-amber-200 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
-              <div>
-                <h3 className="font-medium">No Packing Specifications Found</h3>
-                <p className="text-sm text-muted-foreground">
-                  There are currently no packing specifications linked to your account.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">
