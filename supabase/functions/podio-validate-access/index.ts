@@ -18,6 +18,22 @@ serve(async (req) => {
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
 
+    // Log complete environment keys to better understand what's available
+    console.log('All environment variables:');
+    const envObj = Deno.env.toObject();
+    const envKeys = Object.keys(envObj).sort();
+    console.log('Available environment keys:', envKeys);
+
+    // Specifically check for Podio-related keys
+    const podioKeys = envKeys.filter(key => key.includes('PODIO'));
+    console.log('Found Podio-related keys:', podioKeys);
+    
+    // Log full environment details for testing
+    podioKeys.forEach(key => {
+      const value = Deno.env.get(key);
+      console.log(`Key: ${key}, Value: ${value ? 'present (length: ' + value.length + ')' : 'null or empty'}`);
+    });
+
     if (!clientId || !clientSecret) {
       console.error('Podio credentials not configured in environment variables');
       console.log('Environment variable details:');
@@ -25,9 +41,8 @@ serve(async (req) => {
       console.log('PODIO_CLIENT_SECRET present:', Boolean(clientSecret));
       
       // Log all environment variables that contain PODIO
-      const envKeys = Object.keys(Deno.env.toObject())
-        .filter(key => key.includes('PODIO'));
-      console.log('Found PODIO environment variables:', envKeys);
+      console.log('Found PODIO environment variables:', podioKeys);
+      console.log('Expected secret names: PODIO_CLIENT_ID, PODIO_CLIENT_SECRET, PODIO_CONTACTS_APP_TOKEN, PODIO_PACKING_SPEC_APP_TOKEN, PODIO_CONTACTS_APP_ID, PODIO_PACKING_SPEC_APP_ID');
 
       return new Response(
         JSON.stringify({ 
@@ -35,7 +50,9 @@ serve(async (req) => {
           details: {
             client_id_present: Boolean(clientId),
             client_secret_present: Boolean(clientSecret),
-            all_podio_vars: envKeys
+            all_podio_vars: podioKeys,
+            expected_vars: ['PODIO_CLIENT_ID', 'PODIO_CLIENT_SECRET', 'PODIO_CONTACTS_APP_TOKEN', 'PODIO_PACKING_SPEC_APP_TOKEN', 'PODIO_CONTACTS_APP_ID', 'PODIO_PACKING_SPEC_APP_ID'],
+            function_execution_time: new Date().toISOString()
           }
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -56,6 +73,9 @@ serve(async (req) => {
     console.log(`Validating access to Podio app ID: ${app_id}`);
 
     // First, get an access token using client credentials
+    console.log('Attempting to authenticate with Podio using client credentials');
+    console.log(`Client ID length: ${clientId.length}, Client Secret length: ${clientSecret.length}`);
+    
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -84,7 +104,14 @@ serve(async (req) => {
           details: errorText,
           status: authResponse.status,
           client_id_length: clientId ? clientId.length : 0,
-          client_secret_length: clientSecret ? clientSecret.length : 0
+          client_secret_length: clientSecret ? clientSecret.length : 0,
+          request_info: {
+            endpoint: 'https://podio.com/oauth/token',
+            method: 'POST',
+            content_type: 'application/x-www-form-urlencoded',
+            grant_type: 'client_credentials',
+            scope: 'global'
+          }
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -143,7 +170,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to validate app access', 
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
