@@ -1,3 +1,4 @@
+
 // Stub implementation of Podio auth with no real authentication
 
 // Constants for compatibility with existing code
@@ -87,7 +88,18 @@ export const authenticateUser = async () => ({
   email: "test@example.com",
   username: "testuser"
 });
-export const callPodioApi = async () => ({ items: [] });
+
+// Fix the callPodioApi function to accept parameters but ignore them
+export const callPodioApi = async (endpoint?: string, options?: any, appToken?: string) => {
+  // Return mock data that matches the expected structure
+  return { 
+    items: [],
+    item_id: 123,
+    fields: [],
+    created_on: new Date().toISOString(),
+    file_id: 456
+  };
+};
 
 // Rate limiting stubs
 export const isRateLimited = () => false;
@@ -96,10 +108,10 @@ export const isRateLimitedWithInfo = () => ({
   limitUntil: 0,
   lastEndpoint: null
 });
-export const setRateLimit = () => console.log("setRateLimit called (no-op)");
+export const setRateLimit = (endpoint?: string) => console.log("setRateLimit called (no-op)");
 export const clearRateLimit = () => console.log("clearRateLimit called (no-op)");
 export const clearRateLimitInfo = () => console.log("clearRateLimitInfo called (no-op)");
 
 // User data caching stubs
-export const cacheUserData = () => console.log("cacheUserData called (no-op)");
-export const getCachedUserData = () => null;
+export const cacheUserData = (key?: string, data?: any) => console.log("cacheUserData called (no-op)");
+export const getCachedUserData = (key?: string) => null;

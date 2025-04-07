@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -103,7 +102,7 @@ const LoginForm = () => {
       }
       
       // Try to login the user
-      const success = await login(username, password);
+      const success = await login();
       
       if (success) {
         toast({
@@ -116,7 +115,7 @@ const LoginForm = () => {
         setLoginAttemptCount(0);
         
         navigate('/dashboard');
-      } else if (error && (
+      } else if (error && typeof error === 'string' && (
           error.includes('permission') || 
           error.includes('access') || 
           error.includes('403')
@@ -135,18 +134,20 @@ const LoginForm = () => {
       // Handle specific unauthorized errors differently
       const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
       
-      if (errorMessage.includes('access') || errorMessage.includes('permission') || errorMessage.includes('403')) {
-        setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
-      } else if (errorMessage.includes('Rate limit')) {
-        setPodioAPIError('Rate limit reached. Please try again later.');
-      } else if (errorMessage.includes('User not found') || errorMessage.includes('Invalid password')) {
-        setPodioAPIError('Invalid username or password');
-      } else {
-        toast({
-          title: 'Login Failed',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+      if (typeof errorMessage === 'string') {
+        if (errorMessage.includes('access') || errorMessage.includes('permission') || errorMessage.includes('403')) {
+          setPodioAPIError('The application cannot access the Contacts app. Please check your Podio API permissions.');
+        } else if (errorMessage.includes('Rate limit')) {
+          setPodioAPIError('Rate limit reached. Please try again later.');
+        } else if (errorMessage.includes('User not found') || errorMessage.includes('Invalid password')) {
+          setPodioAPIError('Invalid username or password');
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        }
       }
     } finally {
       setAuthenticating(false);
@@ -174,7 +175,7 @@ const LoginForm = () => {
 
   // Check if the error is a permission error
   const isPermissionError = () => {
-    return podioAPIError && (
+    return podioAPIError && typeof podioAPIError === 'string' && (
       podioAPIError.includes('permission') || 
       podioAPIError.includes('access') ||
       podioAPIError.includes('403') ||

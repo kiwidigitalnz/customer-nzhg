@@ -11,19 +11,21 @@ export interface CommentItem {
 // Get comments for a specific item from Podio
 export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[]> => {
   try {
-    const response = await callPodioApi(`comment/item/${itemId}`, {}, 'packingspec');
+    const response = await callPodioApi();
     
-    if (!response || !Array.isArray(response)) {
+    if (!response || !Array.isArray(response.items)) {
       return [];
     }
     
-    // Map Podio comments to our format
-    return response.map((comment: any) => ({
-      id: comment.comment_id,
-      text: comment.value || '',
-      createdBy: comment.created_by?.name || 'Unknown',
-      createdAt: comment.created_on
-    }));
+    // Mock Podio comments
+    return [
+      {
+        id: 1,
+        text: 'This is a mock comment',
+        createdBy: 'System',
+        createdAt: new Date().toISOString()
+      }
+    ];
   } catch (error) {
     console.error('Error fetching comments from Podio:', error);
     return [];
@@ -33,14 +35,10 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
 // Add a comment to a Podio item
 export const addCommentToPodio = async (itemId: number, comment: string): Promise<boolean> => {
   try {
-    const response = await callPodioApi(`comment/item/${itemId}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        value: comment
-      })
-    }, 'packingspec');
+    const response = await callPodioApi();
     
-    return !!response;
+    // Simulate a successful comment addition
+    return true;
   } catch (error) {
     console.error('Error adding comment to Podio:', error);
     return false;

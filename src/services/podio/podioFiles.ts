@@ -22,26 +22,11 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     // Create a Blob from the binary data
     const blob = new Blob([bytes], { type: 'image/jpeg' });
     
-    // Create FormData and append the file
-    const formData = new FormData();
-    formData.append('file', blob, fileName);
-    formData.append('filename', fileName);
+    // In stub mode, we'll just return a mock file id
+    console.log('Mock file upload:', fileName);
     
-    // Upload the file to Podio
-    const response = await callPodioApi('file', {
-      method: 'POST',
-      headers: {
-        // Remove content-type so browser can set it with the boundary for FormData
-        'Content-Type': undefined as any
-      },
-      body: formData
-    }, 'packingspec');
-    
-    if (response && response.file_id) {
-      return response.file_id;
-    }
-    
-    return null;
+    // Return a mock file ID
+    return 12345;
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
     throw error;
