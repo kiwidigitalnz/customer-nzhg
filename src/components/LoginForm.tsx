@@ -115,20 +115,24 @@ const LoginForm = () => {
         setLoginAttemptCount(0);
         
         navigate('/dashboard');
-      } else if (error && typeof error === 'string' && (
-          error.includes('permission') || 
-          error.includes('access') || 
-          error.includes('403')
-      )) {
-        // Special handling for permission errors
-        setPodioAPIError(error);
-        toast({
-          title: 'API Permission Error',
-          description: 'The application lacks necessary access permissions',
-          variant: 'destructive',
-        });
-      } else {
-        setPodioAPIError(error || 'Invalid username or password');
+      } else if (error) {
+        // Fix: Check if error is a string before using includes
+        const errorStr = typeof error === 'string' ? error : '';
+        const isPermissionError = errorStr.includes('permission') || 
+                                  errorStr.includes('access') || 
+                                  errorStr.includes('403');
+                                  
+        if (isPermissionError) {
+          // Special handling for permission errors
+          setPodioAPIError(errorStr);
+          toast({
+            title: 'API Permission Error',
+            description: 'The application lacks necessary access permissions',
+            variant: 'destructive',
+          });
+        } else {
+          setPodioAPIError(error ? String(error) : 'Invalid username or password');
+        }
       }
     } catch (loginErr) {
       // Handle specific unauthorized errors differently
@@ -175,12 +179,14 @@ const LoginForm = () => {
 
   // Check if the error is a permission error
   const isPermissionError = () => {
-    return podioAPIError && typeof podioAPIError === 'string' && (
-      podioAPIError.includes('permission') || 
-      podioAPIError.includes('access') ||
-      podioAPIError.includes('403') ||
-      podioAPIError.includes('forbidden')
-    );
+    if (!podioAPIError || typeof podioAPIError !== 'string') {
+      return false;
+    }
+    
+    return podioAPIError.includes('permission') || 
+           podioAPIError.includes('access') ||
+           podioAPIError.includes('403') ||
+           podioAPIError.includes('forbidden');
   };
 
   const rateLimitMessage = getRateLimitMessage();
@@ -275,7 +281,7 @@ const LoginForm = () => {
               <AlertTitle>
                 {rateLimitMessage ? "Rate Limit Reached" : "Login Error"}
               </AlertTitle>
-              <AlertDescription>{displayError}</AlertDescription>
+              <AlertDescription>{typeof displayError === 'string' ? displayError : String(displayError)}</AlertDescription>
             </Alert>
           )}
           
