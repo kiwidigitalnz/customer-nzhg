@@ -7,11 +7,17 @@ import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import MainLayout from '../components/MainLayout';
 import { useNavigate } from 'react-router-dom';
-import { authenticateWithClientCredentials } from '@/services/podioApi';
+import { authenticateWithClientCredentials, isPodioConfigured } from '@/services/podioAuth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 const PodioSetupPage = () => {
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -34,21 +40,34 @@ const PodioSetupPage = () => {
       return;
     }
 
-    // Store in localStorage for development
-    localStorage.setItem('podio_client_id', clientId);
-    localStorage.setItem('podio_client_secret', clientSecret);
-    
-    toast({
-      title: "Success",
-      description: "Podio API credentials saved"
-    });
+    setSaving(true);
+    try {
+      // Store in localStorage for development/testing
+      localStorage.setItem('podio_client_id', clientId);
+      localStorage.setItem('podio_client_secret', clientSecret);
+      
+      toast({
+        title: "Success",
+        description: "Podio API credentials saved",
+        variant: "default"
+      });
+
+      // Reset connection status when credentials change
+      setConnectionStatus('idle');
+      setConnectionError(null);
+    } catch (error) {
+      toast({
+        title: "Error Saving Credentials",
+        description: "Failed to save credentials. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleConnectPodio = async () => {
-    const storedClientId = localStorage.getItem('podio_client_id');
-    const storedClientSecret = localStorage.getItem('podio_client_secret');
-    
-    if (!storedClientId || !storedClientSecret) {
+  const handleConnectPodio = async () => {    
+    if (!isPodioConfigured()) {
       toast({
         title: "Error",
         description: "Please save Client ID and Secret first",
@@ -57,24 +76,47 @@ const PodioSetupPage = () => {
       return;
     }
 
+    setConnecting(true);
+    setConnectionStatus('idle');
+    setConnectionError(null);
+    
     try {
-      await authenticateWithClientCredentials();
+      const success = await authenticateWithClientCredentials();
       
-      toast({
-        title: "Success",
-        description: "Connected to Podio API successfully",
-      });
-
-      // Navigate to dashboard
-      navigate('/dashboard');
+      if (success) {
+        setConnectionStatus('success');
+        toast({
+          title: "Success",
+          description: "Connected to Podio API successfully",
+          variant: "default"
+        });
+      } else {
+        setConnectionStatus('error');
+        setConnectionError("Failed to authenticate with Podio. Please check your credentials.");
+        toast({
+          title: "Connection Error",
+          description: "Failed to authenticate with Podio API",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Error connecting to Podio:', error);
+      setConnectionStatus('error');
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setConnectionError(errorMessage);
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to connect to Podio API",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setConnecting(false);
     }
+  };
+
+  const goToDashboard = () => {
+    navigate('/dashboard');
   };
 
   return (
@@ -88,6 +130,24 @@ const PodioSetupPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {connectionStatus === 'success' && (
+              <Alert className="mb-4">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <AlertTitle className="text-green-600">Connected Successfully</AlertTitle>
+                <AlertDescription className="text-green-700">
+                  Your app is now connected to the Podio API. You can now proceed to the dashboard.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {connectionStatus === 'error' && connectionError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Connection Failed</AlertTitle>
+                <AlertDescription>{connectionError}</AlertDescription>
+              </Alert>
+            )}
+          
             <div className="space-y-2">
               <Label htmlFor="client-id">Client ID</Label>
               <Input
@@ -114,21 +174,38 @@ const PodioSetupPage = () => {
                 <li>Go to <a href="https://podio.com/settings/api" target="_blank" rel="noopener noreferrer" className="underline">Podio API Settings</a></li>
                 <li>Click "Generate API Key"</li>
                 <li>Enter your application name (e.g., "NZHG Customer Portal")</li>
-                <li>For domain, enter: <strong>https://customer.nzhg.com</strong></li>
+                <li>For domain, enter: <strong>{window.location.origin}</strong></li>
                 <li>Copy the Client ID and Client Secret provided by Podio</li>
                 <li>Paste them in the fields above and save</li>
               </ol>
               <p className="mt-2 text-amber-800 font-medium">Important:</p>
-              <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>https://customer.nzhg.com</strong></p>
+              <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>{window.location.origin}</strong></p>
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={handleSaveCredentials}>
-              Save Credentials
+            <Button 
+              variant="outline" 
+              onClick={handleSaveCredentials}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Credentials'}
             </Button>
-            <Button onClick={handleConnectPodio}>
-              Connect to Podio
-            </Button>
+            
+            <div className="space-x-2">
+              {connectionStatus === 'success' && (
+                <Button onClick={goToDashboard}>
+                  Go to Dashboard
+                </Button>
+              )}
+              
+              <Button 
+                onClick={handleConnectPodio}
+                disabled={connecting}
+                variant={connectionStatus === 'success' ? 'outline' : 'default'}
+              >
+                {connecting ? 'Connecting...' : 'Connect to Podio'}
+              </Button>
+            </div>
           </CardFooter>
         </Card>
       </div>

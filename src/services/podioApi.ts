@@ -1,6 +1,5 @@
 
 // This file serves as the main entry point for Podio API services
-// Now uses stubbed implementations
 
 // Export authentication-related functions
 export {
@@ -31,6 +30,8 @@ export {
   getPodioClientSecret,
   getPodioRedirectUri,
   generatePodioAuthState,
+  getPodioAuthUrl,
+  validatePodioAuthState
 } from './podio/podioOAuth';
 
 // Export packing spec related functions and types

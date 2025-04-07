@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -102,7 +103,7 @@ const LoginForm = () => {
       }
       
       // Try to login the user
-      const success = await login();
+      const success = await login(username, password);
       
       if (success) {
         toast({
@@ -116,22 +117,26 @@ const LoginForm = () => {
         
         navigate('/dashboard');
       } else if (error) {
-        // Fix: Check if error is a string before using includes
-        const errorStr = typeof error === 'string' ? error : '';
-        const isPermissionError = errorStr.includes('permission') || 
-                                  errorStr.includes('access') || 
-                                  errorStr.includes('403');
+        // Parse error message
+        const errorMsg = typeof error === 'object' && error !== null 
+          ? error.message || 'Login failed' 
+          : String(error);
+        
+        // Check for specific error types
+        const isPermissionError = errorMsg.includes('permission') || 
+                                 errorMsg.includes('access') || 
+                                 errorMsg.includes('403');
                                   
         if (isPermissionError) {
           // Special handling for permission errors
-          setPodioAPIError(errorStr);
+          setPodioAPIError(errorMsg);
           toast({
             title: 'API Permission Error',
             description: 'The application lacks necessary access permissions',
             variant: 'destructive',
           });
         } else {
-          setPodioAPIError(error ? String(error) : 'Invalid username or password');
+          setPodioAPIError(errorMsg || 'Invalid username or password');
         }
       }
     } catch (loginErr) {
