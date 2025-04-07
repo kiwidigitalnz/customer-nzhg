@@ -1,11 +1,8 @@
-// Core authentication service for Podio integration
-import { 
-  getPodioClientId,
-  getPodioClientSecret 
-} from './podio/podioOAuth';
+
+// Core authentication service for Podio integration (now stubbed)
 import { getFieldValueByExternalId } from './podio/podioFieldHelpers';
 
-// Export all necessary functions and constants
+// Export all necessary functions and constants as no-op stubs
 export { 
   authenticateUser,
   isPodioConfigured,

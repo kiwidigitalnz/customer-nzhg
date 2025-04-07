@@ -1,5 +1,6 @@
 
 // This file serves as the main entry point for Podio API services
+// Now uses stubbed implementations
 
 // Export authentication-related functions
 export {

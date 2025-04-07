@@ -1,28 +1,7 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { 
-  authenticateUser, 
-  authenticateWithClientCredentials, 
-  clearPodioTokens, 
-  clearRateLimit, 
-  refreshPodioToken, 
-  isPodioConfigured, 
-  hasValidPodioTokens, 
-  setRateLimit 
-} from '@/services/podioApi';
-import { useToast } from '@/hooks/use-toast';
+import React, { createContext, useContext } from 'react';
 
-interface AuthContextType {
-  user: UserData | null;
-  loading: boolean;
-  error: string | null;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  checkSession: () => boolean;
-  isAuthenticated: boolean;
-  forceReauthenticate: () => Promise<boolean>;
-}
-
+// Simplified user data without auth requirements
 export interface UserData {
   id: number;
   name: string;
@@ -31,195 +10,51 @@ export interface UserData {
   logoUrl?: string;
 }
 
+// Create a dummy user for development
+const dummyUser: UserData = {
+  id: 1,
+  name: "Test Company",
+  email: "test@example.com",
+  username: "testuser",
+  logoUrl: undefined
+};
+
+// Simplified auth context without actual authentication
+interface AuthContextType {
+  user: UserData;
+  loading: boolean;
+  error: null;
+  login: () => Promise<boolean>;
+  logout: () => void;
+  checkSession: () => boolean;
+  isAuthenticated: boolean;
+  forceReauthenticate: () => Promise<boolean>;
+}
+
 const AuthContext = createContext<AuthContextType>({
-  user: null,
+  user: dummyUser,
   loading: false,
   error: null,
-  login: async () => false,
+  login: async () => true,
   logout: () => {},
-  checkSession: () => false,
-  isAuthenticated: false,
-  forceReauthenticate: async () => false,
+  checkSession: () => true,
+  isAuthenticated: true,
+  forceReauthenticate: async () => true,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-// Time limit for session in milliseconds (2 hours)
-const SESSION_TIME_LIMIT = 2 * 60 * 60 * 1000;
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
-  const { toast } = useToast();
-
-  // Initialize auth state from localStorage
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Check if we have a stored user
-        const storedUser = localStorage.getItem('user');
-        const storedSessionStartTime = localStorage.getItem('sessionStartTime');
-        
-        if (storedUser && storedSessionStartTime) {
-          const parsedUser = JSON.parse(storedUser);
-          const parsedTime = parseInt(storedSessionStartTime, 10);
-          
-          // Check if the session is still valid
-          if (Date.now() - parsedTime < SESSION_TIME_LIMIT) {
-            // Session is valid, restore user state
-            setUser(parsedUser);
-            setSessionStartTime(parsedTime);
-            
-            // Attempt to refresh Podio token if we have valid tokens
-            if (hasValidPodioTokens()) {
-              try {
-                await refreshPodioToken();
-              } catch (refreshError) {
-                console.warn('Failed to refresh token during initialization:', refreshError);
-                // Don't log out yet, we might still have valid tokens
-              }
-            } else if (isPodioConfigured()) {
-              // Try to authenticate with client credentials if no valid tokens
-              try {
-                await authenticateWithClientCredentials();
-              } catch (authError) {
-                console.warn('Failed to authenticate with client credentials:', authError);
-                setRateLimit(60, 'authenticateWithClientCredentials');
-              }
-            }
-          } else {
-            // Session has expired, clear everything
-            console.log('Session expired, logging out');
-            clearLocalData();
-          }
-        } else if (isPodioConfigured()) {
-          // If no user is logged in but Podio is configured, still authenticate the app
-          try {
-            if (!hasValidPodioTokens()) {
-              await authenticateWithClientCredentials();
-            }
-          } catch (authError) {
-            console.warn('Failed to authenticate app with client credentials:', authError);
-          }
-        }
-      } catch (error) {
-        console.error('Error during auth initialization:', error);
-        clearLocalData();
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    initializeAuth();
-  }, []);
-
-  // Function to check if the session is still valid
-  const checkSession = () => {
-    if (!sessionStartTime) return false;
-    return Date.now() - sessionStartTime < SESSION_TIME_LIMIT;
-  };
-
-  // Function to clear all local data
-  const clearLocalData = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionStartTime');
-    clearPodioTokens(); // Clear Podio tokens
-    clearRateLimit(); // Clear rate limit state
-    setUser(null);
-    setSessionStartTime(null);
-    setError(null);
-  };
-
-  // Login function
-  const login = async (username: string, password: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // First ensure Podio API is authenticated (client credentials)
-      if (!hasValidPodioTokens()) {
-        await authenticateWithClientCredentials();
-      }
-      
-      // Now lookup the user in the Podio contacts database
-      const userData = await authenticateUser(username, password);
-      
-      // Store user data
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set session start time
-      const now = Date.now();
-      setSessionStartTime(now);
-      localStorage.setItem('sessionStartTime', now.toString());
-      
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to login';
-      setError(errorMessage);
-      
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Force reauthentication with Podio
-  const forceReauthenticate = async (): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Clear tokens first
-      clearPodioTokens();
-      
-      // Attempt to authenticate using client credentials
-      await authenticateWithClientCredentials();
-      
-      toast({
-        title: "Reauthentication Successful",
-        description: "Successfully reconnected to Podio API.",
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Force reauthentication error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to reauthenticate';
-      setError(errorMessage);
-      
-      toast({
-        title: "Reauthentication Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout function
-  const logout = () => {
-    clearLocalData();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-  };
-
+  // Always return the dummy user and simplified auth methods
   const authContextValue: AuthContextType = {
-    user,
-    loading,
-    error,
-    login,
-    logout,
-    checkSession,
-    isAuthenticated: !!user,
-    forceReauthenticate,
+    user: dummyUser,
+    loading: false,
+    error: null,
+    login: async () => true,
+    logout: () => console.log("Logout called (no-op)"),
+    checkSession: () => true,
+    isAuthenticated: true,
+    forceReauthenticate: async () => true,
   };
 
   return (
