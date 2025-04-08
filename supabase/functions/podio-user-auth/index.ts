@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
@@ -75,7 +74,6 @@ serve(async (req) => {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
-        'scope': 'global',
       }),
     });
 
