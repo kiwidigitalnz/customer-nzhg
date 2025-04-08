@@ -12,10 +12,12 @@ import {
 // User data interface with authentication information
 export interface UserData {
   id: number;
+  podioItemId?: number; // Added PIID
   name: string;
   email: string;
   username: string;
-  logoUrl?: string;
+  logoFileId?: string; // Added logo file ID
+  logoUrl?: string;    // Added logo URL
 }
 
 // Auth context interface
@@ -105,9 +107,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (process.env.NODE_ENV === 'development' && !username && !password) {
         const dummyUser: UserData = {
           id: 1,
+          podioItemId: 1, // Added PIID for dummy user
           name: "Test Company",
           email: "test@example.com",
           username: "testuser",
+          logoFileId: "", // Added empty logo file ID
+          logoUrl: "",    // Added empty logo URL
         };
         
         setUser(dummyUser);
@@ -129,14 +134,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userData = await authenticateUser(username, password);
       
       if (userData) {
-        setUser(userData);
+        console.log('User data from Podio:', userData);
+        
+        // Ensure required fields exist
+        const userDataWithDefaults: UserData = {
+          id: userData.id,
+          podioItemId: userData.podioItemId || userData.id,
+          name: userData.name || 'Unknown',
+          email: userData.email || '',
+          username: userData.username,
+          logoFileId: userData.logoFileId || null,
+          logoUrl: userData.logoUrl || null,
+        };
+        
+        setUser(userDataWithDefaults);
         setIsAuthenticated(true);
         
         // Store user data for session persistence
-        localStorage.setItem('podio_user_data', JSON.stringify(userData));
+        localStorage.setItem('podio_user_data', JSON.stringify(userDataWithDefaults));
         
         // Also cache user data for offline access
-        cacheUserData(`user_${userData.id}`, userData);
+        cacheUserData(`user_${userDataWithDefaults.id}`, userDataWithDefaults);
         
         return true;
       } else {

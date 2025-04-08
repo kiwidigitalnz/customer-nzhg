@@ -308,13 +308,44 @@ serve(async (req) => {
 
     console.log('User authenticated successfully:', username);
     
-    // If authentication is successful, extract user data
+    // If authentication is successful, extract additional user data
+    // Include PIID (assuming this is the Podio Item ID) and ensure logo is correctly extracted
+    const logoValue = getFieldValueByExternalId(userItem, 'logo');
+    let logoUrl = null;
+    
+    // If we have a logo file ID, build the URL to access it
+    if (logoValue) {
+      try {
+        // Get file information from Podio API to construct URL
+        const fileResponse = await fetch(`https://api.podio.com/file/${logoValue}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `OAuth2 ${accessToken}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (fileResponse.ok) {
+          const fileData = await fileResponse.json();
+          logoUrl = fileData.link || null;
+          console.log('Found logo URL for user:', logoUrl);
+        } else {
+          console.log('Failed to fetch logo details, but continuing with authentication');
+        }
+      } catch (fileError) {
+        console.error('Error fetching logo details:', fileError);
+        // Non-blocking error, continue with authentication
+      }
+    }
+    
     const userData = {
       id: userItem.item_id,
+      podioItemId: userItem.item_id, // Make sure PIID is included
       name: getFieldValueByExternalId(userItem, 'name') || getFieldValueByExternalId(userItem, 'title'),
       email: getFieldValueByExternalId(userItem, 'email'),
       username: getFieldValueByExternalId(userItem, 'customer-portal-username'),
-      logoUrl: getFieldValueByExternalId(userItem, 'logo'),
+      logoFileId: logoValue, // Include raw file ID
+      logoUrl: logoUrl, // Include processed URL if available
       // Include access token for client-side API access
       access_token: accessToken,
       expires_at: token.expires_at

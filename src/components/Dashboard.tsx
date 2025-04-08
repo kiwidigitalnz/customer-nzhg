@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,14 +17,16 @@ import {
   LogOut, 
   PackageCheck, 
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Database
 } from 'lucide-react';
 import { 
   Card, 
   CardHeader, 
   CardTitle, 
   CardDescription, 
-  CardContent 
+  CardContent,
+  CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -41,6 +44,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
 import { SpecStatus } from '../components/packing-spec/StatusBadge';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PackingSpec {
   id: number;
@@ -161,10 +166,13 @@ const Dashboard = () => {
     try {
       await ensurePackingSpecAuth();
       
-      console.log(`Fetching specs for contact ID: ${user.id}`);
-      console.log(`TEST: Using contact ID ${user.id} to filter packing specs in customerBrandName field`);
+      // Make sure we're using the contact Podio Item ID, not just regular ID
+      const contactId = user.podioItemId || user.id;
       
-      const data = await getPackingSpecsForContact(user.id);
+      console.log(`Fetching specs for contact ID: ${contactId}`);
+      console.log(`Using Podio Item ID: ${contactId}`);
+      
+      const data = await getPackingSpecsForContact(contactId);
       
       if (data && Array.isArray(data)) {
         console.log(`Received ${data.length} packing specs from API`);
@@ -304,7 +312,7 @@ const Dashboard = () => {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
+          <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm relative">
             {user?.logoUrl ? (
               <AvatarImage 
                 src={user.logoUrl} 
@@ -317,10 +325,32 @@ const Dashboard = () => {
             <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
+            
+            {/* Display the PIID as a badge on the avatar */}
+            {user?.podioItemId && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge className="absolute -bottom-2 -right-2 bg-primary text-xs px-2 rounded-full shadow-sm" variant="default">
+                      <Database className="h-3 w-3 mr-1" />
+                      {user.podioItemId}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Podio Item ID</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </Avatar>
           <div>
             <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
-            <p className="text-muted-foreground mt-1">Manage your packing specifications</p>
+            <p className="text-muted-foreground mt-1">
+              Manage your packing specifications
+              {user?.email && (
+                <span className="ml-2 text-xs text-muted-foreground/80">({user.email})</span>
+              )}
+            </p>
           </div>
         </div>
         <Button 
@@ -331,6 +361,31 @@ const Dashboard = () => {
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
+
+      {/* User data debug card - only shown in development mode */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="mb-8 bg-slate-50">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">User Data (Debug)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs font-mono">
+            <pre className="overflow-auto max-h-40">
+              {JSON.stringify({
+                id: user.id,
+                podioItemId: user.podioItemId,
+                name: user.name,
+                email: user.email,
+                username: user.username,
+                logoFileId: user.logoFileId,
+                logoUrl: user.logoUrl
+              }, null, 2)}
+            </pre>
+          </CardContent>
+          <CardFooter className="text-xs text-muted-foreground">
+            This debug information is only visible in development mode
+          </CardFooter>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">
