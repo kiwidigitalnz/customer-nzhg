@@ -59,13 +59,13 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const appId = Deno.env.get('PODIO_CONTACTS_APP_ID');
+    const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID');
     
-    if (!clientId || !clientSecret || !appId) {
+    if (!clientId || !clientSecret || !contactsAppId) {
       console.error('Missing Podio configuration', { 
         hasClientId: !!clientId, 
         hasClientSecret: !!clientSecret, 
-        hasAppId: !!appId
+        hasContactsAppId: !!contactsAppId
       });
       
       return new Response(
@@ -123,29 +123,75 @@ serve(async (req) => {
     
     console.log('Using stored Podio token to search for user');
     
-    // Use the token to search for the user by username
-    console.log(`Searching for user with username: ${username} in app: ${appId}`);
+    // Use the token to search for the user by username in the Contacts app
+    console.log(`Searching for user with username: ${username} in app: ${contactsAppId}`);
     
-    const userSearchResponse = await fetch(`https://api.podio.com/item/app/${appId}/filter/`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `OAuth2 ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        filters: {
-          "customer-portal-username": { "from": username, "to": username }
-        }
-      }),
-    });
+    // First, check if the Contacts app exists and is accessible
+    try {
+      const appResponse = await fetch(`https://api.podio.com/app/${contactsAppId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `OAuth2 ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!appResponse.ok) {
+        const responseText = await appResponse.text();
+        console.error(`Failed to access Contacts app: ${responseText}`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to access Contacts app. Check app ID and permissions.',
+            details: responseText
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('Successfully verified Contacts app access');
+    } catch (error) {
+      console.error('Error verifying Contacts app access:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify Contacts app access', details: error.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Now search for the user in the Contacts app
+    let userSearchResponse;
+    try {
+      userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `OAuth2 ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filters: {
+            "customer-portal-username": { "from": username, "to": username }
+          }
+        }),
+      });
+    } catch (error) {
+      console.error('Error during user search request:', error);
+      return new Response(
+        JSON.stringify({ error: 'Network error during user search', details: error.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Clone the response to avoid consuming the body multiple times
     const userSearchResponseText = await userSearchResponse.text();
+    console.log(`User search response status: ${userSearchResponse.status}`);
     
     if (!userSearchResponse.ok) {
       console.error('Failed to search for user', userSearchResponseText);
       return new Response(
-        JSON.stringify({ error: 'Failed to search for user', details: userSearchResponseText }),
+        JSON.stringify({ 
+          error: 'Failed to search for user in Contacts app', 
+          details: userSearchResponseText,
+          status: userSearchResponse.status
+        }),
         { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -162,6 +208,8 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Found ${userSearchData.items?.length || 0} matching users`);
+    
     if (!userSearchData.items || userSearchData.items.length === 0) {
       console.log('User not found:', username);
       return new Response(
@@ -176,7 +224,15 @@ serve(async (req) => {
     // Extract stored password and check
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
     
-    if (!storedPassword || storedPassword !== password) {
+    if (!storedPassword) {
+      console.log('User found but no password field:', username);
+      return new Response(
+        JSON.stringify({ error: 'User password not set' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (storedPassword !== password) {
       console.log('Invalid password for user:', username);
       return new Response(
         JSON.stringify({ error: 'Invalid password' }),

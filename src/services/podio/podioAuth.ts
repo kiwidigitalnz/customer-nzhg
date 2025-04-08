@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -193,6 +194,16 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     console.log(`Authenticating user: ${username}`);
+    
+    // First ensure we have a valid access token
+    const hasToken = hasValidTokens();
+    if (!hasToken) {
+      const tokenRefreshed = await authenticateWithClientCredentials();
+      if (!tokenRefreshed) {
+        throw new Error('Failed to obtain Podio access token');
+      }
+    }
+    
     // Call the Edge Function to authenticate the user
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
@@ -205,6 +216,16 @@ export const authenticateUser = async (username: string, password: string): Prom
     if (error) {
       console.error('User authentication failed:', error);
       throw new Error(error.message || 'Authentication failed');
+    }
+    
+    if (!data) {
+      console.error('Empty response from user authentication');
+      throw new Error('Empty response from authentication service');
+    }
+    
+    if (data.error) {
+      console.error('Authentication error:', data.error);
+      throw new Error(data.error);
     }
     
     // Store access token from user auth

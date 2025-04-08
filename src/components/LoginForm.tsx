@@ -76,8 +76,18 @@ const LoginForm = () => {
           variant: 'destructive',
         });
       }
-    } catch (loginErr) {
-      const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
+    } catch (loginErr: any) {
+      // Enhanced error handling with more specific messages
+      let errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
+      
+      // Check for common error patterns and provide more user-friendly messages
+      if (errorMessage.includes('User not found')) {
+        errorMessage = 'Username not found. Please check your username or contact support.';
+      } else if (errorMessage.includes('Invalid password')) {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (errorMessage.includes('Network error')) {
+        errorMessage = 'Connection problem. Please check your internet connection and try again.';
+      }
       
       setLoginError(errorMessage);
       
