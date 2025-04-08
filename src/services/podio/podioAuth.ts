@@ -171,12 +171,12 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 };
 
 // Authenticate with client credentials via Edge Function
-export const authenticateWithClientCredentials = async (scope: string = 'global'): Promise<boolean> => {
+export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
-    console.log(`Authenticating with client credentials. Scope: ${scope}`);
+    console.log('Authenticating with client credentials');
     const { data, error } = await supabase.functions.invoke('podio-authenticate', {
       method: 'POST',
-      body: { scope }
+      body: {}
     });
     
     if (error) {

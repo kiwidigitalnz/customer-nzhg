@@ -62,11 +62,10 @@ serve(async (req) => {
     console.log(`Client ID length: ${clientId.length}`);
     console.log(`Client Secret length: ${clientSecret.length}`);
 
-    // Parse request body to get any additional parameters (scope, etc.)
+    // Parse request body to get any additional parameters (but not using scope anymore)
     const requestData = await req.json().catch(() => ({}));
-    const scope = requestData.scope || 'global';
-
-    console.log(`Authenticating with Podio using client credentials. Scope: ${scope}`);
+    
+    console.log('Authenticating with Podio using client credentials');
 
     // Call Podio API to authenticate with client credentials
     // As per Podio docs: https://developers.podio.com/authentication/server_side
@@ -79,7 +78,7 @@ serve(async (req) => {
         'grant_type': 'client_credentials',
         'client_id': clientId,
         'client_secret': clientSecret,
-        'scope': scope, // Added scope parameter as per Podio docs
+        // Removed scope parameter as it's not supported by Podio
       }),
     });
 
