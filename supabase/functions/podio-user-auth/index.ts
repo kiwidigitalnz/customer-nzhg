@@ -79,9 +79,10 @@ serve(async (req) => {
     });
 
     if (!authResponse.ok) {
-      console.error('Failed to authenticate with Podio API', await authResponse.text());
+      const authErrorText = await authResponse.text();
+      console.error('Failed to authenticate with Podio API', authErrorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with Podio API' }),
+        JSON.stringify({ error: 'Failed to authenticate with Podio API', details: authErrorText }),
         { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -105,15 +106,28 @@ serve(async (req) => {
       }),
     });
 
+    // Clone the response to avoid consuming the body multiple times
+    const userSearchResponseText = await userSearchResponse.text();
+    
     if (!userSearchResponse.ok) {
-      console.error('Failed to search for user', await userSearchResponse.text());
+      console.error('Failed to search for user', userSearchResponseText);
       return new Response(
-        JSON.stringify({ error: 'Failed to search for user', details: await userSearchResponse.text() }),
+        JSON.stringify({ error: 'Failed to search for user', details: userSearchResponseText }),
         { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userSearchData = await userSearchResponse.json();
+    // Parse the response after we've read it as text
+    let userSearchData;
+    try {
+      userSearchData = JSON.parse(userSearchResponseText);
+    } catch (e) {
+      console.error('Failed to parse user search response', e);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse user search response', details: e.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!userSearchData.items || userSearchData.items.length === 0) {
       console.log('User not found:', username);
