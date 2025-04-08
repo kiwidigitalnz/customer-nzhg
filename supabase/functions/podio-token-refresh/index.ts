@@ -66,9 +66,9 @@ serve(async (req) => {
     const refreshToken = token.refresh_token;
 
     // Check if token is expired and needs refresh
-    const expiresAt = new Date(token.expires_at).getTime();
+    const expiresAtTime = new Date(token.expires_at).getTime();
     const now = Date.now();
-    const isExpired = expiresAt <= now;
+    const isExpired = expiresAtTime <= now;
 
     // If token is still valid, return it
     if (!isExpired) {
@@ -110,14 +110,14 @@ serve(async (req) => {
     console.log('Token successfully refreshed');
 
     // Update token in database
-    const expiresAt = new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString();
+    const newExpiresAt = new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString();
     
     const { error: updateError } = await supabase
       .from('podio_auth_tokens')
       .update({
         access_token: refreshData.access_token,
         refresh_token: refreshData.refresh_token,
-        expires_at: expiresAt,
+        expires_at: newExpiresAt,
         updated_at: new Date().toISOString()
       })
       .eq('id', token.id);
@@ -133,7 +133,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         access_token: refreshData.access_token,
-        expires_at: expiresAt,
+        expires_at: newExpiresAt,
         refreshed: true
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

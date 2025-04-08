@@ -2,8 +2,6 @@
 # A string used to distinguish different Supabase projects on the same host. Defaults to the working
 # directory name when running `supabase init`.
 project_id = "qpswgrmvepttnfetpopk"
-# A string representing which version of the CLI created this file. Defaults to `cli_version` used to run `supabase init`.
-cli_version = "1.89.0"
 
 [api]
 # Port to use for the API URL.
@@ -27,8 +25,6 @@ major_version = 15
 [studio]
 # Port to use for Supabase Studio.
 port = 54323
-# External URL of the API server that frontend connects to.
-api_url = "http://localhost"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
@@ -48,12 +44,11 @@ file_size_limit = "50MiB"
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://localhost:3000"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (1
+# week).
 jwt_expiry = 3600
 # Allow/disallow new user signups to your project.
 enable_signup = true
-# If disabled, the first user to sign up will be the super user with admin privileges.
-enable_confirmations = false
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -64,12 +59,9 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 
-[auth.sms]
-# Allow/disallow new user signups via SMS to your project.
-enable_signup = true
-# If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
-
+# Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
+# `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `twitch`,
+# `twitter`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
 enabled = false
 client_id = ""
@@ -80,158 +72,9 @@ redirect_uri = ""
 # or any other third-party OIDC providers.
 url = ""
 
-[auth.external.azure]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.bitbucket]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.discord]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.facebook]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.github]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.gitlab]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.google]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.linkedin]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.notion]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.twitch]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.twitter]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
-[auth.external.workos]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
 [functions]
+# Port to use for Functions API.
+port = 54325
+
 [functions.podio-oauth-callback]
 verify_jwt = false
-[functions.podio-get-auth-url]
-verify_jwt = false
-
-[analytics]
-enabled = false
-port = 54327
-vector_port = 54328
-# Configure one of either `postgrest_url` (ideally) or `db_url`.
-postgrest_url = "http://localhost:54321"
-# db_url = "postgres://..."
-
-# Configure Supabase's PostgREST instance
-[postgres.restful.queries]
-# Enables rpc query endpoint in PostgREST. Disabling this breaks Supabase Auth
-enable = true
-
-[postgres.restful.mutations]
-# Enables rpc mutation endpoint in PostgREST. Disabling this breaks Supabase Auth
-enable = true
-
-[minio]
-# The port to expose MinIO on. Use it to connect to MinIO from a local client, e.g. Cyberduck
-port = 54330
-# The port to MinIO's API, i.e. s3 compatible endpoint
-api_port = 54331
-
-[chat]
-# Set this to false to disable using AI-powered chat to ask questions about your project
-ai_enabled = true
-
-[relay]
-port = 54332
