@@ -93,6 +93,9 @@ serve(async (req) => {
     console.log('Successfully authenticated with Podio API, searching for user');
     
     // Use the token to search for the user by username
+    console.log(`Searching for user with username: ${username} in app: ${appId}`);
+    console.log(`Using token: ${accessToken.substring(0, 10)}...`);
+    
     const userSearchResponse = await fetch(`https://api.podio.com/item/app/${appId}/filter/`, {
       method: 'POST',
       headers: {
@@ -138,6 +141,7 @@ serve(async (req) => {
     }
 
     const userItem = userSearchData.items[0];
+    console.log('Found user item:', userItem.item_id);
     
     // Extract stored password and check
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
