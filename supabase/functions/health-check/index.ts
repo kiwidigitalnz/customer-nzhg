@@ -152,7 +152,8 @@ serve(async (req) => {
             console.log(`Client ID length: ${clientId.length}`);
             console.log(`Client Secret length: ${clientSecret.length}`);
             
-            // Test actual authentication
+            // Test actual authentication - UPDATED to match working implementation
+            // Following exactly: https://developers.podio.com/authentication/server_side
             const authResponse = await fetch('https://podio.com/oauth/token', {
               method: 'POST',
               headers: {
@@ -162,7 +163,7 @@ serve(async (req) => {
                 'grant_type': 'client_credentials',
                 'client_id': clientId,
                 'client_secret': clientSecret,
-                'scope': 'global',
+                // Removed scope parameter as it's not supported in client credentials flow
               }),
             });
             
