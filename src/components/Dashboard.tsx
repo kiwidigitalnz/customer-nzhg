@@ -286,13 +286,6 @@ const Dashboard = () => {
       .slice(0, 2);
   };
 
-  const getLogoUrl = () => {
-    if (user?.logoUrl && typeof user.logoUrl === 'number') {
-      return `/api/podio-image/${user.logoUrl}`;
-    }
-    return user?.logoUrl || '';
-  };
-
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       {isRateLimitReached && (
@@ -307,7 +300,7 @@ const Dashboard = () => {
           <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm">
             {user?.logoUrl ? (
               <AvatarImage 
-                src={getLogoUrl()} 
+                src={user.logoUrl} 
                 alt={user?.name || 'Company Logo'} 
                 onError={(e) => {
                   e.currentTarget.src = '';
