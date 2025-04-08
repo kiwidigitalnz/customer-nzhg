@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,6 +68,16 @@ const SimplePodioSetupPage = () => {
         
         if (error) {
           console.error('Failed to retrieve Podio tokens:', error);
+          
+          // Special case for missing table
+          if (error.message && error.message.includes('relation "podio_auth_tokens" does not exist')) {
+            toast({
+              title: "Database Table Missing",
+              description: "The podio_auth_tokens table doesn't exist. Please run the Supabase migration.",
+              variant: "destructive"
+            });
+          }
+          
           setPodioConnected(false);
           return;
         }
@@ -85,7 +96,7 @@ const SimplePodioSetupPage = () => {
     };
     
     checkPodioConnection();
-  }, [supabaseConnected]);
+  }, [supabaseConnected, toast]);
 
   useEffect(() => {
     if (success) {
@@ -95,9 +106,16 @@ const SimplePodioSetupPage = () => {
         variant: "default"
       });
     } else if (error) {
+      let description = errorDescription || error;
+      
+      // Special handling for common error cases
+      if (error === 'database_error' && errorDescription?.includes('podio_auth_tokens')) {
+        description = "The database table for Podio tokens doesn't exist. Please run the migration.";
+      }
+      
       toast({
         title: "Podio Connection Failed",
-        description: errorDescription || error,
+        description: description,
         variant: "destructive"
       });
     }
@@ -127,11 +145,13 @@ const SimplePodioSetupPage = () => {
           description: "Failed to initialize Podio OAuth flow",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
       
       localStorage.setItem('podio_oauth_state', data.state);
       
+      // Redirect to the Podio authorization URL
       window.location.href = data.authUrl;
       
     } catch (error) {
@@ -141,7 +161,6 @@ const SimplePodioSetupPage = () => {
         description: "Failed to start Podio OAuth flow",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -155,11 +174,23 @@ const SimplePodioSetupPage = () => {
       
       if (error) {
         console.error('Failed to refresh Podio status:', error);
-        toast({
-          title: "Error",
-          description: "Failed to refresh Podio connection status",
-          variant: "destructive"
-        });
+        
+        // Special handling for table not existing
+        if (error.message && error.message.includes('relation "podio_auth_tokens" does not exist')) {
+          toast({
+            title: "Database Setup Required",
+            description: "The podio_auth_tokens table doesn't exist. Please run the migration.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to refresh Podio connection status: " + error.message,
+            variant: "destructive"
+          });
+        }
+        
+        setIsLoading(false);
         return;
       }
       
@@ -255,7 +286,12 @@ const SimplePodioSetupPage = () => {
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Connection Failed</AlertTitle>
-                <AlertDescription>{errorDescription || error}</AlertDescription>
+                <AlertDescription>
+                  {errorDescription?.includes('podio_auth_tokens') 
+                    ? "The database table for Podio tokens doesn't exist. Please run the migration."
+                    : (errorDescription || error)
+                  }
+                </AlertDescription>
               </Alert>
             )}
             

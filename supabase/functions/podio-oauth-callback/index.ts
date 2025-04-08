@@ -20,11 +20,14 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Received OAuth callback request');
+    
     // Get Supabase URL and key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase credentials not configured');
       return new Response(
         JSON.stringify({ error: 'Supabase credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -41,6 +44,8 @@ serve(async (req) => {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
     const errorDescription = url.searchParams.get('error_description');
+
+    console.log(`Received callback with code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error || 'none'}`);
 
     // Handle errors from Podio
     if (error) {
@@ -117,72 +122,101 @@ serve(async (req) => {
     // Calculate token expiry time
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString();
 
-    // Store the token in the podio_tokens table
-    // First check if a token already exists and update it, otherwise insert
-    const { data: existingTokens, error: fetchError } = await supabase
-      .from('podio_auth_tokens')
-      .select('id')
-      .limit(1);
-
-    if (fetchError) {
-      console.error('Error fetching existing tokens:', fetchError);
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
-        }
-      });
-    }
-
-    let dbOperation;
-    if (existingTokens && existingTokens.length > 0) {
-      // Update existing token
-      dbOperation = supabase
+    // Check if the podio_auth_tokens table exists
+    try {
+      // Try to insert the token data into the database
+      console.log('Storing token in database');
+      
+      // First check if a token already exists and update it, otherwise insert
+      const { data: existingTokens, error: fetchError } = await supabase
         .from('podio_auth_tokens')
-        .update({
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: expiresAt,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingTokens[0].id);
-    } else {
-      // Insert new token
-      dbOperation = supabase
-        .from('podio_auth_tokens')
-        .insert([{
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: expiresAt,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }]);
-    }
+        .select('id')
+        .limit(1);
 
-    const { error: dbError } = await dbOperation;
-    if (dbError) {
-      console.error('Error storing token in database:', dbError);
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
+      if (fetchError) {
+        console.error('Error fetching existing tokens:', fetchError);
+        
+        // Check if the error is because the table doesn't exist
+        if (fetchError.message && fetchError.message.includes('relation "podio_auth_tokens" does not exist')) {
+          console.error('Table podio_auth_tokens does not exist. Please run the migration.');
+          
+          return new Response(null, {
+            status: 302,
+            headers: {
+              ...corsHeaders,
+              'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=The podio_auth_tokens table does not exist. Please run the migration.`
+            }
+          });
         }
-      });
-    }
-
-    console.log('Podio tokens successfully stored in the database');
-
-    // Redirect back to the setup page with success message
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...corsHeaders,
-        'Location': `https://customer.nzhg.com/podio-setup?success=true`
+        
+        return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
+          }
+        });
       }
-    });
 
+      let dbOperation;
+      if (existingTokens && existingTokens.length > 0) {
+        // Update existing token
+        console.log('Updating existing token record');
+        dbOperation = supabase
+          .from('podio_auth_tokens')
+          .update({
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: expiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingTokens[0].id);
+      } else {
+        // Insert new token
+        console.log('Inserting new token record');
+        dbOperation = supabase
+          .from('podio_auth_tokens')
+          .insert([{
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: expiresAt,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }]);
+      }
+
+      const { error: dbError } = await dbOperation;
+      if (dbError) {
+        console.error('Error storing token in database:', dbError);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
+          }
+        });
+      }
+
+      console.log('Podio tokens successfully stored in the database');
+
+      // Redirect back to the setup page with success message
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': `https://customer.nzhg.com/podio-setup?success=true`
+        }
+      });
+    } catch (dbError) {
+      console.error('Unexpected database error:', dbError);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message || 'Unknown database error')}`
+        }
+      });
+    }
   } catch (error) {
     console.error('Unexpected error in OAuth callback:', error);
     

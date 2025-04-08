@@ -78,3 +78,9 @@ port = 54325
 
 [functions.podio-oauth-callback]
 verify_jwt = false
+
+[functions.podio-get-auth-url]
+verify_jwt = false
+
+[functions.podio-token-refresh]
+verify_jwt = false
