@@ -1,34 +1,30 @@
 
-import { getFileFromPodio, extractPodioFileId } from '../services/imageProxy';
+import { supabase } from '@/integrations/supabase/client';
+
+// Default placeholder if image can't be loaded
+const PLACEHOLDER_IMAGE = 'https://placehold.co/200x200/F0F8FF/0078D7?text=No+Image';
 
 /**
- * Handler for API requests to /api/podio-image/:fileId
+ * Proxies Podio image requests through the Supabase Edge Function
  */
-export const handlePodioImageRequest = async (req: Request): Promise<Response> => {
+export const getPodioImageUrl = async (fileId: number | string): Promise<string> => {
+  if (!fileId) return PLACEHOLDER_IMAGE;
+  
   try {
-    // Extract file ID from path
-    const url = new URL(req.url);
-    const fileId = url.pathname.split('/').pop();
+    // Call the Edge Function to get a direct URL to the image
+    const { data, error } = await supabase.functions.invoke('podio-image-proxy', {
+      method: 'POST',
+      body: { fileId }
+    });
     
-    if (!fileId) {
-      return new Response('File ID is required', { status: 400 });
+    if (error || !data || !data.url) {
+      console.error('Error getting Podio image URL:', error || 'No URL returned');
+      return PLACEHOLDER_IMAGE;
     }
     
-    console.log(`Handling proxy request for file ID: ${fileId}`);
-    
-    // Get file from Podio
-    const imageData = await getFileFromPodio(fileId);
-    
-    // Return the image data directly with appropriate headers
-    return new Response(imageData.blob, {
-      status: 200,
-      headers: {
-        'Content-Type': imageData.contentType || 'image/jpeg',
-        'Cache-Control': 'max-age=3600'
-      }
-    });
+    return data.url;
   } catch (error) {
-    console.error('Error in Podio image proxy:', error);
-    return new Response('Failed to fetch image', { status: 500 });
+    console.error('Failed to proxy Podio image:', error);
+    return PLACEHOLDER_IMAGE;
   }
 };
