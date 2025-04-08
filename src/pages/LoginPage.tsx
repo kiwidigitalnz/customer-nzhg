@@ -30,10 +30,6 @@ const LoginPage = () => {
                 e.currentTarget.src = 'https://placehold.co/240x80/F0F8FF/0078D7?text=NZ+Honey+Group';
               }}
             />
-            <h1 className="text-2xl font-bold text-center text-blue-800">Customer Portal</h1>
-            <p className="text-center text-gray-600 mt-2">
-              Log in to access your packing specifications and more
-            </p>
           </div>
           
           <LoginForm />

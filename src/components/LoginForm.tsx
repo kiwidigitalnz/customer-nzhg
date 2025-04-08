@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, LogIn, User, Lock, EyeOff, Eye } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -16,11 +18,40 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const loginAttemptInProgress = useRef(false);
   const loginButtonRef = useRef<HTMLButtonElement>(null);
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Simulate progress during login to provide feedback
+  useEffect(() => {
+    if (authenticating) {
+      setLoadingProgress(10); // Start with 10%
+      
+      // Gradually increase progress to simulate loading
+      const timer = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 90) {
+            // Don't go to 100% until actually done
+            return 90;
+          }
+          return prev + 5;
+        });
+      }, 300);
+      
+      progressTimerRef.current = timer;
+      
+      return () => {
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+        }
+        setLoadingProgress(0);
+      };
+    }
+  }, [authenticating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +86,9 @@ const LoginForm = () => {
       const success = await login(username, password);
       
       if (success) {
+        // Set progress to 100% on success
+        setLoadingProgress(100);
+        
         toast({
           title: 'Login successful',
           description: 'Welcome to your customer portal',
@@ -104,6 +138,11 @@ const LoginForm = () => {
       if (loginButtonRef.current) {
         loginButtonRef.current.disabled = false;
       }
+      
+      // Clear progress timer
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+      }
     }
   };
 
@@ -125,6 +164,13 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isLoading && (
+          <div className="mb-4">
+            <Progress value={loadingProgress} className="h-1 mb-2" />
+            <p className="text-xs text-center text-muted-foreground">Authenticating...</p>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username" className="flex items-center gap-2">
@@ -187,10 +233,11 @@ const LoginForm = () => {
             className="w-full bg-blue-600 hover:bg-blue-700" 
             disabled={isLoading}
           >
-            {isLoading && (
-              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-25 border-t-white"></span>
+            {isLoading ? (
+              <LoadingSpinner size="sm" className="mr-2" />
+            ) : (
+              <LogIn className="mr-2 h-4 w-4" />
             )}
-            <LogIn className="mr-2 h-4 w-4" />
             {isLoading ? 'Logging in...' : 'Log In'}
           </Button>
         </form>

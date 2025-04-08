@@ -24,3 +24,5 @@ export {
   cacheUserData,
   getCachedUserData
 } from './podio/podioAuth';
+
+export { getFieldValueByExternalId };
