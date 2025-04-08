@@ -35,7 +35,7 @@ const DashboardPage = () => {
       toast({
         title: "Rate Limit Reached",
         description: "Using cached data where available. You can retry in a few minutes.",
-        variant: "warning"
+        variant: "default"  // Changed from "warning" to "default"
       });
     }
     

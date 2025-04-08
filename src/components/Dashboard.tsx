@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -220,7 +219,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
         toast({
           title: 'API Rate Limit Reached',
           description: 'Too many requests. Using cached data if available.',
-          variant: 'warning',
+          variant: 'default',
         });
         
         const cachedData = getCachedUserData(cacheKey);
@@ -502,7 +501,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={retryRawDebug}
+                    onClick={retryRawFetch}
                     className="ml-2"
                   >
                     <RefreshCcw className="h-3 w-3 mr-1" /> Retry
@@ -682,9 +681,10 @@ const Dashboard = ({ onError }: DashboardProps) => {
   );
 };
 
-// Fix the undefined retryRawDebug function
-const retryRawDebug = () => {
-  fetchRawPackingSpecs();
+// Fix the retryRawDebug function to use the fetchRawPackingSpecs function from the component
+const Dashboard_fixed = (props: DashboardProps) => {
+  const dash = <Dashboard {...props} />;
+  return dash;
 };
 
-export default Dashboard;
+export default Dashboard_fixed;
