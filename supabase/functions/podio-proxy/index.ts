@@ -91,6 +91,7 @@ serve(async (req) => {
     // Log request details (for debugging)
     console.log(`Making Podio API request to: ${endpoint}`);
     console.log(`Method: ${method}`);
+    console.log(`Body: ${body ? body.substring(0, 200) + (body.length > 200 ? '...' : '') : 'None'}`);
     console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
 
     // Make the actual request to Podio API
@@ -109,6 +110,14 @@ serve(async (req) => {
     } else {
       const text = await podioResponse.text();
       responseData = { text };
+    }
+
+    // Log response details for debugging
+    console.log(`Podio API response status: ${podioResponse.status}`);
+    console.log(`Response content type: ${contentType}`);
+    
+    if (podioResponse.status >= 400) {
+      console.error('Podio API error response:', JSON.stringify(responseData));
     }
 
     // Check for rate limiting
