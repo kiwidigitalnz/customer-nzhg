@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -213,13 +214,16 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     console.log(`Authenticating user: ${username}`);
-    // Call the Edge Function to authenticate the user
+    // Call the Edge Function to authenticate the user - this function will:
+    // 1. Authenticate with Podio using client credentials
+    // 2. Search for a contact with matching username
+    // 3. Verify the password matches
+    // 4. Return user data if successful
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
       body: {
         username,
-        password,
-        app_id: PODIO_CONTACTS_APP_ID
+        password
       }
     });
     
@@ -233,9 +237,15 @@ export const authenticateUser = async (username: string, password: string): Prom
       localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
       
       // Calculate token expiry time (subtract 5 minutes for safety)
-      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+      if (data.expires_at) {
+        const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
+        localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+      } else {
+        // Fallback to old calculation method
+        const expiresIn = data.expires_in * 1000; // Convert to milliseconds
+        const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
+        localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+      }
     }
     
     // Store user data in localStorage

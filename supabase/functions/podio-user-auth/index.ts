@@ -44,10 +44,9 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
     const appId = Deno.env.get('PODIO_CONTACTS_APP_ID');
-
-    if (!clientId || !clientSecret) {
+    
+    if (!clientId || !clientSecret || !appId) {
       return new Response(
         JSON.stringify({ error: 'Podio credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -66,7 +65,7 @@ serve(async (req) => {
     }
 
     // First authenticate with client credentials
-    // This follows Podio server-side auth flow: https://developers.podio.com/authentication/server_side
+    console.log('Authenticating with Podio API using client credentials');
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -80,6 +79,7 @@ serve(async (req) => {
     });
 
     if (!authResponse.ok) {
+      console.error('Failed to authenticate with Podio API', await authResponse.text());
       return new Response(
         JSON.stringify({ error: 'Failed to authenticate with Podio API' }),
         { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,14 +88,15 @@ serve(async (req) => {
 
     const authData = await authResponse.json();
     const accessToken = authData.access_token;
-
+    
+    console.log('Successfully authenticated with Podio API, searching for user');
+    
     // Use the token to search for the user by username
     const userSearchResponse = await fetch(`https://api.podio.com/item/app/${appId}/filter/`, {
       method: 'POST',
       headers: {
         'Authorization': `OAuth2 ${accessToken}`,
         'Content-Type': 'application/json',
-        'X-Podio-App': appToken || '',
       },
       body: JSON.stringify({
         filters: {
@@ -105,6 +106,7 @@ serve(async (req) => {
     });
 
     if (!userSearchResponse.ok) {
+      console.error('Failed to search for user', await userSearchResponse.text());
       return new Response(
         JSON.stringify({ error: 'Failed to search for user', details: await userSearchResponse.text() }),
         { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -114,6 +116,7 @@ serve(async (req) => {
     const userSearchData = await userSearchResponse.json();
     
     if (!userSearchData.items || userSearchData.items.length === 0) {
+      console.log('User not found:', username);
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -126,12 +129,15 @@ serve(async (req) => {
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
     
     if (!storedPassword || storedPassword !== password) {
+      console.log('Invalid password for user:', username);
       return new Response(
         JSON.stringify({ error: 'Invalid password' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('User authenticated successfully:', username);
+    
     // If authentication is successful, extract user data
     const userData = {
       id: userItem.item_id,
@@ -139,6 +145,7 @@ serve(async (req) => {
       email: getFieldValueByExternalId(userItem, 'email'),
       username: getFieldValueByExternalId(userItem, 'customer-portal-username'),
       logoUrl: getFieldValueByExternalId(userItem, 'logo'),
+      // Include access token for API access
       access_token: accessToken,
       expires_in: authData.expires_in,
       expires_at: new Date(Date.now() + (authData.expires_in * 1000)).toISOString(),

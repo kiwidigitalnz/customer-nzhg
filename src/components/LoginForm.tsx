@@ -15,6 +15,7 @@ const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const LoginForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setLoginError(null);
     
     // Prevent duplicate login attempts
     if (loginAttemptInProgress.current || authenticating) {
@@ -64,6 +68,8 @@ const LoginForm = () => {
           ? error.message || 'Login failed' 
           : String(error);
           
+        setLoginError(errorMsg);
+        
         toast({
           title: 'Login Failed',
           description: errorMsg,
@@ -72,6 +78,8 @@ const LoginForm = () => {
       }
     } catch (loginErr) {
       const errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
+      
+      setLoginError(errorMessage);
       
       toast({
         title: 'Login Failed',
@@ -94,6 +102,9 @@ const LoginForm = () => {
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+
+  // Display either the component's local error or the error from the auth context
+  const displayError = loginError || (typeof error === 'string' ? error : error?.message);
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">
@@ -152,11 +163,11 @@ const LoginForm = () => {
             </div>
           </div>
           
-          {error && (
+          {displayError && (
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Login Error</AlertTitle>
-              <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
+              <AlertDescription>{displayError}</AlertDescription>
             </Alert>
           )}
           
