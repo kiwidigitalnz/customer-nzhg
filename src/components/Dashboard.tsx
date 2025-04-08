@@ -162,10 +162,17 @@ const Dashboard = () => {
       await ensurePackingSpecAuth();
       
       console.log(`Fetching specs for contact ID: ${user.id}`);
+      console.log(`TEST: Using contact ID ${user.id} to filter packing specs in customerBrandName field`);
+      
       const data = await getPackingSpecsForContact(user.id);
       
       if (data && Array.isArray(data)) {
         console.log(`Received ${data.length} packing specs from API`);
+        
+        if (data.length > 0) {
+          console.log('Sample packing spec data:', JSON.stringify(data[0]).substring(0, 500) + '...');
+        }
+        
         setSpecs(data as PackingSpec[]);
         setIsRateLimitReached(false);
         

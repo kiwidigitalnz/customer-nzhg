@@ -1,3 +1,4 @@
+
 import { callPodioApi, hasValidTokens, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { addCommentToPodio } from './podioComments';
 
@@ -82,9 +83,12 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     }
     
     // Create a filter to get packing specs where the customer field matches the contact ID
+    // This is using the app reference field that points to the customer/contact
     const filter = {
       [PACKING_SPEC_FIELD_IDS.customerBrandName]: contactId
     };
+    
+    console.log('Filtering packing specs with:', JSON.stringify(filter));
     
     // Call Podio API to get the items
     const response = await callPodioApi(`item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
@@ -92,15 +96,19 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       body: JSON.stringify({ filters: filter })
     });
     
+    console.log('Packing specs API response received:', response ? 'Data found' : 'No data');
+    
     if (!response || !response.items) {
       console.log('No packing specs found for this contact');
       return [];
     }
     
+    console.log(`Found ${response.items.length} packing specs items`);
+    
     // Map the response to our PackingSpec interface
     const specs = response.items.map((item: any) => {
       // Transform Podio item into our data structure
-      return {
+      const spec = {
         id: item.item_id,
         title: item.title,
         description: item.fields?.description?.value || '',
@@ -108,9 +116,12 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         createdAt: item.created_on,
         details: extractDetailsFromPodioItem(item),
       };
+      
+      console.log(`Mapped spec ID ${spec.id}: ${spec.title} (${spec.status})`);
+      return spec;
     });
     
-    console.log(`Found ${specs.length} packing specs`);
+    console.log(`Successfully processed ${specs.length} packing specs`);
     return specs;
   } catch (error) {
     console.error('Error fetching packing specs:', error);
