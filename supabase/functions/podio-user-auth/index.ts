@@ -57,19 +57,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get Podio credentials from environment
-    const clientId = Deno.env.get('PODIO_CLIENT_ID');
-    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     const contactsAppId = Deno.env.get('PODIO_CONTACTS_APP_ID');
     
-    if (!clientId || !clientSecret || !contactsAppId) {
+    if (!contactsAppId) {
       console.error('Missing Podio configuration', { 
-        hasClientId: !!clientId, 
-        hasClientSecret: !!clientSecret, 
         hasContactsAppId: !!contactsAppId
       });
       
       return new Response(
-        JSON.stringify({ error: 'Podio credentials not configured' }),
+        JSON.stringify({ error: 'Podio Contacts App ID not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -126,37 +122,6 @@ serve(async (req) => {
     // Use the token to search for the user by username in the Contacts app
     console.log(`Searching for user with username: ${username} in app: ${contactsAppId}`);
     
-    // First, check if the Contacts app exists and is accessible
-    try {
-      const appResponse = await fetch(`https://api.podio.com/app/${contactsAppId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `OAuth2 ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!appResponse.ok) {
-        const responseText = await appResponse.text();
-        console.error(`Failed to access Contacts app: ${responseText}`);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to access Contacts app. Check app ID and permissions.',
-            details: responseText
-          }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      console.log('Successfully verified Contacts app access');
-    } catch (error) {
-      console.error('Error verifying Contacts app access:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify Contacts app access', details: error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
     // Now search for the user in the Contacts app
     let userSearchResponse;
     try {
@@ -168,7 +133,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           filters: {
-            "customer-portal-username": { "from": username, "to": username }
+            "customer-portal-username": username
           }
         }),
       });
@@ -249,7 +214,7 @@ serve(async (req) => {
       email: getFieldValueByExternalId(userItem, 'email'),
       username: getFieldValueByExternalId(userItem, 'customer-portal-username'),
       logoUrl: getFieldValueByExternalId(userItem, 'logo'),
-      // Include access token for API access
+      // Include access token for client-side API access
       access_token: accessToken,
       expires_at: token.expires_at
     };

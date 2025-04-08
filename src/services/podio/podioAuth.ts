@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,8 +94,7 @@ export const clearTokens = (): void => {
   localStorage.removeItem(USER_DATA_KEY);
 };
 
-// Check if Podio API is configured - we're now assuming Supabase is configured correctly
-// since we're using edge functions for all API calls
+// Check if Podio API is configured
 export const isPodioConfigured = (): boolean => {
   return true; // We're using Supabase edge functions now, so this is always true
 };
@@ -120,43 +118,6 @@ export const hasValidTokens = (): boolean => {
 // Call the Supabase Edge Function to refresh the token
 export const refreshPodioToken = async (): Promise<boolean> => {
   try {
-    console.log('Refreshing Podio token via OAuth flow');
-    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
-      method: 'POST'
-    });
-    
-    if (error) {
-      console.error('Token refresh failed:', error);
-      clearTokens();
-      return false;
-    }
-    
-    if (!data || !data.access_token) {
-      console.error('Token refresh did not return a valid token');
-      return false;
-    }
-    
-    // Store the new access token with proper expiry handling
-    localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-    
-    // Use the enhanced response to set accurate expiry time
-    // But still subtract 5 minutes as a safety buffer
-    if (data.expires_at) {
-      const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-    }
-    
-    console.log('Token refreshed successfully');
-    return true;
-  } catch (error) {
-    console.error('Failed to refresh token:', error);
-    return false;
-  }
-};
-
-// Authenticate with client credentials via Edge Function
-export const authenticateWithClientCredentials = async (): Promise<boolean> => {
-  try {
     console.log('Getting Podio OAuth token from our database');
     const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
       method: 'POST'
@@ -164,6 +125,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
     
     if (error) {
       console.error('OAuth token refresh failed:', error);
+      clearTokens();
       return false;
     }
     
@@ -190,6 +152,11 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   }
 };
 
+// Authenticate with client credentials via Edge Function
+export const authenticateWithClientCredentials = async (): Promise<boolean> => {
+  return refreshPodioToken(); // Now just an alias for refreshPodioToken for simplicity
+};
+
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
@@ -198,13 +165,13 @@ export const authenticateUser = async (username: string, password: string): Prom
     // First ensure we have a valid access token
     const hasToken = hasValidTokens();
     if (!hasToken) {
-      const tokenRefreshed = await authenticateWithClientCredentials();
+      const tokenRefreshed = await refreshPodioToken();
       if (!tokenRefreshed) {
         throw new Error('Failed to obtain Podio access token');
       }
     }
     
-    // Call the Edge Function to authenticate the user
+    // Call the Edge Function to find the user in the Contacts app
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
       body: {

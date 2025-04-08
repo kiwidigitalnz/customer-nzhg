@@ -2,7 +2,7 @@
 // Core authentication service for Podio integration (now stubbed)
 import { getFieldValueByExternalId } from './podio/podioFieldHelpers';
 
-// Export all necessary functions and constants as no-op stubs
+// Export all necessary functions and constants
 export { 
   authenticateUser,
   isPodioConfigured,

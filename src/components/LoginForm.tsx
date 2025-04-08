@@ -51,7 +51,7 @@ const LoginForm = () => {
         loginButtonRef.current.disabled = true;
       }
       
-      // Try to login the user
+      // Try to look up the user in the Contacts app
       const success = await login(username, password);
       
       if (success) {

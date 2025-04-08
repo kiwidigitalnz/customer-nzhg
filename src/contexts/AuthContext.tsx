@@ -2,12 +2,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   authenticateUser, 
-  clearPodioTokens as clearTokens, 
-  hasValidPodioTokens as hasValidTokens,
-  authenticateWithClientCredentials,
+  clearTokens, 
+  hasValidTokens,
+  refreshPodioToken,
   isPodioConfigured,
   cacheUserData
-} from '../services/podioApi';
+} from '../services/podio/podioAuth';
 
 // User data interface with authentication information
 export interface UserData {
@@ -75,8 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (hasValidTokens()) {
             setIsAuthenticated(true);
           } else {
-            // Try to reauthenticate with client credentials
-            const success = await authenticateWithClientCredentials();
+            // Try to get a new token
+            const success = await refreshPodioToken();
             setIsAuthenticated(success);
           }
         } else {
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  // Login method
+  // Login method 
   const login = useCallback(async (username?: string, password?: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
@@ -123,9 +123,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // First ensure we have valid access tokens for Podio API
-      await authenticateWithClientCredentials();
+      await refreshPodioToken();
       
-      // Now authenticate the user against the contacts app
+      // Now find the user in the contacts app
       const userData = await authenticateUser(username, password);
       
       if (userData) {
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         return true;
       } else {
-        throw new Error('Authentication failed');
+        throw new Error('User not found');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Force reauthentication with Podio API
   const forceReauthenticate = useCallback(async (): Promise<boolean> => {
     try {
-      const success = await authenticateWithClientCredentials();
+      const success = await refreshPodioToken();
       return success;
     } catch (err) {
       console.error('Force reauthentication error:', err);
