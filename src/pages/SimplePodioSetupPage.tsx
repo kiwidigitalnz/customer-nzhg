@@ -228,7 +228,7 @@ const SimplePodioSetupPage = () => {
             
             <div className="mb-4 flex items-center justify-between">
               <span>Podio OAuth Status:</span>
-              <Badge variant={podioConnected ? "success" : "outline"}>
+              <Badge variant={podioConnected ? "default" : "outline"} className={podioConnected ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
                 {podioConnected ? "Authorized" : "Not Authorized"}
               </Badge>
             </div>
@@ -341,3 +341,4 @@ const SimplePodioSetupPage = () => {
 };
 
 export default SimplePodioSetupPage;
+
