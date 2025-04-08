@@ -29,7 +29,15 @@ serve(async (req) => {
     
     // Get the redirect URI from the request URL
     const url = new URL(req.url);
-    const redirectUri = `${url.origin}/api/podio-oauth-callback`;
+    
+    // In production, we need to hardcode the redirect URL to match what's registered in Podio
+    // For development we can use dynamic origin
+    const isProduction = url.hostname === 'customer.nzhg.com' || 
+                         url.hostname.includes('supabase.co');
+    
+    const redirectUri = isProduction 
+      ? 'https://customer.nzhg.com/api/podio-oauth-callback' 
+      : `${url.origin}/api/podio-oauth-callback`;
     
     // Construct the Podio authorization URL
     const authUrl = new URL('https://podio.com/oauth/authorize');

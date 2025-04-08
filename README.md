@@ -15,14 +15,14 @@ This is the customer portal application for NZ Honey Group. It allows customers 
 
 ### Environment Variables
 
-For production deployment, create a `.env.production` file with the following variables:
+For production deployment, you need to configure the Supabase secrets with your Podio API credentials:
 
 ```
-VITE_PODIO_CLIENT_ID=your_podio_client_id
-VITE_PODIO_CLIENT_SECRET=your_podio_client_secret
+PODIO_CLIENT_ID=your_podio_client_id
+PODIO_CLIENT_SECRET=your_podio_client_secret
 ```
 
-These environment variables will be used for automatic Podio authentication in production.
+These secrets will be used by the Supabase Edge Functions for Podio authentication.
 
 ### Build
 
@@ -38,8 +38,15 @@ The build output will be in the `dist` directory.
 
 The application is designed to be deployed to the domain `customer.nzhg.com`. Deploy the contents of the `dist` directory to your web server.
 
+### Podio API Configuration
+
+Make sure your Podio API application has the following settings:
+
+1. Domain: `customer.nzhg.com`
+2. Redirect URI: `https://customer.nzhg.com/api/podio-oauth-callback`
+
 ## Important Notes
 
-- In production, the application will automatically authenticate with Podio using the provided environment variables.
+- In production, the application will automatically authenticate with Podio using the OAuth flow.
 - Users will only need to enter their username and password to log in, with no manual Podio setup required.
 - The application is designed to work seamlessly in both development and production environments.

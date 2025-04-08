@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,13 +18,11 @@ const SimplePodioSetupPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Extract success or error messages from URL
   const success = searchParams.get('success');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
 
   useEffect(() => {
-    // Check if Supabase Edge Functions are available
     const checkSupabaseConnection = async () => {
       try {
         console.log('Checking Supabase connection via health-check function');
@@ -59,7 +56,6 @@ const SimplePodioSetupPage = () => {
     checkSupabaseConnection();
   }, [toast]);
 
-  // Check for Podio connection status
   useEffect(() => {
     if (!supabaseConnected) return;
     
@@ -77,7 +73,6 @@ const SimplePodioSetupPage = () => {
         
         if (data) {
           setPodioConnected(true);
-          // Format expiry date for display
           const expiryDate = new Date(data.expires_at);
           setLastAuth(expiryDate.toLocaleString());
         } else {
@@ -92,7 +87,6 @@ const SimplePodioSetupPage = () => {
     checkPodioConnection();
   }, [supabaseConnected]);
 
-  // Handle success and error messages from OAuth callback
   useEffect(() => {
     if (success) {
       toast({
@@ -122,7 +116,6 @@ const SimplePodioSetupPage = () => {
     setIsLoading(true);
     
     try {
-      // Call the edge function to get the auth URL
       const { data, error } = await supabase.functions.invoke('podio-get-auth-url', {
         method: 'GET'
       });
@@ -137,10 +130,8 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      // Store the state in localStorage to verify when the user returns
       localStorage.setItem('podio_oauth_state', data.state);
       
-      // Redirect the user to the Podio authorization page
       window.location.href = data.authUrl;
       
     } catch (error) {
@@ -291,7 +282,7 @@ const SimplePodioSetupPage = () => {
                 <li>Deploy the Edge Functions included with this app</li>
               </ol>
               <p className="mt-2 text-amber-800 font-medium">Important Podio Settings:</p>
-              <p className="text-amber-700">Make sure your Podio API app has a domain that matches: <strong>{window.location.origin}</strong></p>
+              <p className="text-amber-700">Make sure your Podio API app has a domain that matches: <strong>https://customer.nzhg.com</strong></p>
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
@@ -341,4 +332,3 @@ const SimplePodioSetupPage = () => {
 };
 
 export default SimplePodioSetupPage;
-

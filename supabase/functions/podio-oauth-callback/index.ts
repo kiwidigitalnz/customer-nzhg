@@ -50,7 +50,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`
         }
       });
     }
@@ -62,7 +62,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=missing_params&error_description=Code or state missing from OAuth callback`
+          'Location': `https://customer.nzhg.com/podio-setup?error=missing_params&error_description=Code or state missing from OAuth callback`
         }
       });
     }
@@ -78,7 +78,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=configuration_error&error_description=Podio credentials not configured`
+          'Location': `https://customer.nzhg.com/podio-setup?error=configuration_error&error_description=Podio credentials not configured`
         }
       });
     }
@@ -106,7 +106,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=token_exchange_failed&error_description=${encodeURIComponent(tokenError)}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=token_exchange_failed&error_description=${encodeURIComponent(tokenError)}`
         }
       });
     }
@@ -130,7 +130,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
         }
       });
     }
@@ -167,7 +167,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${url.origin}/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
         }
       });
     }
@@ -179,7 +179,7 @@ serve(async (req) => {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${url.origin}/podio-setup?success=true`
+        'Location': `https://customer.nzhg.com/podio-setup?success=true`
       }
     });
 
@@ -192,7 +192,7 @@ serve(async (req) => {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${url.origin}/podio-setup?error=unexpected_error&error_description=${encodeURIComponent(error.message)}`
+        'Location': `https://customer.nzhg.com/podio-setup?error=unexpected_error&error_description=${encodeURIComponent(error.message)}`
       }
     });
   }
