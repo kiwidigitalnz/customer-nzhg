@@ -1,4 +1,3 @@
-
 // This module handles interactions with Podio packing specs
 
 import { 
@@ -327,7 +326,7 @@ export const updatePackingSpecStatus = async (
     // If there's a signature to upload, do that separately
     if (status === 'approved-by-customer' && additionalData?.signature) {
       try {
-        const signatureFile = await uploadFileToPodio(additionalData.signature);
+        const signatureFile = await uploadFileToPodio(additionalData.signature, 'signature.jpg');
         
         if (signatureFile && signatureFile.file_id) {
           const signatureFieldUpdate = {

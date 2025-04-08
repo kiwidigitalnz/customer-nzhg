@@ -2,7 +2,7 @@
 import { callPodioApi } from './podioAuth';
 
 // Upload a file to Podio
-export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise<number | null> => {
+export const uploadFileToPodio = async (fileDataUrl: string, fileName: string = 'signature.jpg'): Promise<{ file_id: number } | null> => {
   try {
     // Extract the base64 part from the data URL
     const base64Data = fileDataUrl.split(',')[1];
@@ -25,8 +25,8 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     // In stub mode, we'll just return a mock file id
     console.log('Mock file upload:', fileName);
     
-    // Return a mock file ID
-    return 12345;
+    // Return a mock file object with file_id property
+    return { file_id: 12345 };
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
     throw error;
