@@ -5,30 +5,80 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import MainLayout from '../components/MainLayout';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 const PodioCallbackPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   
   // Extract OAuth parameters
   const code = searchParams.get('code');
   const state = searchParams.get('state');
   const error = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
 
   useEffect(() => {
     // Check if this is an OAuth callback
     if (code && state) {
-      // The edge function will handle the actual token exchange
-      // This page will be displayed briefly while the redirect happens
-      console.log('OAuth callback received, redirecting to Supabase Edge Function');
+      // Call the Edge Function to handle the token exchange
+      const handleOAuthCallback = async () => {
+        try {
+          console.log('Processing Podio OAuth callback');
+          
+          const { data, error } = await supabase.functions.invoke('podio-oauth-callback', {
+            method: 'POST',
+            body: { code, state }
+          });
+          
+          if (error) {
+            console.error('Error processing callback:', error);
+            toast({
+              title: "Authentication Failed",
+              description: error.message || "Failed to complete Podio authentication",
+              variant: "destructive"
+            });
+            navigate('/podio-setup?error=callback_failed');
+            return;
+          }
+          
+          if (data && data.success) {
+            toast({
+              title: "Podio Connected",
+              description: "Successfully authenticated with Podio",
+            });
+            navigate('/podio-setup?success=true');
+          } else {
+            const errorMsg = data?.error || 'unknown';
+            const errorDesc = data?.error_description || '';
+            navigate(`/podio-setup?error=${errorMsg}&error_description=${errorDesc}`);
+          }
+        } catch (err) {
+          console.error('Unexpected error in callback handler:', err);
+          toast({
+            title: "Authentication Error",
+            description: "An unexpected error occurred during authentication",
+            variant: "destructive"
+          });
+          navigate('/podio-setup?error=unexpected');
+        }
+      };
+      
+      handleOAuthCallback();
     } else if (error) {
       // If there's an OAuth error, redirect to the setup page with the error
-      navigate(`/podio-setup?error=${error}`);
+      toast({
+        title: "Authentication Failed",
+        description: errorDescription || error,
+        variant: "destructive"
+      });
+      navigate(`/podio-setup?error=${error}&error_description=${errorDescription || ''}`);
     } else {
       // If this isn't an OAuth callback, redirect to the home page
       navigate('/');
     }
-  }, [code, state, error, navigate]);
+  }, [code, state, error, errorDescription, navigate, toast]);
 
   return (
     <MainLayout>

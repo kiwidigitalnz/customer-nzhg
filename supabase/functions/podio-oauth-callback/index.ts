@@ -3,7 +3,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 // Constants for Podio OAuth flow
-const PODIO_AUTH_URL = 'https://podio.com/oauth/authorize';
 const PODIO_TOKEN_URL = 'https://podio.com/oauth/token';
 
 // CORS headers for cross-origin requests
@@ -37,20 +36,46 @@ serve(async (req) => {
     // Create Supabase client with service key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Handle OAuth callback from Podio
-    // Extract code and state from query parameters
-    const url = new URL(req.url);
-    const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state');
-    const error = url.searchParams.get('error');
-    const errorDescription = url.searchParams.get('error_description');
-
-    console.log(`Received callback with code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error || 'none'}`);
+    // Check if this is a direct POST request from the frontend
+    let code, state, error, errorDescription;
+    
+    if (req.method === 'POST') {
+      // Extract parameters from the POST body
+      const body = await req.json();
+      code = body.code;
+      state = body.state;
+      error = body.error;
+      errorDescription = body.error_description;
+      
+      console.log(`Received callback parameters via POST: code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error || 'none'}`);
+    } else {
+      // Handle direct URL callback (the traditional way)
+      const url = new URL(req.url);
+      code = url.searchParams.get('code');
+      state = url.searchParams.get('state');
+      error = url.searchParams.get('error');
+      errorDescription = url.searchParams.get('error_description');
+      
+      console.log(`Received callback with code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error || 'none'}`);
+    }
 
     // Handle errors from Podio
     if (error) {
       console.error('Podio OAuth error:', error, errorDescription);
-      // Redirect to the setup page with error
+      
+      // Return error as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: error, 
+            error_description: errorDescription 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Redirect to the setup page with error for GET requests
       return new Response(null, {
         status: 302,
         headers: {
@@ -63,6 +88,19 @@ serve(async (req) => {
     // Check if code exists
     if (!code || !state) {
       console.error('Missing code or state in OAuth callback');
+      
+      // Return error as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'missing_params',
+            error_description: 'Code or state missing from OAuth callback'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(null, {
         status: 302,
         headers: {
@@ -75,10 +113,24 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const redirectUri = `${url.origin}/api/podio-oauth-callback`;
+    // Use domain root as the redirect URI since that's all Podio allows
+    const redirectUri = 'https://customer.nzhg.com';
 
     if (!clientId || !clientSecret) {
       console.error('Missing Podio credentials');
+      
+      // Return error as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'configuration_error',
+            error_description: 'Podio credentials not configured'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(null, {
         status: 302,
         headers: {
@@ -107,6 +159,19 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const tokenError = await tokenResponse.text();
       console.error('Failed to exchange code for token:', tokenError);
+      
+      // Return error as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'token_exchange_failed',
+            error_description: tokenError
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(null, {
         status: 302,
         headers: {
@@ -140,6 +205,18 @@ serve(async (req) => {
         if (fetchError.message && fetchError.message.includes('relation "podio_auth_tokens" does not exist')) {
           console.error('Table podio_auth_tokens does not exist. Please run the migration.');
           
+          // Return error as JSON for POST requests, redirect for GET requests
+          if (req.method === 'POST') {
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'database_error',
+                error_description: 'The podio_auth_tokens table does not exist. Please run the migration.'
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
           return new Response(null, {
             status: 302,
             headers: {
@@ -147,6 +224,18 @@ serve(async (req) => {
               'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=The podio_auth_tokens table does not exist. Please run the migration.`
             }
           });
+        }
+        
+        // Return error as JSON for POST requests, redirect for GET requests
+        if (req.method === 'POST') {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'database_error',
+              error_description: fetchError.message
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
         
         return new Response(null, {
@@ -188,6 +277,19 @@ serve(async (req) => {
       const { error: dbError } = await dbOperation;
       if (dbError) {
         console.error('Error storing token in database:', dbError);
+        
+        // Return error as JSON for POST requests, redirect for GET requests
+        if (req.method === 'POST') {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'database_error',
+              error_description: dbError.message
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         return new Response(null, {
           status: 302,
           headers: {
@@ -199,6 +301,17 @@ serve(async (req) => {
 
       console.log('Podio tokens successfully stored in the database');
 
+      // Return success as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: 'Podio tokens successfully stored'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       // Redirect back to the setup page with success message
       return new Response(null, {
         status: 302,
@@ -209,6 +322,19 @@ serve(async (req) => {
       });
     } catch (dbError) {
       console.error('Unexpected database error:', dbError);
+      
+      // Return error as JSON for POST requests, redirect for GET requests
+      if (req.method === 'POST') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'database_error',
+            error_description: dbError.message || 'Unknown database error'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(null, {
         status: 302,
         headers: {
@@ -219,6 +345,18 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Unexpected error in OAuth callback:', error);
+    
+    // Return error as JSON for POST requests, redirect for GET requests
+    if (req.method === 'POST') {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'unexpected_error',
+          error_description: error.message || 'Unknown error'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Redirect to the setup page with error
     const url = new URL(req.url);

@@ -27,17 +27,8 @@ serve(async (req) => {
     // Generate a state parameter for CSRF protection
     const state = crypto.randomUUID();
     
-    // Get the redirect URI from the request URL
-    const url = new URL(req.url);
-    
-    // In production, we need to hardcode the redirect URL to match what's registered in Podio
-    // For development we can use dynamic origin
-    const isProduction = url.hostname === 'customer.nzhg.com' || 
-                         url.hostname.includes('supabase.co');
-    
-    const redirectUri = isProduction 
-      ? 'https://customer.nzhg.com/api/podio-oauth-callback' 
-      : `${url.origin}/api/podio-oauth-callback`;
+    // Use root domain as redirect URI since that's what Podio allows
+    const redirectUri = 'https://customer.nzhg.com';
     
     // Construct the Podio authorization URL
     const authUrl = new URL('https://podio.com/oauth/authorize');

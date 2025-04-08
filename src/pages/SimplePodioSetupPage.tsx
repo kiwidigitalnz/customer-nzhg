@@ -149,6 +149,7 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
+      // Store state in localStorage for verification when callback happens
       localStorage.setItem('podio_oauth_state', data.state);
       
       // Redirect to the Podio authorization URL
@@ -275,7 +276,7 @@ const SimplePodioSetupPage = () => {
             {podioConnected && (
               <Alert className="mb-4">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                <AlertTitle className="text-green-600">Connected Successfully</AlertTitle>
+                <AlertTitle className="font-semibold text-green-600">Connected Successfully</AlertTitle>
                 <AlertDescription className="text-green-700">
                   Your app is now connected to the Podio API. Users can log in with their portal credentials.
                 </AlertDescription>
