@@ -165,9 +165,7 @@ serve(async (req) => {
     let userSearchData;
     
     try {
-      // =========================================================
-      // CORRECTED API FILTER FORMAT per Podio API documentation
-      // =========================================================
+      // First attempt: Use simpler filter approach
       const userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
@@ -175,11 +173,8 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          filters: {
-            "customer-portal-username": {
-              "type": "text",
-              "text": username
-            }
+          "filters": {
+            "customer-portal-username": username
           }
         }),
       });
@@ -192,7 +187,7 @@ serve(async (req) => {
         if (userSearchResponse.status === 400 && errorText.includes('invalid')) {
           console.log('Trying fallback search approach...');
           
-          // Fallback: get all items and filter client-side
+          // Fallback: Try to get all items from the app without filters
           try {
             const allItemsResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/`, {
               method: 'GET',
@@ -214,13 +209,29 @@ serve(async (req) => {
               );
             }
             
-            const allItems = await allItemsResponse.json();
+            const allItemsData = await allItemsResponse.json();
             
-            console.log(`Found ${allItems.length} total items, filtering for username: ${username}`);
+            // Check if we have a valid array of items
+            if (!Array.isArray(allItemsData)) {
+              console.error('Unexpected response format from Podio. Expected array of items but got:', 
+                typeof allItemsData, 
+                allItemsData ? Object.keys(allItemsData) : 'null/undefined'
+              );
+              
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Unexpected response format from Podio. Please check the logs.',
+                  details: 'Expected array of items in response'
+                }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            
+            console.log(`Found ${allItemsData.length} total items, filtering for username: ${username}`);
             
             // Manually filter for the user with matching username
             const matchingItems = [];
-            for (const item of allItems) {
+            for (const item of allItemsData) {
               const itemUsername = getFieldValueByExternalId(item, 'customer-portal-username');
               if (itemUsername === username) {
                 matchingItems.push(item);
@@ -263,9 +274,9 @@ serve(async (req) => {
       );
     }
     
-    if (DEBUG) console.log(`Found ${userSearchData.items?.length || 0} matching users`);
+    if (DEBUG) console.log(`Found ${userSearchData?.items?.length || 0} matching users`);
     
-    if (!userSearchData.items || userSearchData.items.length === 0) {
+    if (!userSearchData?.items || userSearchData.items.length === 0) {
       console.log('User not found:', username);
       return new Response(
         JSON.stringify({ error: 'User not found' }),
