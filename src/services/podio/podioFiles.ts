@@ -22,8 +22,19 @@ export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): 
     // Create a Blob from the binary data
     const blob = new Blob([bytes], { type: 'image/jpeg' });
     
-    // In stub mode, we'll just return a mock file id
+    // Create FormData with the blob
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    
+    // Use stub mode for now, but prepared for real implementation
     console.log('Mock file upload:', fileName);
+    
+    // In a real implementation, we would call the Podio API:
+    // const response = await callPodioApi('/file', {
+    //   method: 'POST',
+    //   body: formData
+    // });
+    // return response.file_id;
     
     // Return a mock file ID
     return 12345;

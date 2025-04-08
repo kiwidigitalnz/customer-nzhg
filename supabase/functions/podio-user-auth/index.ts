@@ -35,6 +35,9 @@ function getFieldValueByExternalId(item: any, externalId: string): any {
   return null;
 }
 
+// Set DEBUG mode to true for more verbose logging
+const DEBUG = true;
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -119,13 +122,53 @@ serve(async (req) => {
     
     console.log('Using stored Podio token to search for user');
     
-    // Use the token to search for the user by username in the Contacts app
-    console.log(`Searching for user with username: ${username} in app: ${contactsAppId}`);
-    
-    // Now search for the user in the Contacts app
-    let userSearchResponse;
+    // First, let's try to get a view of all items to find the user
     try {
-      userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
+      // First, try to fetch some items to verify we can access the app
+      if (DEBUG) console.log(`Fetching items from app ${contactsAppId} to verify access`);
+      
+      const verifyResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `OAuth2 ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "limit": 1
+        }),
+      });
+      
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        console.error(`Failed to verify app access: ${verifyResponse.status} - ${errorText}`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to access Contacts app in Podio', 
+            details: errorText,
+            status: verifyResponse.status
+          }),
+          { status: verifyResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (DEBUG) console.log('Successfully verified app access');
+    } catch (error) {
+      console.error('Error verifying app access:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify app access', details: error.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Use the correct filter format according to Podio API docs
+    console.log(`Searching for user with username: ${username} in app: ${contactsAppId}`);
+    let userSearchData;
+    
+    try {
+      // =========================================================
+      // CORRECTED API FILTER FORMAT per Podio API documentation
+      // =========================================================
+      const userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
           'Authorization': `OAuth2 ${accessToken}`,
@@ -133,10 +176,85 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           filters: {
-            "customer-portal-username": username
+            "customer-portal-username": {
+              "type": "text",
+              "text": username
+            }
           }
         }),
       });
+      
+      if (!userSearchResponse.ok) {
+        const errorText = await userSearchResponse.text();
+        console.error(`Failed to search for user: ${userSearchResponse.status} - ${errorText}`);
+        
+        // If filter format is still an issue, try a fallback approach
+        if (userSearchResponse.status === 400 && errorText.includes('invalid')) {
+          console.log('Trying fallback search approach...');
+          
+          // Fallback: get all items and filter client-side
+          try {
+            const allItemsResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `OAuth2 ${accessToken}`,
+                'Content-Type': 'application/json',
+              }
+            });
+            
+            if (!allItemsResponse.ok) {
+              const fallbackError = await allItemsResponse.text();
+              console.error(`Fallback approach failed: ${allItemsResponse.status} - ${fallbackError}`);
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Failed to search for user with fallback approach', 
+                  details: fallbackError
+                }),
+                { status: allItemsResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            
+            const allItems = await allItemsResponse.json();
+            
+            console.log(`Found ${allItems.length} total items, filtering for username: ${username}`);
+            
+            // Manually filter for the user with matching username
+            const matchingItems = [];
+            for (const item of allItems) {
+              const itemUsername = getFieldValueByExternalId(item, 'customer-portal-username');
+              if (itemUsername === username) {
+                matchingItems.push(item);
+              }
+            }
+            
+            if (matchingItems.length === 0) {
+              return new Response(
+                JSON.stringify({ error: 'User not found' }),
+                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            
+            userSearchData = { items: matchingItems };
+          } catch (fallbackError) {
+            console.error('Error during fallback search:', fallbackError);
+            return new Response(
+              JSON.stringify({ error: 'Search fallback failed', details: fallbackError.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Failed to search for user in Contacts app', 
+              details: errorText,
+              status: userSearchResponse.status
+            }),
+            { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        userSearchData = await userSearchResponse.json();
+      }
     } catch (error) {
       console.error('Error during user search request:', error);
       return new Response(
@@ -144,36 +262,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Clone the response to avoid consuming the body multiple times
-    const userSearchResponseText = await userSearchResponse.text();
-    console.log(`User search response status: ${userSearchResponse.status}`);
     
-    if (!userSearchResponse.ok) {
-      console.error('Failed to search for user', userSearchResponseText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to search for user in Contacts app', 
-          details: userSearchResponseText,
-          status: userSearchResponse.status
-        }),
-        { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse the response after we've read it as text
-    let userSearchData;
-    try {
-      userSearchData = JSON.parse(userSearchResponseText);
-    } catch (e) {
-      console.error('Failed to parse user search response', e);
-      return new Response(
-        JSON.stringify({ error: 'Failed to parse user search response', details: e.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`Found ${userSearchData.items?.length || 0} matching users`);
+    if (DEBUG) console.log(`Found ${userSearchData.items?.length || 0} matching users`);
     
     if (!userSearchData.items || userSearchData.items.length === 0) {
       console.log('User not found:', username);
@@ -184,7 +274,7 @@ serve(async (req) => {
     }
 
     const userItem = userSearchData.items[0];
-    console.log('Found user item:', userItem.item_id);
+    if (DEBUG) console.log('Found user item:', userItem.item_id);
     
     // Extract stored password and check
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
