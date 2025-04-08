@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,8 +8,9 @@ import {
   isRateLimited, 
   isRateLimitedWithInfo,
   getCachedUserData,
-  cacheUserData
-} from '../services/podioAuth';
+  cacheUserData,
+  callPodioApi
+} from '../services/podioApi';
 import { getPackingSpecsForContact } from '../services/podioApi';
 import { 
   Building, 
@@ -18,7 +18,8 @@ import {
   PackageCheck, 
   CheckCircle,
   AlertCircle,
-  Database
+  Database,
+  Bug
 } from 'lucide-react';
 import { 
   Card, 
@@ -74,6 +75,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
+  const [debugSpecs, setDebugSpecs] = useState<any[]>([]);
+  const [loadingDebug, setLoadingDebug] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,7 +169,6 @@ const Dashboard = () => {
     try {
       await ensurePackingSpecAuth();
       
-      // Make sure we're using the contact Podio Item ID, not just regular ID
       const contactId = user.podioItemId || user.id;
       
       console.log(`Fetching specs for contact ID: ${contactId}`);
@@ -223,7 +225,48 @@ const Dashboard = () => {
       apiCallInProgress.current = false;
     }
   }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
-
+  
+  const fetchRawPackingSpecs = useCallback(async () => {
+    if (!user?.podioItemId) {
+      console.log('No Podio Item ID available for raw spec fetching');
+      return;
+    }
+    
+    setLoadingDebug(true);
+    
+    try {
+      console.log(`Fetching raw packing specs for contact Podio Item ID: ${user.podioItemId}`);
+      
+      const packingSpecAppId = '38373557';
+      
+      const response = await callPodioApi(`item/app/${packingSpecAppId}/filter/`, {
+        method: 'POST',
+        body: JSON.stringify({
+          "filters": {
+            "customer-brand-name": [user.podioItemId]
+          }
+        })
+      });
+      
+      if (response && response.items) {
+        console.log(`Found ${response.items.length} raw packing specs`);
+        setDebugSpecs(response.items);
+      } else {
+        console.log('No raw packing specs found or unexpected response format');
+        setDebugSpecs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching raw packing specs:', error);
+      toast({
+        title: 'Debug Error',
+        description: 'Failed to fetch raw packing specs',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingDebug(false);
+    }
+  }, [user, toast]);
+  
   useEffect(() => {
     if (!podioConfigured) {
       toast({
@@ -273,6 +316,13 @@ const Dashboard = () => {
     }
   }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && user?.podioItemId && !debugSpecs.length) {
+      console.log('Development mode detected - fetching raw packing specs');
+      fetchRawPackingSpecs();
+    }
+  }, [user, fetchRawPackingSpecs, debugSpecs.length]);
+
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -320,7 +370,6 @@ const Dashboard = () => {
                 src={user.logoUrl} 
                 alt={user?.name || 'Company Logo'} 
                 onError={(e) => {
-                  // If image fails to load, clear the src to show fallback
                   e.currentTarget.src = '';
                 }}
               />
@@ -329,7 +378,6 @@ const Dashboard = () => {
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
             
-            {/* Display the PIID as a badge on the avatar */}
             {user?.podioItemId && (
               <TooltipProvider>
                 <Tooltip>
@@ -365,27 +413,88 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* User data debug card - only shown in development mode */}
       {process.env.NODE_ENV === 'development' && (
         <Card className="mb-8 bg-slate-50">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">User Data (Debug)</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Bug className="h-4 w-4" /> User Data (Debug)
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-xs font-mono">
             <pre className="overflow-auto max-h-40">
               {JSON.stringify({
-                id: user.id,
-                podioItemId: user.podioItemId,
-                name: user.name,
-                email: user.email,
-                username: user.username,
-                logoFileId: user.logoFileId,
-                logoUrl: user.logoUrl
+                id: user?.id,
+                podioItemId: user?.podioItemId,
+                name: user?.name,
+                email: user?.email,
+                username: user?.username,
+                logoFileId: user?.logoFileId,
+                logoUrl: user?.logoUrl
               }, null, 2)}
             </pre>
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground">
             This debug information is only visible in development mode
+          </CardFooter>
+        </Card>
+      )}
+
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="mb-8 bg-slate-50/80 border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Bug className="h-4 w-4" /> Raw Packing Specs (Debug)
+            </CardTitle>
+            <CardDescription>
+              Using the same search approach as authentication
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-xs">
+            {loadingDebug ? (
+              <div className="py-4 flex justify-center">
+                <LoadingSpinner size="sm" text="Loading raw specs data..." />
+              </div>
+            ) : debugSpecs.length > 0 ? (
+              <div>
+                <div className="mb-2 font-medium">Found {debugSpecs.length} packing specs for contact ID {user?.podioItemId}</div>
+                <div className="overflow-auto max-h-60 border rounded-md">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Title</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {debugSpecs.map((spec) => (
+                        <tr key={spec.item_id} className="hover:bg-slate-50">
+                          <td className="px-3 py-2 whitespace-nowrap text-xs">{spec.item_id}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs">{spec.title}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs">{new Date(spec.created_on).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-slate-500">
+                No raw packing specs found for this contact
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between text-xs text-muted-foreground">
+            <span>This debug information is only visible in development mode</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchRawPackingSpecs}
+              disabled={loadingDebug}
+              className="h-7 text-xs"
+            >
+              Refresh Raw Data
+            </Button>
           </CardFooter>
         </Card>
       )}
