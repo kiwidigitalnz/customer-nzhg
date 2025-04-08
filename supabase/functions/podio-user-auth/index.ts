@@ -45,8 +45,16 @@ serve(async (req) => {
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     const appId = Deno.env.get('PODIO_CONTACTS_APP_ID');
+    const appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
     
-    if (!clientId || !clientSecret || !appId) {
+    if (!clientId || !clientSecret || !appId || !appToken) {
+      console.error('Missing Podio configuration', { 
+        hasClientId: !!clientId, 
+        hasClientSecret: !!clientSecret, 
+        hasAppId: !!appId, 
+        hasAppToken: !!appToken 
+      });
+      
       return new Response(
         JSON.stringify({ error: 'Podio credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -64,15 +72,17 @@ serve(async (req) => {
       );
     }
 
-    // First authenticate with client credentials
-    console.log('Authenticating with Podio API using client credentials');
+    // Authenticate using app token instead of client credentials
+    console.log('Authenticating with Podio API using app token');
     const authResponse = await fetch('https://podio.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        'grant_type': 'client_credentials',
+        'grant_type': 'app',
+        'app_id': appId,
+        'app_token': appToken,
         'client_id': clientId,
         'client_secret': clientSecret,
       }),
@@ -80,7 +90,7 @@ serve(async (req) => {
 
     if (!authResponse.ok) {
       const authErrorText = await authResponse.text();
-      console.error('Failed to authenticate with Podio API', authErrorText);
+      console.error('Failed to authenticate with Podio API using app token', authErrorText);
       return new Response(
         JSON.stringify({ error: 'Failed to authenticate with Podio API', details: authErrorText }),
         { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -90,7 +100,7 @@ serve(async (req) => {
     const authData = await authResponse.json();
     const accessToken = authData.access_token;
     
-    console.log('Successfully authenticated with Podio API, searching for user');
+    console.log('Successfully authenticated with Podio API using app token, searching for user');
     
     // Use the token to search for the user by username
     console.log(`Searching for user with username: ${username} in app: ${appId}`);
