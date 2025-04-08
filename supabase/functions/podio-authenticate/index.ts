@@ -14,17 +14,53 @@ serve(async (req) => {
   }
 
   try {
-    // Get Podio credentials from Supabase environment
-    const clientId = Deno.env.get('PODIO_CLIENT_ID');
-    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+    console.log('Podio authenticate function called');
+    
+    // Get environment variables for diagnostics
+    const envObj = Deno.env.toObject();
+    const envKeys = Object.keys(envObj);
+    const podioKeys = envKeys.filter(key => key.toLowerCase().includes('podio'));
+    
+    console.log(`Found ${podioKeys.length} Podio-related keys:`, podioKeys);
+    
+    // Check if we can find the client ID and secret (case insensitive)
+    let clientId = Deno.env.get('PODIO_CLIENT_ID');
+    let clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+    
+    // If not found by exact match, try to find it case-insensitively
+    if (!clientId || !clientSecret) {
+      Object.keys(envObj).forEach(key => {
+        if (key.toLowerCase() === 'podio_client_id'.toLowerCase() && !clientId) {
+          clientId = envObj[key];
+          console.log(`Found client ID with case-insensitive match: ${key}`);
+        }
+        if (key.toLowerCase() === 'podio_client_secret'.toLowerCase() && !clientSecret) {
+          clientSecret = envObj[key];
+          console.log(`Found client secret with case-insensitive match: ${key}`);
+        }
+      });
+    }
 
     if (!clientId || !clientSecret) {
       console.error('Podio credentials not configured in environment variables');
+      console.log('Available Podio keys:', podioKeys);
+      console.log('PODIO_CLIENT_ID found:', Boolean(clientId));
+      console.log('PODIO_CLIENT_SECRET found:', Boolean(clientSecret));
+      
       return new Response(
-        JSON.stringify({ error: 'Podio credentials not configured' }),
+        JSON.stringify({ 
+          error: 'Podio credentials not configured', 
+          available_keys: podioKeys,
+          all_keys_count: envKeys.length,
+          expected_keys: ['PODIO_CLIENT_ID', 'PODIO_CLIENT_SECRET']
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log credential lengths for debugging
+    console.log(`Client ID length: ${clientId.length}`);
+    console.log(`Client Secret length: ${clientSecret.length}`);
 
     // Parse request body to get any additional parameters (scope, etc.)
     const requestData = await req.json().catch(() => ({}));
@@ -48,12 +84,20 @@ serve(async (req) => {
     });
 
     if (!podioResponse.ok) {
-      const errorText = await podioResponse.text();
+      let errorText = '';
+      try {
+        errorText = await podioResponse.text();
+      } catch (e) {
+        errorText = 'Could not read error response';
+      }
+      
       console.error(`Podio authentication failed with status ${podioResponse.status}: ${errorText}`);
       return new Response(
         JSON.stringify({ 
           error: `Podio authentication failed with status ${podioResponse.status}`, 
-          details: errorText 
+          details: errorText,
+          client_id_length: clientId ? clientId.length : 0,
+          client_secret_length: clientSecret ? clientSecret.length : 0
         }),
         { status: podioResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -81,7 +125,11 @@ serve(async (req) => {
     console.error('Error authenticating with Podio:', error);
     
     return new Response(
-      JSON.stringify({ error: 'Failed to authenticate with Podio', details: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to authenticate with Podio', 
+        details: error.message,
+        stack: error.stack
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

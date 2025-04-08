@@ -1,13 +1,16 @@
 
 // Service for handling Podio API credentials and environment variables
 
-// These functions now return empty strings since we're using Edge Functions
-// and the client doesn't need these values directly anymore
+// Now configured to use Edge Functions exclusively
 export const getPodioClientId = (): string => {
+  // This is now intentionally empty as client-side doesn't need these values
+  // All authentication happens through Edge Functions
   return '';
 };
 
 export const getPodioClientSecret = (): string => {
+  // This is now intentionally empty as client-side doesn't need these values
+  // All authentication happens through Edge Functions
   return '';
 };
 
@@ -28,18 +31,8 @@ export const generatePodioAuthState = (): string => {
 
 // Get Podio auth URL for redirecting the user
 export const getPodioAuthUrl = (): string => {
-  const clientId = getPodioClientId();
-  const redirectUri = getPodioRedirectUri();
-  const state = generatePodioAuthState();
-  
-  // Build the authentication URL with necessary parameters
-  // Using 'code' response type for authorization code flow
-  return `https://podio.com/oauth/authorize?` +
-    `client_id=${encodeURIComponent(clientId)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${encodeURIComponent(state)}` +
-    `&scope=global` +
-    `&response_type=code`;
+  // We'll use the edge function to get the auth URL
+  return `${window.location.origin}/api/podio-auth-url`;
 };
 
 // Validate the state returned from Podio to prevent CSRF attacks
