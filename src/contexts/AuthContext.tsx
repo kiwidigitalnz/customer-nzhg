@@ -2,8 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   authenticateUser, 
-  clearTokens, 
-  hasValidTokens,
+  clearPodioTokens as clearTokens, 
+  hasValidPodioTokens as hasValidTokens,
   authenticateWithClientCredentials,
   isPodioConfigured,
   cacheUserData
