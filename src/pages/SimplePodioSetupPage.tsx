@@ -1,24 +1,28 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import MainLayout from '../components/MainLayout';
-import { useNavigate } from 'react-router-dom';
-import { authenticateWithClientCredentials } from '@/services/podioAuth';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Info, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { AlertCircle, CheckCircle, Info, RefreshCw, ExternalLink } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const SimplePodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
-  const [loadingDebugInfo, setLoadingDebugInfo] = useState(false);
+  const [podioConnected, setPodioConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastAuth, setLastAuth] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Extract success or error messages from URL
+  const success = searchParams.get('success');
+  const error = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
 
   useEffect(() => {
     // Check if Supabase Edge Functions are available
@@ -40,9 +44,6 @@ const SimplePodioSetupPage = () => {
         } else {
           console.log('Supabase health check successful:', data);
           setSupabaseConnected(true);
-          
-          // Automatically check secrets configuration
-          getSecretsDebugInfo();
         }
       } catch (error) {
         console.error('Error checking Supabase connection:', error);
@@ -58,90 +59,55 @@ const SimplePodioSetupPage = () => {
     checkSupabaseConnection();
   }, [toast]);
 
-  const getSecretsDebugInfo = async () => {
-    setLoadingDebugInfo(true);
-    try {
-      // Call the edge function to get debug info about the secrets
-      const { data, error } = await supabase.functions.invoke('health-check', {
-        method: 'POST',
-        body: { check_secrets: true }
-      });
-      
-      if (error) {
-        console.error('Error getting debug info:', error);
-        toast({
-          title: "Error",
-          description: "Failed to get debug information",
-          variant: "destructive"
+  // Check for Podio connection status
+  useEffect(() => {
+    if (!supabaseConnected) return;
+    
+    const checkPodioConnection = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+          method: 'POST'
         });
-        return;
-      }
-      
-      setDebugInfo(data);
-      
-      toast({
-        title: "Configuration Checked",
-        description: "Successfully retrieved Podio configuration status",
-      });
-    } catch (error) {
-      console.error('Error getting debug info:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get debug information",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingDebugInfo(false);
-    }
-  };
-
-  const testPodioAuth = async () => {
-    setLoadingDebugInfo(true);
-    try {
-      // Call the edge function to get debug info and test auth
-      const { data, error } = await supabase.functions.invoke('health-check', {
-        method: 'POST',
-        body: { 
-          check_secrets: true,
-          test_auth: true 
+        
+        if (error) {
+          console.error('Failed to retrieve Podio tokens:', error);
+          setPodioConnected(false);
+          return;
         }
-      });
-      
-      if (error) {
-        console.error('Error testing Podio auth:', error);
-        toast({
-          title: "Error",
-          description: "Failed to test Podio authentication",
-          variant: "destructive"
-        });
-        return;
+        
+        if (data) {
+          setPodioConnected(true);
+          // Format expiry date for display
+          const expiryDate = new Date(data.expires_at);
+          setLastAuth(expiryDate.toLocaleString());
+        } else {
+          setPodioConnected(false);
+        }
+      } catch (error) {
+        console.error('Error checking Podio connection:', error);
+        setPodioConnected(false);
       }
-      
-      setDebugInfo(data);
-      
-      if (data.auth_test?.success) {
-        toast({
-          title: "Authentication Successful",
-          description: "Successfully authenticated with Podio API",
-        });
-      } else {
-        toast({
-          title: "Authentication Failed",
-          description: data.auth_test?.error || "Failed to authenticate with Podio API",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error testing Podio auth:', error);
+    };
+    
+    checkPodioConnection();
+  }, [supabaseConnected]);
+
+  // Handle success and error messages from OAuth callback
+  useEffect(() => {
+    if (success) {
       toast({
-        title: "Error",
-        description: "Failed to test Podio authentication",
+        title: "Podio Connected Successfully",
+        description: "Your app is now authenticated with Podio.",
+        variant: "default"
+      });
+    } else if (error) {
+      toast({
+        title: "Podio Connection Failed",
+        description: errorDescription || error,
         variant: "destructive"
       });
-    } finally {
-      setLoadingDebugInfo(false);
     }
-  };
+  }, [success, error, errorDescription, toast]);
 
   const handleConnectPodio = async () => {
     if (!supabaseConnected) {
@@ -153,41 +119,88 @@ const SimplePodioSetupPage = () => {
       return;
     }
 
-    setConnecting(true);
-    setConnectionStatus('idle');
-    setConnectionError(null);
+    setIsLoading(true);
     
     try {
-      const success = await authenticateWithClientCredentials();
+      // Call the edge function to get the auth URL
+      const { data, error } = await supabase.functions.invoke('podio-get-auth-url', {
+        method: 'GET'
+      });
       
-      if (success) {
-        setConnectionStatus('success');
+      if (error) {
+        console.error('Failed to get auth URL:', error);
         toast({
-          title: "Success",
-          description: "Connected to Podio API successfully",
+          title: "Error",
+          description: "Failed to initialize Podio OAuth flow",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Store the state in localStorage to verify when the user returns
+      localStorage.setItem('podio_oauth_state', data.state);
+      
+      // Redirect the user to the Podio authorization page
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      console.error('Error starting OAuth flow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start Podio OAuth flow",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+        method: 'POST'
+      });
+      
+      if (error) {
+        console.error('Failed to refresh Podio status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to refresh Podio connection status",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (data) {
+        setPodioConnected(true);
+        const expiryDate = new Date(data.expires_at);
+        setLastAuth(expiryDate.toLocaleString());
+        
+        toast({
+          title: "Status Refreshed",
+          description: data.refreshed 
+            ? "Podio token was refreshed successfully" 
+            : "Podio connection is valid",
+          variant: "default"
         });
       } else {
-        setConnectionStatus('error');
-        setConnectionError("Failed to authenticate with Podio. Please check your credentials.");
+        setPodioConnected(false);
         toast({
-          title: "Connection Error",
-          description: "Failed to authenticate with Podio API",
+          title: "Not Connected",
+          description: "No valid Podio connection found",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error connecting to Podio:', error);
-      setConnectionStatus('error');
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      setConnectionError(errorMessage);
-      
+      console.error('Error refreshing status:', error);
       toast({
         title: "Error",
-        description: errorMessage,
-        variant: "destructive",
+        description: "Failed to refresh Podio connection status",
+        variant: "destructive"
       });
     } finally {
-      setConnecting(false);
+      setIsLoading(false);
     }
   };
 
@@ -195,27 +208,36 @@ const SimplePodioSetupPage = () => {
     navigate('/dashboard');
   };
 
-  // Determine if all required secrets are configured
-  const allSecretsConfigured = debugInfo.secrets && 
-    Object.values(debugInfo.secrets).every(value => Boolean(value));
-
   return (
     <MainLayout>
       <div className="container mx-auto py-10">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Podio Integration Status</CardTitle>
+            <CardTitle>Podio OAuth Setup</CardTitle>
             <CardDescription>
-              Check the status of your Podio API integration
+              Connect your application to Podio using OAuth authentication.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between">
               <span>Supabase Connection:</span>
-              <Badge variant={supabaseConnected ? "secondary" : "destructive"}>
+              <Badge variant={supabaseConnected ? "default" : "destructive"}>
                 {supabaseConnected ? "Connected" : "Not Connected"}
               </Badge>
             </div>
+            
+            <div className="mb-4 flex items-center justify-between">
+              <span>Podio OAuth Status:</span>
+              <Badge variant={podioConnected ? "success" : "outline"}>
+                {podioConnected ? "Authorized" : "Not Authorized"}
+              </Badge>
+            </div>
+            
+            {lastAuth && (
+              <div className="text-sm text-muted-foreground">
+                Token valid until: {lastAuth}
+              </div>
+            )}
             
             {!supabaseConnected && (
               <Alert variant="destructive" className="mb-4">
@@ -228,122 +250,66 @@ const SimplePodioSetupPage = () => {
               </Alert>
             )}
           
-            {connectionStatus === 'success' && (
+            {podioConnected && (
               <Alert className="mb-4">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <AlertTitle className="text-green-600">Connected Successfully</AlertTitle>
                 <AlertDescription className="text-green-700">
-                  Your app is now connected to the Podio API. You can proceed to the dashboard.
+                  Your app is now connected to the Podio API. Users can log in with their portal credentials.
                 </AlertDescription>
               </Alert>
             )}
             
-            {connectionStatus === 'error' && connectionError && (
+            {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Connection Failed</AlertTitle>
-                <AlertDescription>{connectionError}</AlertDescription>
+                <AlertDescription>{errorDescription || error}</AlertDescription>
               </Alert>
-            )}
-            
-            {Object.keys(debugInfo).length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Supabase Secrets Configuration</h3>
-                
-                {allSecretsConfigured ? (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <AlertTitle>All Secrets Configured</AlertTitle>
-                    <AlertDescription>
-                      All required Podio secrets are properly configured in Supabase.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Missing Secrets</AlertTitle>
-                    <AlertDescription>
-                      Some required Podio secrets are missing or not properly configured in Supabase.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                <div className="bg-slate-50 p-3 rounded text-xs font-mono">
-                  <p className="font-semibold mb-1">Secrets Status:</p>
-                  <ul className="space-y-1">
-                    {debugInfo.secrets && Object.entries(debugInfo.secrets).map(([key, value]) => (
-                      <li key={key}>
-                        {key}: <span className={value ? "text-green-600" : "text-red-600"}>{value ? "✓" : "✗"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                {debugInfo.auth_test && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium mb-2">Authentication Test Result</h3>
-                    <div className="bg-slate-50 p-3 rounded text-xs font-mono">
-                      <p className="font-semibold">Status: 
-                        <span className={debugInfo.auth_test.success ? "text-green-600 ml-1" : "text-red-600 ml-1"}>
-                          {debugInfo.auth_test.success ? "Success" : "Failed"}
-                        </span>
-                      </p>
-                      {debugInfo.auth_test.success ? (
-                        <div className="mt-1">
-                          <p>Token Type: {debugInfo.auth_test.token_type}</p>
-                          <p>Expires In: {debugInfo.auth_test.expires_in}s</p>
-                          <p>Scope: {debugInfo.auth_test.scope}</p>
-                        </div>
-                      ) : (
-                        <div className="mt-1 text-red-600">
-                          <p>Error: {debugInfo.auth_test.error || "Unknown error"}</p>
-                          {debugInfo.auth_test.status && <p>Status Code: {debugInfo.auth_test.status}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
             )}
             
             <Alert className="bg-blue-50 border-blue-100">
               <Info className="h-4 w-4 text-blue-500" />
-              <AlertTitle className="text-blue-700">Required Configuration</AlertTitle>
+              <AlertTitle className="text-blue-700">How OAuth Works</AlertTitle>
               <AlertDescription className="text-blue-600 text-sm">
-                <p>Make sure all of these Supabase secrets are configured:</p>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>PODIO_CLIENT_ID</li>
-                  <li>PODIO_CLIENT_SECRET</li>
-                  <li>PODIO_CONTACTS_APP_TOKEN</li>
-                  <li>PODIO_PACKING_SPEC_APP_TOKEN</li>
-                  <li>PODIO_CONTACTS_APP_ID</li>
-                  <li>PODIO_PACKING_SPEC_APP_ID</li>
-                </ul>
+                <p>This setup uses OAuth to authenticate your application with Podio:</p>
+                <ol className="list-decimal list-inside mt-2 space-y-1">
+                  <li>An admin clicks "Connect to Podio" below</li>
+                  <li>They sign in to Podio and authorize this application</li>
+                  <li>Podio provides an access token that is securely stored</li>
+                  <li>All users of the portal can now use this shared connection</li>
+                </ol>
+                <p className="mt-2">You only need to do this once. The token will be refreshed automatically.</p>
               </AlertDescription>
             </Alert>
+            
+            <div className="bg-amber-50 p-4 rounded-md text-sm">
+              <p className="font-medium text-amber-800">Required Supabase Setup:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1 text-amber-700">
+                <li>Create a <code>podio_auth_tokens</code> table in your Supabase database</li>
+                <li>Configure your Podio API credentials as Supabase secrets</li>
+                <li>Deploy the Edge Functions included with this app</li>
+              </ol>
+              <p className="mt-2 text-amber-800 font-medium">Important Podio Settings:</p>
+              <p className="text-amber-700">Make sure your Podio API app has a domain that matches: <strong>{window.location.origin}</strong></p>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-between flex-wrap gap-2">
+          <CardFooter className="flex justify-between">
             <Button 
               variant="outline" 
-              onClick={getSecretsDebugInfo}
-              disabled={loadingDebugInfo || !supabaseConnected}
-              size="sm"
+              onClick={handleRefreshStatus}
+              disabled={isLoading || !supabaseConnected}
             >
-              {loadingDebugInfo ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Check Configuration
+              {isLoading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : 'Refresh Status'}
             </Button>
             
-            <Button 
-              variant="outline"
-              onClick={testPodioAuth}
-              disabled={loadingDebugInfo || !supabaseConnected}
-              size="sm"
-            >
-              Test Authentication
-            </Button>
-            
-            <div className="w-full flex justify-between mt-4">
-              {connectionStatus === 'success' && (
+            <div className="space-x-2">
+              {podioConnected && (
                 <Button onClick={goToDashboard}>
                   Go to Dashboard
                 </Button>
@@ -351,15 +317,20 @@ const SimplePodioSetupPage = () => {
               
               <Button 
                 onClick={handleConnectPodio}
-                disabled={connecting || !supabaseConnected}
-                className="ml-auto"
+                disabled={isLoading || !supabaseConnected}
+                variant={podioConnected ? 'outline' : 'default'}
               >
-                {connecting ? (
+                {isLoading ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     Connecting...
                   </>
-                ) : 'Connect to Podio'}
+                ) : (
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {podioConnected ? 'Reconnect to Podio' : 'Connect to Podio'}
+                  </>
+                )}
               </Button>
             </div>
           </CardFooter>

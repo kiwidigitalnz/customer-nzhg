@@ -1,5 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,18 +42,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get Supabase URL and key from environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({ error: 'Supabase credentials not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client with service key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     const appId = Deno.env.get('PODIO_CONTACTS_APP_ID');
-    const appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
     
-    if (!clientId || !clientSecret || !appId || !appToken) {
+    if (!clientId || !clientSecret || !appId) {
       console.error('Missing Podio configuration', { 
         hasClientId: !!clientId, 
         hasClientSecret: !!clientSecret, 
-        hasAppId: !!appId, 
-        hasAppToken: !!appToken 
+        hasAppId: !!appId
       });
       
       return new Response(
@@ -72,39 +85,46 @@ serve(async (req) => {
       );
     }
 
-    // Authenticate using app token instead of client credentials
-    console.log('Authenticating with Podio API using app token');
-    const authResponse = await fetch('https://podio.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        'grant_type': 'app',
-        'app_id': appId,
-        'app_token': appToken,
-        'client_id': clientId,
-        'client_secret': clientSecret,
-      }),
-    });
+    // Get the stored Podio token from the database
+    const { data: tokens, error: fetchError } = await supabase
+      .from('podio_auth_tokens')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
-    if (!authResponse.ok) {
-      const authErrorText = await authResponse.text();
-      console.error('Failed to authenticate with Podio API using app token', authErrorText);
+    if (fetchError) {
+      console.error('Error fetching Podio token:', fetchError);
       return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with Podio API', details: authErrorText }),
-        { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to retrieve Podio authentication', details: fetchError }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
+    if (!tokens || tokens.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No Podio token found. Admin must authenticate with Podio first.' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = tokens[0];
+    const accessToken = token.access_token;
     
-    console.log('Successfully authenticated with Podio API using app token, searching for user');
+    // Check if token is expired
+    const expiresAt = new Date(token.expires_at).getTime();
+    const now = Date.now();
+    
+    if (expiresAt <= now) {
+      return new Response(
+        JSON.stringify({ error: 'Podio token is expired and needs to be refreshed' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Using stored Podio token to search for user');
     
     // Use the token to search for the user by username
     console.log(`Searching for user with username: ${username} in app: ${appId}`);
-    console.log(`Using token: ${accessToken.substring(0, 10)}...`);
     
     const userSearchResponse = await fetch(`https://api.podio.com/item/app/${appId}/filter/`, {
       method: 'POST',
@@ -175,8 +195,7 @@ serve(async (req) => {
       logoUrl: getFieldValueByExternalId(userItem, 'logo'),
       // Include access token for API access
       access_token: accessToken,
-      expires_in: authData.expires_in,
-      expires_at: new Date(Date.now() + (authData.expires_in * 1000)).toISOString(),
+      expires_at: token.expires_at
     };
 
     return new Response(

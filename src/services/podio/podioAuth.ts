@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,10 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 // Constants
 export const PODIO_CONTACTS_APP_ID = '26969025';
 export const PODIO_PACKING_SPEC_APP_ID = '29797638';
-
-// App-specific tokens
-const PODIO_CONTACTS_APP_TOKEN = '';
-const PODIO_PACKING_SPEC_APP_TOKEN = '';
 
 // Contact field IDs for the Podio Contacts app
 export const CONTACT_FIELD_IDS = {
@@ -83,7 +78,6 @@ export const PACKING_SPEC_FIELD_IDS = {
 
 // Token management
 const TOKEN_STORAGE_KEY = 'podio_access_token';
-const REFRESH_TOKEN_STORAGE_KEY = 'podio_refresh_token';
 const TOKEN_EXPIRY_KEY = 'podio_token_expiry';
 const USER_DATA_KEY = 'podio_user_data';
 
@@ -96,7 +90,6 @@ const RATE_LIMIT_DURATION = 10 * 60 * 1000;
 // Clear auth tokens from localStorage
 export const clearTokens = (): void => {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   localStorage.removeItem(USER_DATA_KEY);
 };
@@ -125,20 +118,10 @@ export const hasValidTokens = (): boolean => {
 
 // Call the Supabase Edge Function to refresh the token
 export const refreshPodioToken = async (): Promise<boolean> => {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
-  
-  if (!refreshToken) {
-    console.error('No refresh token available');
-    return false;
-  }
-  
   try {
-    console.log('Refreshing Podio token');
-    const { data, error } = await supabase.functions.invoke('podio-refresh-token', {
-      method: 'POST',
-      body: {
-        refresh_token: refreshToken
-      }
+    console.log('Refreshing Podio token via OAuth flow');
+    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+      method: 'POST'
     });
     
     if (error) {
@@ -147,19 +130,18 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       return false;
     }
     
-    // Store the new tokens with proper expiry handling
+    if (!data || !data.access_token) {
+      console.error('Token refresh did not return a valid token');
+      return false;
+    }
+    
+    // Store the new access token with proper expiry handling
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, data.refresh_token);
     
     // Use the enhanced response to set accurate expiry time
     // But still subtract 5 minutes as a safety buffer
     if (data.expires_at) {
       const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-    } else {
-      // Fallback to old calculation method
-      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
     }
     
@@ -174,38 +156,35 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 // Authenticate with client credentials via Edge Function
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   try {
-    console.log('Authenticating with client credentials');
-    const { data, error } = await supabase.functions.invoke('podio-authenticate', {
-      method: 'POST',
-      body: {}
+    console.log('Getting Podio OAuth token from our database');
+    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+      method: 'POST'
     });
     
     if (error) {
-      console.error('Client credentials authentication failed:', error);
+      console.error('OAuth token refresh failed:', error);
       return false;
     }
     
-    // Store the tokens with proper expiry handling
+    if (!data || !data.access_token) {
+      console.error('No valid Podio OAuth token found');
+      return false;
+    }
+    
+    // Store the access token with proper expiry handling
     localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-    // Client credentials flow doesn't provide a refresh token
-    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
     
     // Use the enhanced response to set accurate expiry time
     // But still subtract 5 minutes as a safety buffer
     if (data.expires_at) {
       const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-    } else {
-      // Fallback to old calculation method
-      const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-      const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
     }
     
-    console.log('Successfully authenticated with client credentials');
+    console.log('Successfully retrieved Podio OAuth token');
     return true;
   } catch (error) {
-    console.error('Failed to authenticate with client credentials:', error);
+    console.error('Failed to get Podio OAuth token:', error);
     return false;
   }
 };
@@ -214,11 +193,7 @@ export const authenticateWithClientCredentials = async (): Promise<boolean> => {
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     console.log(`Authenticating user: ${username}`);
-    // Call the Edge Function to authenticate the user - this function will:
-    // 1. Authenticate with Podio using client credentials
-    // 2. Search for a contact with matching username
-    // 3. Verify the password matches
-    // 4. Return user data if successful
+    // Call the Edge Function to authenticate the user
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
       body: {
@@ -239,11 +214,6 @@ export const authenticateUser = async (username: string, password: string): Prom
       // Calculate token expiry time (subtract 5 minutes for safety)
       if (data.expires_at) {
         const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
-        localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-      } else {
-        // Fallback to old calculation method
-        const expiresIn = data.expires_in * 1000; // Convert to milliseconds
-        const expiryTime = Date.now() + expiresIn - (5 * 60 * 1000);
         localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
       }
     }
