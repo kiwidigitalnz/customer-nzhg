@@ -293,6 +293,8 @@ const Dashboard = () => {
   };
 
   const getCompanyInitials = (name: string) => {
+    if (!name) return '';
+    
     return name
       .split(' ')
       .map(part => part[0])
@@ -318,6 +320,7 @@ const Dashboard = () => {
                 src={user.logoUrl} 
                 alt={user?.name || 'Company Logo'} 
                 onError={(e) => {
+                  // If image fails to load, clear the src to show fallback
                   e.currentTarget.src = '';
                 }}
               />

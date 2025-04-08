@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -311,10 +310,14 @@ serve(async (req) => {
     // If authentication is successful, extract additional user data
     // Include PIID (assuming this is the Podio Item ID) and ensure logo is correctly extracted
     const logoValue = getFieldValueByExternalId(userItem, 'logo');
-    let logoUrl = null;
     
-    // If we have a logo file ID, build the URL to access it
-    if (logoValue) {
+    // Also get the direct logo URL if available (new field)
+    const logoUrl = getFieldValueByExternalId(userItem, 'logo-url');
+    
+    let finalLogoUrl = logoUrl;
+    
+    // If we have a logo file ID but no direct URL, build the URL to access it
+    if (logoValue && !finalLogoUrl) {
       try {
         // Get file information from Podio API to construct URL
         const fileResponse = await fetch(`https://api.podio.com/file/${logoValue}`, {
@@ -327,8 +330,8 @@ serve(async (req) => {
         
         if (fileResponse.ok) {
           const fileData = await fileResponse.json();
-          logoUrl = fileData.link || null;
-          console.log('Found logo URL for user:', logoUrl);
+          finalLogoUrl = fileData.link || null;
+          console.log('Found logo URL for user:', finalLogoUrl);
         } else {
           console.log('Failed to fetch logo details, but continuing with authentication');
         }
@@ -345,7 +348,7 @@ serve(async (req) => {
       email: getFieldValueByExternalId(userItem, 'email'),
       username: getFieldValueByExternalId(userItem, 'customer-portal-username'),
       logoFileId: logoValue, // Include raw file ID
-      logoUrl: logoUrl, // Include processed URL if available
+      logoUrl: finalLogoUrl, // Include processed URL if available
       // Include access token for client-side API access
       access_token: accessToken,
       expires_at: token.expires_at
