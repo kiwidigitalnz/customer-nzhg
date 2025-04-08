@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +20,8 @@ import {
   CheckCircle,
   AlertCircle,
   Database,
-  Bug
+  Bug,
+  RefreshCcw
 } from 'lucide-react';
 import { 
   Card, 
@@ -47,6 +49,7 @@ import PackingSpecList from '../components/PackingSpecList';
 import { SpecStatus } from '../components/packing-spec/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PackingSpec {
   id: number;
@@ -69,7 +72,11 @@ interface PackingSpec {
   }>;
 }
 
-const Dashboard = () => {
+interface DashboardProps {
+  onError?: (error: Error) => void;
+}
+
+const Dashboard = ({ onError }: DashboardProps) => {
   const { user, logout } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +84,7 @@ const Dashboard = () => {
   const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
   const [debugSpecs, setDebugSpecs] = useState<any[]>([]);
   const [loadingDebug, setLoadingDebug] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -100,8 +108,10 @@ const Dashboard = () => {
       await authenticateWithClientCredentials();
     } catch (error) {
       console.error('Pre-authentication failed:', error);
+      setError(error instanceof Error ? error : new Error(String(error)));
+      if (onError) onError(error instanceof Error ? error : new Error(String(error)));
     }
-  }, []);
+  }, [onError]);
   
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user) {
@@ -185,6 +195,7 @@ const Dashboard = () => {
         
         setSpecs(data as PackingSpec[]);
         setIsRateLimitReached(false);
+        setError(null);
         
         if (data.length > 0) {
           console.log('Caching packing specs data');
@@ -195,8 +206,13 @@ const Dashboard = () => {
       } else {
         console.warn('Received invalid data from API:', data);
       }
-    } catch (error) {
-      console.error('Error fetching specs:', error);
+    } catch (err) {
+      console.error('Error fetching specs:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      
+      if (onError) {
+        onError(err instanceof Error ? err : new Error(String(err)));
+      }
       
       if (isRateLimited()) {
         setIsRateLimitReached(true);
@@ -204,7 +220,7 @@ const Dashboard = () => {
         toast({
           title: 'API Rate Limit Reached',
           description: 'Too many requests. Using cached data if available.',
-          variant: 'destructive',
+          variant: 'warning',
         });
         
         const cachedData = getCachedUserData(cacheKey);
@@ -224,7 +240,7 @@ const Dashboard = () => {
       setLoading(false);
       apiCallInProgress.current = false;
     }
-  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
+  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth, onError]);
   
   const fetchRawPackingSpecs = useCallback(async () => {
     if (!user?.podioItemId) {
@@ -239,7 +255,7 @@ const Dashboard = () => {
       
       const packingSpecAppId = '38373557';
       
-      const response = await callPodioApi(`item/app/${packingSpecAppId}/filter/`, {
+      const response = await callPodioApi(`/item/app/${packingSpecAppId}/filter/`, {
         method: 'POST',
         body: JSON.stringify({
           "filters": {
@@ -251,12 +267,19 @@ const Dashboard = () => {
       if (response && response.items) {
         console.log(`Found ${response.items.length} raw packing specs`);
         setDebugSpecs(response.items);
+        setError(null);
       } else {
         console.log('No raw packing specs found or unexpected response format');
         setDebugSpecs([]);
       }
     } catch (error) {
       console.error('Error fetching raw packing specs:', error);
+      setError(error instanceof Error ? error : new Error(String(error)));
+      
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
+      
       toast({
         title: 'Debug Error',
         description: 'Failed to fetch raw packing specs',
@@ -265,7 +288,7 @@ const Dashboard = () => {
     } finally {
       setLoadingDebug(false);
     }
-  }, [user, toast]);
+  }, [user, toast, onError]);
   
   useEffect(() => {
     if (!podioConfigured) {
@@ -339,7 +362,13 @@ const Dashboard = () => {
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = () => {
+    setError(null);
     fetchSpecs(true);
+  };
+  
+  const retryRawFetch = () => {
+    setError(null);
+    fetchRawPackingSpecs();
   };
 
   const getCompanyInitials = (name: string) => {
@@ -356,10 +385,12 @@ const Dashboard = () => {
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       {isRateLimitReached && (
-        <RateLimitWarning 
-          onRetry={refreshSpecs}
-          usingCachedData={specs.length > 0}
-        />
+        <div className="container mx-auto px-4 pt-6">
+          <RateLimitWarning 
+            onRetry={refreshSpecs}
+            usingCachedData={specs.length > 0}
+          />
+        </div>
       )}
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -404,13 +435,23 @@ const Dashboard = () => {
             </p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={logout}
-          className="transition-all hover:-translate-y-1 hover:shadow-md"
-        >
-          <LogOut className="mr-2 h-4 w-4" /> Logout
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={refreshSpecs}
+            className="transition-all hover:-translate-y-1 hover:shadow-md"
+            size="sm"
+          >
+            <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Data
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={logout}
+            className="transition-all hover:-translate-y-1 hover:shadow-md"
+          >
+            <LogOut className="mr-2 h-4 w-4" /> Logout
+          </Button>
+        </div>
       </div>
 
       {process.env.NODE_ENV === 'development' && (
@@ -454,6 +495,20 @@ const Dashboard = () => {
               <div className="py-4 flex justify-center">
                 <LoadingSpinner size="sm" text="Loading raw specs data..." />
               </div>
+            ) : error ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Error fetching data: {error.message}</span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={retryRawDebug}
+                    className="ml-2"
+                  >
+                    <RefreshCcw className="h-3 w-3 mr-1" /> Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : debugSpecs.length > 0 ? (
               <div>
                 <div className="mb-2 font-medium">Found {debugSpecs.length} packing specs for contact ID {user?.podioItemId}</div>
@@ -489,10 +544,11 @@ const Dashboard = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={fetchRawPackingSpecs}
+              onClick={retryRawFetch}
               disabled={loadingDebug}
               className="h-7 text-xs"
             >
+              <RefreshCcw className="h-3 w-3 mr-1" />
               Refresh Raw Data
             </Button>
           </CardFooter>
@@ -624,6 +680,11 @@ const Dashboard = () => {
       </Tabs>
     </div>
   );
+};
+
+// Fix the undefined retryRawDebug function
+const retryRawDebug = () => {
+  fetchRawPackingSpecs();
 };
 
 export default Dashboard;

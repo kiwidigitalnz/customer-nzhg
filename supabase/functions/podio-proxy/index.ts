@@ -88,14 +88,19 @@ serve(async (req) => {
       headers['X-Podio-App'] = appToken;
     }
 
+    // Fix: Ensure the endpoint starts with a slash if it doesn't already
+    const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `https://api.podio.com${formattedEndpoint}`;
+
     // Log request details (for debugging)
     console.log(`Making Podio API request to: ${endpoint}`);
     console.log(`Method: ${method}`);
     console.log(`Body: ${body ? body.substring(0, 200) + (body.length > 200 ? '...' : '') : 'None'}`);
     console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
+    console.log(`Full URL: ${url}`); // Log the complete URL for debugging
 
     // Make the actual request to Podio API
-    const podioResponse = await fetch(`https://api.podio.com${endpoint}`, {
+    const podioResponse = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(JSON.parse(body)) : undefined,
