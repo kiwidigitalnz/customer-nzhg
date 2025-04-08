@@ -13,6 +13,9 @@ export const PACKING_SPEC_FIELD_IDS = {
   customerBrandName: 'customer-brand-name'
 };
 
+// APP ID constant - no more process.env dependency
+export const PACKING_SPEC_APP_ID = 29797638;
+
 // Category IDs for various statuses
 export const PODIO_CATEGORIES = {
   APPROVAL_STATUS: {
@@ -88,7 +91,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     };
     
     // Call Podio API to get the items
-    const response = await callPodioApi(`item/app/${process.env.PODIO_PACKING_SPEC_APP_ID}/filter/`, {
+    const response = await callPodioApi(`item/app/${PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
       body: JSON.stringify({ filters: filter })
     });
@@ -267,7 +270,12 @@ export const updatePackingSpecStatus = async (
     
     // If the user selected a specific status via additionalData
     if (additionalData?.status) {
-      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = formatCategoryValue(additionalData.status);
+      // Convert additionalData.status to a number if it's a string
+      const statusId = typeof additionalData.status === 'string' 
+        ? parseInt(additionalData.status, 10) 
+        : additionalData.status;
+        
+      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = formatCategoryValue(statusId);
     }
     
     // Update the item in Podio
