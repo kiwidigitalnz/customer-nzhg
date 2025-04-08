@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,9 +9,8 @@ import {
   isRateLimited, 
   isRateLimitedWithInfo,
   getCachedUserData,
-  cacheUserData,
-  callPodioApi
-} from '../services/podioApi';
+  cacheUserData
+} from '../services/podioAuth';
 import { getPackingSpecsForContact } from '../services/podioApi';
 import { 
   Building, 
@@ -18,9 +18,7 @@ import {
   PackageCheck, 
   CheckCircle,
   AlertCircle,
-  Database,
-  Bug,
-  RefreshCcw
+  Database
 } from 'lucide-react';
 import { 
   Card, 
@@ -48,7 +46,6 @@ import PackingSpecList from '../components/PackingSpecList';
 import { SpecStatus } from '../components/packing-spec/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PackingSpec {
   id: number;
@@ -71,19 +68,12 @@ interface PackingSpec {
   }>;
 }
 
-interface DashboardProps {
-  onError?: (error: Error) => void;
-}
-
-const Dashboard = ({ onError }: DashboardProps) => {
+const Dashboard = () => {
   const { user, logout } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
-  const [debugSpecs, setDebugSpecs] = useState<any[]>([]);
-  const [loadingDebug, setLoadingDebug] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -107,10 +97,8 @@ const Dashboard = ({ onError }: DashboardProps) => {
       await authenticateWithClientCredentials();
     } catch (error) {
       console.error('Pre-authentication failed:', error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-      if (onError) onError(error instanceof Error ? error : new Error(String(error)));
     }
-  }, [onError]);
+  }, []);
   
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user) {
@@ -178,6 +166,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
     try {
       await ensurePackingSpecAuth();
       
+      // Make sure we're using the contact Podio Item ID, not just regular ID
       const contactId = user.podioItemId || user.id;
       
       console.log(`Fetching specs for contact ID: ${contactId}`);
@@ -194,7 +183,6 @@ const Dashboard = ({ onError }: DashboardProps) => {
         
         setSpecs(data as PackingSpec[]);
         setIsRateLimitReached(false);
-        setError(null);
         
         if (data.length > 0) {
           console.log('Caching packing specs data');
@@ -205,13 +193,8 @@ const Dashboard = ({ onError }: DashboardProps) => {
       } else {
         console.warn('Received invalid data from API:', data);
       }
-    } catch (err) {
-      console.error('Error fetching specs:', err);
-      setError(err instanceof Error ? err : new Error(String(err)));
-      
-      if (onError) {
-        onError(err instanceof Error ? err : new Error(String(err)));
-      }
+    } catch (error) {
+      console.error('Error fetching specs:', error);
       
       if (isRateLimited()) {
         setIsRateLimitReached(true);
@@ -219,7 +202,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
         toast({
           title: 'API Rate Limit Reached',
           description: 'Too many requests. Using cached data if available.',
-          variant: 'default',
+          variant: 'destructive',
         });
         
         const cachedData = getCachedUserData(cacheKey);
@@ -239,56 +222,8 @@ const Dashboard = ({ onError }: DashboardProps) => {
       setLoading(false);
       apiCallInProgress.current = false;
     }
-  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth, onError]);
-  
-  const fetchRawPackingSpecs = useCallback(async () => {
-    if (!user?.podioItemId) {
-      console.log('No Podio Item ID available for raw spec fetching');
-      return;
-    }
-    
-    setLoadingDebug(true);
-    
-    try {
-      console.log(`Fetching raw packing specs for contact Podio Item ID: ${user.podioItemId}`);
-      
-      const packingSpecAppId = '38373557';
-      
-      const response = await callPodioApi(`/item/app/${packingSpecAppId}/filter/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          "filters": {
-            "customer-brand-name": [user.podioItemId]
-          }
-        })
-      });
-      
-      if (response && response.items) {
-        console.log(`Found ${response.items.length} raw packing specs`);
-        setDebugSpecs(response.items);
-        setError(null);
-      } else {
-        console.log('No raw packing specs found or unexpected response format');
-        setDebugSpecs([]);
-      }
-    } catch (error) {
-      console.error('Error fetching raw packing specs:', error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-      
-      if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-      }
-      
-      toast({
-        title: 'Debug Error',
-        description: 'Failed to fetch raw packing specs',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoadingDebug(false);
-    }
-  }, [user, toast, onError]);
-  
+  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
+
   useEffect(() => {
     if (!podioConfigured) {
       toast({
@@ -338,13 +273,6 @@ const Dashboard = ({ onError }: DashboardProps) => {
     }
   }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && user?.podioItemId && !debugSpecs.length) {
-      console.log('Development mode detected - fetching raw packing specs');
-      fetchRawPackingSpecs();
-    }
-  }, [user, fetchRawPackingSpecs, debugSpecs.length]);
-
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -361,13 +289,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
   const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
 
   const refreshSpecs = () => {
-    setError(null);
     fetchSpecs(true);
-  };
-  
-  const retryRawFetch = () => {
-    setError(null);
-    fetchRawPackingSpecs();
   };
 
   const getCompanyInitials = (name: string) => {
@@ -384,12 +306,10 @@ const Dashboard = ({ onError }: DashboardProps) => {
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       {isRateLimitReached && (
-        <div className="container mx-auto px-4 pt-6">
-          <RateLimitWarning 
-            onRetry={refreshSpecs}
-            usingCachedData={specs.length > 0}
-          />
-        </div>
+        <RateLimitWarning 
+          onRetry={refreshSpecs}
+          usingCachedData={specs.length > 0}
+        />
       )}
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -400,6 +320,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
                 src={user.logoUrl} 
                 alt={user?.name || 'Company Logo'} 
                 onError={(e) => {
+                  // If image fails to load, clear the src to show fallback
                   e.currentTarget.src = '';
                 }}
               />
@@ -408,6 +329,7 @@ const Dashboard = ({ onError }: DashboardProps) => {
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
             
+            {/* Display the PIID as a badge on the avatar */}
             {user?.podioItemId && (
               <TooltipProvider>
                 <Tooltip>
@@ -434,122 +356,36 @@ const Dashboard = ({ onError }: DashboardProps) => {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={refreshSpecs}
-            className="transition-all hover:-translate-y-1 hover:shadow-md"
-            size="sm"
-          >
-            <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Data
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={logout}
-            className="transition-all hover:-translate-y-1 hover:shadow-md"
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Logout
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          onClick={logout}
+          className="transition-all hover:-translate-y-1 hover:shadow-md"
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Logout
+        </Button>
       </div>
 
+      {/* User data debug card - only shown in development mode */}
       {process.env.NODE_ENV === 'development' && (
         <Card className="mb-8 bg-slate-50">
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Bug className="h-4 w-4" /> User Data (Debug)
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">User Data (Debug)</CardTitle>
           </CardHeader>
           <CardContent className="text-xs font-mono">
             <pre className="overflow-auto max-h-40">
               {JSON.stringify({
-                id: user?.id,
-                podioItemId: user?.podioItemId,
-                name: user?.name,
-                email: user?.email,
-                username: user?.username,
-                logoFileId: user?.logoFileId,
-                logoUrl: user?.logoUrl
+                id: user.id,
+                podioItemId: user.podioItemId,
+                name: user.name,
+                email: user.email,
+                username: user.username,
+                logoFileId: user.logoFileId,
+                logoUrl: user.logoUrl
               }, null, 2)}
             </pre>
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground">
             This debug information is only visible in development mode
-          </CardFooter>
-        </Card>
-      )}
-
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="mb-8 bg-slate-50/80 border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Bug className="h-4 w-4" /> Raw Packing Specs (Debug)
-            </CardTitle>
-            <CardDescription>
-              Using the same search approach as authentication
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs">
-            {loadingDebug ? (
-              <div className="py-4 flex justify-center">
-                <LoadingSpinner size="sm" text="Loading raw specs data..." />
-              </div>
-            ) : error ? (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription className="flex items-center justify-between">
-                  <span>Error fetching data: {error.message}</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={retryRawFetch}
-                    className="ml-2"
-                  >
-                    <RefreshCcw className="h-3 w-3 mr-1" /> Retry
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            ) : debugSpecs.length > 0 ? (
-              <div>
-                <div className="mb-2 font-medium">Found {debugSpecs.length} packing specs for contact ID {user?.podioItemId}</div>
-                <div className="overflow-auto max-h-60 border rounded-md">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Title</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
-                      {debugSpecs.map((spec) => (
-                        <tr key={spec.item_id} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 whitespace-nowrap text-xs">{spec.item_id}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs">{spec.title}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs">{new Date(spec.created_on).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="py-4 text-center text-slate-500">
-                No raw packing specs found for this contact
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-between text-xs text-muted-foreground">
-            <span>This debug information is only visible in development mode</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={retryRawFetch}
-              disabled={loadingDebug}
-              className="h-7 text-xs"
-            >
-              <RefreshCcw className="h-3 w-3 mr-1" />
-              Refresh Raw Data
-            </Button>
           </CardFooter>
         </Card>
       )}
@@ -681,10 +517,4 @@ const Dashboard = ({ onError }: DashboardProps) => {
   );
 };
 
-// Fix the retryRawDebug function to use the fetchRawPackingSpecs function from the component
-const Dashboard_fixed = (props: DashboardProps) => {
-  const dash = <Dashboard {...props} />;
-  return dash;
-};
-
-export default Dashboard_fixed;
+export default Dashboard;
