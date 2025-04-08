@@ -53,7 +53,7 @@ const LoginForm = () => {
       if (success) {
         toast({
           title: 'Login successful',
-          description: 'Welcome back',
+          description: 'Welcome to your customer portal',
           variant: 'default',
         });
         
@@ -115,7 +115,7 @@ const LoginForm = () => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your username"
+              placeholder="Your portal username"
               disabled={isLoading}
               autoComplete="username"
               className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"

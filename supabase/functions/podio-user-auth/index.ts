@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
@@ -44,6 +45,7 @@ serve(async (req) => {
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     const appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
+    const appId = Deno.env.get('PODIO_CONTACTS_APP_ID');
 
     if (!clientId || !clientSecret) {
       return new Response(
@@ -52,13 +54,13 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
+    // Parse request data
     const requestData = await req.json();
-    const { username, password, app_id } = requestData;
+    const { username, password } = requestData;
 
-    if (!username || !password || !app_id) {
+    if (!username || !password) {
       return new Response(
-        JSON.stringify({ error: 'Username, password, and app_id are required' }),
+        JSON.stringify({ error: 'Username and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -88,7 +90,7 @@ serve(async (req) => {
     const accessToken = authData.access_token;
 
     // Use the token to search for the user by username
-    const userSearchResponse = await fetch(`https://api.podio.com/item/app/${app_id}/filter/`, {
+    const userSearchResponse = await fetch(`https://api.podio.com/item/app/${appId}/filter/`, {
       method: 'POST',
       headers: {
         'Authorization': `OAuth2 ${accessToken}`,
@@ -97,7 +99,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         filters: {
-          "username": { "from": username, "to": username }
+          "customer-portal-username": { "from": username, "to": username }
         }
       }),
     });
@@ -121,7 +123,7 @@ serve(async (req) => {
     const userItem = userSearchData.items[0];
     
     // Extract stored password and check
-    const storedPassword = getFieldValueByExternalId(userItem, 'password');
+    const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
     
     if (!storedPassword || storedPassword !== password) {
       return new Response(
@@ -133,10 +135,10 @@ serve(async (req) => {
     // If authentication is successful, extract user data
     const userData = {
       id: userItem.item_id,
-      name: getFieldValueByExternalId(userItem, 'name'),
+      name: getFieldValueByExternalId(userItem, 'name') || getFieldValueByExternalId(userItem, 'title'),
       email: getFieldValueByExternalId(userItem, 'email'),
-      username: getFieldValueByExternalId(userItem, 'username'),
-      logoUrl: getFieldValueByExternalId(userItem, 'logo-url'),
+      username: getFieldValueByExternalId(userItem, 'customer-portal-username'),
+      logoUrl: getFieldValueByExternalId(userItem, 'logo'),
       access_token: accessToken,
       expires_in: authData.expires_in,
       expires_at: new Date(Date.now() + (authData.expires_in * 1000)).toISOString(),

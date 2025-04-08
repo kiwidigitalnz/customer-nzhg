@@ -5,8 +5,9 @@ import {
   clearTokens, 
   hasValidTokens,
   authenticateWithClientCredentials,
-  isPodioConfigured
-} from '../services/podioAuth';
+  isPodioConfigured,
+  cacheUserData
+} from '../services/podioApi';
 
 // User data interface with authentication information
 export interface UserData {
@@ -121,20 +122,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Username and password are required');
       }
 
+      // First ensure we have valid access tokens for Podio API
+      await authenticateWithClientCredentials();
+      
+      // Now authenticate the user against the contacts app
       const userData = await authenticateUser(username, password);
       
-      setUser(userData);
-      setIsAuthenticated(true);
-      setLoading(false);
-      
-      return true;
+      if (userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        // Store user data for session persistence
+        localStorage.setItem('podio_user_data', JSON.stringify(userData));
+        
+        // Also cache user data for offline access
+        cacheUserData(`user_${userData.id}`, userData);
+        
+        return true;
+      } else {
+        throw new Error('Authentication failed');
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err);
       setIsAuthenticated(false);
-      setLoading(false);
       
       return false;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
