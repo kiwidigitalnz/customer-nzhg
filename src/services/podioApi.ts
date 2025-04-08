@@ -12,7 +12,7 @@ export {
   validateContactsAppAccess,
   clearTokens as clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
-  PACKING_SPEC_APP_ID,
+  PODIO_PACKING_SPEC_APP_ID,
   CONTACT_FIELD_IDS,
   PACKING_SPEC_FIELD_IDS,
   isRateLimited,
@@ -39,8 +39,7 @@ export {
   getPackingSpecsForContact,
   getPackingSpecDetails,
   updatePackingSpecStatus,
-  PODIO_CATEGORIES,
-  PACKING_SPEC_APP_ID
+  PODIO_CATEGORIES
 } from './podio/podioPackingSpecs';
 export type { PackingSpec } from './podio/podioPackingSpecs';
 

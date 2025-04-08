@@ -1,5 +1,4 @@
-
-import { callPodioApi, hasValidTokens } from './podioAuth';
+import { callPodioApi, hasValidTokens, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { addCommentToPodio } from './podioComments';
 
 // Field IDs for Packing Spec app fields
@@ -12,9 +11,6 @@ export const PACKING_SPEC_FIELD_IDS = {
   customerApprovalStatus: 'customer-approval-status',
   customerBrandName: 'customer-brand-name'
 };
-
-// APP ID constant - no more process.env dependency
-export const PACKING_SPEC_APP_ID = 29797638;
 
 // Category IDs for various statuses
 export const PODIO_CATEGORIES = {
@@ -91,7 +87,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     };
     
     // Call Podio API to get the items
-    const response = await callPodioApi(`item/app/${PACKING_SPEC_APP_ID}/filter/`, {
+    const response = await callPodioApi(`item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
       body: JSON.stringify({ filters: filter })
     });
