@@ -1,4 +1,3 @@
-
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -211,25 +210,156 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     
     console.log(`Successfully retrieved packing spec details`);
     
-    // Process images if needed
+    // Extract basic item properties
+    const podioId = response.item_id;
+    const title = response.title || 'Untitled Packing Spec';
+    const created = response.created_on || '';
+    const updated = response.last_event_on || '';
+    
+    // Build the link to the packing spec in Podio
+    const link = `https://podio.com/nzhoneygroup/packing-specifications/apps/packing-specifications/items/${podioId}`;
+    
+    // Get the customer field value (ref to another item)
+    const customerField = getFieldValueByExternalId(response, 'customer-brand-name');
+    let customerName = 'Unknown Customer';
+    let customerItemId = null;
+    
+    if (customerField && Array.isArray(customerField) && customerField.length > 0) {
+      customerName = customerField[0]?.title || 'Unknown Customer';
+      customerItemId = customerField[0]?.item_id;
+    }
+    
+    // Get the product name field value
+    const productName = getFieldValueByExternalId(response, 'product-name') || 'Unnamed Product';
+    
+    // Get the status field value and convert to our app's status format
+    const podioStatus = getFieldValueByExternalId(response, 'approval-status');
+    let statusText = 'Pending Approval';
+    
+    // Check if podioStatus is an object with a text property
+    if (podioStatus && typeof podioStatus === 'object' && 'text' in podioStatus) {
+      statusText = podioStatus.text || 'Pending Approval';
+    } else if (typeof podioStatus === 'string') {
+      statusText = podioStatus;
+    }
+    
+    const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
+    
+    // Get the customer approval status
+    const customerApprovalStatus = getFieldValueByExternalId(response, 'customer-approval-status');
+    let approvalStatusText = 'Pending';
+    
+    // Check if customerApprovalStatus is an object with a text property
+    if (customerApprovalStatus && typeof customerApprovalStatus === 'object' && 'text' in customerApprovalStatus) {
+      approvalStatusText = customerApprovalStatus.text || 'Pending';
+    } else if (typeof customerApprovalStatus === 'string') {
+      approvalStatusText = customerApprovalStatus;
+    }
+    
+    // Extract files if any
+    const files = response.files ? response.files.map((file: any) => ({
+      id: file.file_id,
+      name: file.name,
+      link: file.link
+    })) : [];
+    
+    // Process images 
     const images = extractPodioImages(response);
     
-    // Add customerInfo to the response for PackingSpecDetails component
-    const customerField = getFieldValueByExternalId(response, 'customer-brand-name');
-    const customerInfo = {
-      customerId: customerField && Array.isArray(customerField) && customerField.length > 0 
-        ? customerField[0]?.item_id 
-        : null
+    // Extract all relevant fields into details object
+    const details = {
+      // Customer info
+      customer: customerName,
+      customerId: customerItemId,
+      
+      // Basic product info
+      product: productName,
+      productCode: getFieldValueByExternalId(response, 'product-code'),
+      versionNumber: getFieldValueByExternalId(response, 'version-number'),
+      updatedBy: getFieldValueByExternalId(response, 'updated-by'),
+      dateReviewed: getFieldValueByExternalId(response, 'date-reviewed'),
+      
+      // Honey specifications
+      umfMgo: getFieldValueByExternalId(response, 'umf-mgo'),
+      honeyType: getFieldValueByExternalId(response, 'honey-type'),
+      allergenType: getFieldValueByExternalId(response, 'allergen-type'),
+      ingredientType: getFieldValueByExternalId(response, 'ingredient-type'),
+      
+      // Market and requirements
+      customerRequirements: getFieldValueByExternalId(response, 'customer-requirements'),
+      countryOfEligibility: getFieldValueByExternalId(response, 'country-of-eligibility'),
+      otherMarkets: getFieldValueByExternalId(response, 'other-markets'),
+      testingRequirements: getFieldValueByExternalId(response, 'testing-requirements'),
+      regulatoryRequirements: getFieldValueByExternalId(response, 'regulatory-requirements'),
+      
+      // Packaging specifications
+      jarColor: getFieldValueByExternalId(response, 'jar-color'),
+      jarMaterial: getFieldValueByExternalId(response, 'jar-material'),
+      jarShape: getFieldValueByExternalId(response, 'jar-shape'),
+      jarSize: getFieldValueByExternalId(response, 'jar-size'),
+      lidSize: getFieldValueByExternalId(response, 'lid-size'),
+      lidColor: getFieldValueByExternalId(response, 'lid-color'),
+      onTheGoPackaging: getFieldValueByExternalId(response, 'on-the-go-packaging'),
+      pouchSize: getFieldValueByExternalId(response, 'pouch-size'),
+      sealInstructions: getFieldValueByExternalId(response, 'seal-instructions'),
+      
+      // Shipping details
+      shipperSize: getFieldValueByExternalId(response, 'shipper-size'),
+      customisedCartonType: getFieldValueByExternalId(response, 'customised-carton-type'),
+      palletType: getFieldValueByExternalId(response, 'pallet-type'),
+      cartonsPerLayer: getFieldValueByExternalId(response, 'cartons-per-layer'),
+      layersPerPallet: getFieldValueByExternalId(response, 'layers-per-pallet'),
+      palletSpecifications: getFieldValueByExternalId(response, 'pallet-specs'),
+      palletDocuments: getFieldValueByExternalId(response, 'pallet-documents'),
+      
+      // Label information
+      labelCode: getFieldValueByExternalId(response, 'label-code'),
+      labelSpecification: getFieldValueByExternalId(response, 'label-specification'),
+      label: getFieldValueByExternalId(response, 'label'),
+      labelLink: getFieldValueByExternalId(response, 'label-link'),
+      printingInfoLocation: getFieldValueByExternalId(response, 'printing-info-location'),
+      printingColor: getFieldValueByExternalId(response, 'printing-color'),
+      printingInfoRequired: getFieldValueByExternalId(response, 'printing-info-required'),
+      requiredBestBeforeDate: getFieldValueByExternalId(response, 'required-best-before-date'),
+      dateFormatting: getFieldValueByExternalId(response, 'date-formatting'),
+      shipperSticker: getFieldValueByExternalId(response, 'shipper-sticker'),
+      numShipperStickers: getFieldValueByExternalId(response, 'num-shipper-stickers'),
+      
+      // Approval details
+      customerApprovalStatus: approvalStatusText,
+      customerRequestedChanges: getFieldValueByExternalId(response, 'customer-requested-changes'),
+      approvedByName: getFieldValueByExternalId(response, 'approved-by-name'),
+      approvalDate: getFieldValueByExternalId(response, 'approval-date'),
+      signature: getFieldValueByExternalId(response, 'signature'),
+      emailForApproval: getFieldValueByExternalId(response, 'email-for-approval'),
+      action: getFieldValueByExternalId(response, 'action')
     };
     
-    return {
-      ...response,
+    // Build the complete PackingSpec structure
+    const packingSpec = {
+      id: podioId,
+      title,
+      productName,
+      status,
+      customer: customerName,
+      customerItemId: customerItemId || 0,
+      created,
+      updated,
+      customerApprovalStatus: approvalStatusText,
+      link,
+      files,
+      description: 'Packing specification',
+      createdAt: created,
+      details,
       images,
-      details: {
-        ...response.details,
-        ...customerInfo
-      }
+      // Include the raw Podio response for debugging if needed
+      _podioResponse: response
     };
+    
+    console.log('Processed packing spec details with field count:', 
+      Object.keys(details).filter(key => details[key] !== null && details[key] !== undefined).length);
+    
+    return packingSpec;
   } catch (error) {
     console.error('Error fetching packing spec details:', error);
     throw error;

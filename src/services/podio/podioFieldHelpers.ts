@@ -27,6 +27,11 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
     if (field.values[0].value.name) {
       return field.values[0].value.name;
     }
+    
+    // Return an array of referenced items for multi-reference fields
+    if (Array.isArray(field.values[0].value)) {
+      return field.values[0].value.map((item: any) => item.title || item.name).join(', ');
+    }
   }
   
   // Handle email fields
@@ -44,7 +49,27 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
     return field.values[0].value.toString();
   }
   
-  // Default case
+  // Handle text fields
+  if (field.type === 'text' && field.values[0].value) {
+    return field.values[0].value;
+  }
+  
+  // Handle date fields
+  if (field.type === 'date' && field.values[0].start) {
+    return field.values[0].start;
+  }
+  
+  // Handle image fields
+  if (field.type === 'image' && field.values[0].file) {
+    return field.values[0].file.link;
+  }
+  
+  // Handle file fields
+  if (field.type === 'file' && field.values[0].file) {
+    return field.values[0].file.link;
+  }
+  
+  // Default case - try to get value directly
   return field.values[0].value;
 };
 
