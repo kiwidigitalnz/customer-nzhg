@@ -123,15 +123,12 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       
       // Map to our app's status format
       const status: SpecStatus = mapPodioStatusToAppStatus(
-        typeof podioStatus === 'object' && podioStatus ? podioStatus.text || statusText : 
         typeof podioStatus === 'string' ? podioStatus : statusText
       );
       
       // Get the customer approval status with simplified handling
       const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status');
-      const approvalStatusText = typeof customerApprovalStatus === 'object' && customerApprovalStatus ? 
-        customerApprovalStatus.text || 'Pending' : 
-        typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
+      const approvalStatusText = typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -231,15 +228,12 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     
     // Map to our app's status format - simplified handling to avoid null issues
     const status: SpecStatus = mapPodioStatusToAppStatus(
-      typeof podioStatus === 'object' && podioStatus ? podioStatus.text || statusText : 
       typeof podioStatus === 'string' ? podioStatus : statusText
     );
     
     // Get the customer approval status with simplified handling
     const customerApprovalStatus = getFieldValueByExternalId(response, 'customer-approval-status');
-    const approvalStatusText = typeof customerApprovalStatus === 'object' && customerApprovalStatus ? 
-      customerApprovalStatus.text || 'Pending' : 
-      typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
+    const approvalStatusText = typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
     
     // Extract files if any
     const files = response.files ? response.files.map((file: any) => ({
