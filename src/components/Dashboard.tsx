@@ -73,6 +73,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -157,12 +158,14 @@ const Dashboard = () => {
     setLastFetchAttempt(now);
     apiCallInProgress.current = true;
     apiCallAttempted.current = true;
+    setFetchError(null);
     
     if (!specs.length && !isRateLimitReached) {
       setLoading(true);
     }
     
     try {
+      console.log('Starting authentication process...');
       await ensurePackingSpecAuth();
       
       const contactId = user.podioItemId || user.id;
@@ -190,9 +193,16 @@ const Dashboard = () => {
         initialLoadCompleted.current = true;
       } else {
         console.warn('Received invalid data from API:', data);
+        setFetchError('Received invalid data from API');
       }
     } catch (error) {
       console.error('Error fetching specs:', error);
+      
+      if (error instanceof Error) {
+        setFetchError(error.message);
+      } else {
+        setFetchError('Unknown error occurred while fetching data');
+      }
       
       if (isRateLimited()) {
         setIsRateLimitReached(true);
@@ -363,6 +373,11 @@ const Dashboard = () => {
                 logoUrl: user.logoUrl
               }, null, 2)}
             </pre>
+            {fetchError && (
+              <div className="mt-2 p-2 bg-red-50 text-red-800 rounded border border-red-200">
+                <p><strong>Fetch Error:</strong> {fetchError}</p>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground">
             This debug information is only visible in development mode

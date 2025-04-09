@@ -154,6 +154,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 
 // Authenticate with client credentials via Edge Function
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
+  console.log('Attempting to authenticate with client credentials...');
   return refreshPodioToken(); // Now just an alias for refreshPodioToken for simplicity
 };
 
@@ -254,19 +255,27 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appToken?: string): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
+    console.log('API call prevented due to rate limiting');
     throw new Error('Rate limit reached. Please try again later.');
   }
   
   try {
+    // Normalize endpoint (ensure it starts with a slash)
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
+    
     // Prepare the request payload
     const payload = {
-      endpoint,
+      endpoint: normalizedEndpoint,
       options: {
         method: options.method || 'GET',
         body: options.body, // This will be stringified again in the Edge Function
         appToken
       }
     };
+    
+    console.log(`API call details: method=${options.method || 'GET'}, appToken=${appToken ? 'provided' : 'not provided'}`);
     
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
@@ -278,6 +287,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     
     // Handle rate limiting - check for 429 in error or message
     if (error && (error.message?.includes('429') || response.error?.status === 429)) {
+      console.error('API call rate limited:', error);
       setRateLimit(endpoint);
       throw new Error('Rate limit reached. Please try again later.');
     }
@@ -289,6 +299,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       // Handle authentication errors
       if (error.message?.includes('401') || error.message?.includes('403')) {
         if (error.message?.includes('401')) {
+          console.warn('Authentication failed, clearing tokens');
           clearTokens();
           throw new Error('Authentication failed. Please log in again.');
         } else {

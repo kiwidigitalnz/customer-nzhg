@@ -25,6 +25,10 @@ serve(async (req) => {
       );
     }
 
+    // Ensure the endpoint starts with a slash
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    console.log(`Normalized endpoint: ${normalizedEndpoint}`);
+
     // Extract headers and options
     const method = options?.method || 'GET';
     const body = options?.body;
@@ -36,6 +40,7 @@ serve(async (req) => {
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       accessToken = authHeader.substring(7);
+      console.log('Using provided access token from client');
     } else {
       // Get one from client credentials - this aligns with Podio server-side auth
       // https://developers.podio.com/authentication/server_side
@@ -49,6 +54,7 @@ serve(async (req) => {
         );
       }
       
+      console.log('No token provided, getting one via client credentials');
       const authResponse = await fetch('https://podio.com/oauth/token', {
         method: 'POST',
         headers: {
@@ -64,10 +70,12 @@ serve(async (req) => {
       
       if (!authResponse.ok) {
         const errorText = await authResponse.text();
+        console.error(`Authentication error (${authResponse.status}): ${errorText}`);
         return new Response(
           JSON.stringify({ 
             error: 'Failed to obtain authentication token',
-            details: errorText
+            details: errorText,
+            status: authResponse.status
           }),
           { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -75,6 +83,7 @@ serve(async (req) => {
       
       const authData = await authResponse.json();
       accessToken = authData.access_token;
+      console.log('Successfully obtained access token via client credentials');
     }
 
     // Prepare headers for the Podio API request
@@ -86,16 +95,18 @@ serve(async (req) => {
     // Add app token if provided
     if (appToken) {
       headers['X-Podio-App'] = appToken;
+      console.log(`Using app token: ${appToken}`);
     }
 
-    // Log request details (for debugging)
-    console.log(`Making Podio API request to: ${endpoint}`);
+    // Construct full URL with the API base
+    const fullUrl = `https://api.podio.com/${normalizedEndpoint}`;
+    console.log(`Full URL: ${fullUrl}`);
     console.log(`Method: ${method}`);
     console.log(`Body: ${body ? body.substring(0, 200) + (body.length > 200 ? '...' : '') : 'None'}`);
     console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
 
     // Make the actual request to Podio API
-    const podioResponse = await fetch(`https://api.podio.com${endpoint}`, {
+    const podioResponse = await fetch(fullUrl, {
       method,
       headers,
       body: body ? JSON.stringify(JSON.parse(body)) : undefined,
