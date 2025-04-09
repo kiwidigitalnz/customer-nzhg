@@ -1,17 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
-import { 
-  isPodioConfigured, 
-  authenticateWithClientCredentials, 
-  isRateLimited, 
-  isRateLimitedWithInfo,
-  getCachedUserData,
-  cacheUserData,
-  hasValidTokens
-} from '../services/podioAuth';
-import { getPackingSpecsForContact } from '../services/podioApi';
+import { isPodioConfigured } from '../services/podioAuth';
+import { usePackingSpecs } from '../hooks/usePackingSpecs';
 import { 
   Building, 
   LogOut, 
@@ -43,250 +36,34 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
-import { SpecStatus } from '../components/packing-spec/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-interface PackingSpec {
-  id: number;
-  title: string;
-  description: string;
-  status: SpecStatus;
-  createdAt: string;
-  details: {
-    product: string;
-    batchSize?: string;
-    packagingType?: string;
-    specialRequirements?: string;
-    [key: string]: any; // Allow additional fields
-  };
-  comments?: Array<{
-    id: number;
-    text: string;
-    createdBy: string;
-    createdAt: string;
-  }>;
-}
+import { hasValidTokens } from '../services/podioAuth';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const [specs, setSpecs] = useState<PackingSpec[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRateLimitReached, setIsRateLimitReached] = useState(false);
-  const [lastFetchAttempt, setLastFetchAttempt] = useState(0);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
   const podioConfigured = isPodioConfigured();
-  const apiCallInProgress = useRef(false);
-  const apiCallAttempted = useRef(false);
-  const initialLoadCompleted = useRef(false);
   
-  const getCacheKey = useCallback(() => {
-    return user ? `packing_specs_${user.id}` : null;
-  }, [user]);
+  // Use our new hook for data fetching
+  const { 
+    specs,
+    loading, 
+    error: fetchError, 
+    isRateLimitReached, 
+    refetch 
+  } = usePackingSpecs();
   
-  const ensurePackingSpecAuth = useCallback(async () => {
-    if (apiCallInProgress.current || isRateLimited()) {
-      console.log('Skipping pre-authentication due to ongoing API call or rate limit');
-      return;
-    }
-    
-    try {
-      console.log('Pre-authenticating with client credentials...');
-      const result = await authenticateWithClientCredentials();
-      console.log('Pre-authentication result:', result);
-      return result;
-    } catch (error) {
-      console.error('Pre-authentication failed:', error);
-      return false;
-    }
-  }, []);
-  
-  const fetchSpecs = useCallback(async (forceRefresh = false) => {
-    if (!user) {
-      console.log('No user, skipping fetch');
-      return;
-    }
-    
-    if (apiCallInProgress.current) {
-      console.log('API call already in progress, skipping duplicate call');
-      return;
-    }
-    
-    const cacheKey = getCacheKey();
-    if (!cacheKey) {
-      console.log('No cache key available, skipping fetch');
-      return;
-    }
-    
-    const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.isLimited) {
-      console.log('Rate limited, using cached data if available');
-      setIsRateLimitReached(true);
-      
-      const cachedData = getCachedUserData(cacheKey);
-      if (cachedData) {
-        console.log('Using cached data during rate limit');
-        setSpecs(cachedData as PackingSpec[]);
-        setLoading(false);
-      }
-      return;
-    }
-    
-    const now = Date.now();
-    if (!forceRefresh && now - lastFetchAttempt < 30000) {
-      console.log('Skipping fetch due to recent attempt');
-      return;
-    }
-    
-    if (!forceRefresh) {
-      const cachedData = getCachedUserData(cacheKey);
-      if (cachedData) {
-        console.log('Using cached data while fetching fresh data');
-        setSpecs(cachedData as PackingSpec[]);
-        setLoading(false);
-        
-        if (!initialLoadCompleted.current) {
-          initialLoadCompleted.current = true;
-        }
-        
-        if (apiCallAttempted.current && !forceRefresh) {
-          console.log('Already attempted API call, using cached data only');
-          return;
-        }
-      }
-    }
-    
-    setLastFetchAttempt(now);
-    apiCallInProgress.current = true;
-    apiCallAttempted.current = true;
-    setFetchError(null);
-    
-    if (!specs.length && !isRateLimitReached) {
-      setLoading(true);
-    }
-    
-    try {
-      console.log('Starting authentication process...');
-      const authResult = await ensurePackingSpecAuth();
-      console.log('Authentication result:', authResult);
-      
-      const contactId = user.podioItemId || user.id;
-      
-      console.log(`Fetching specs for contact ID: ${contactId}`);
-      console.log(`Using Podio Item ID: ${contactId}`);
-      
-      const data = await getPackingSpecsForContact(contactId);
-      
-      if (data && Array.isArray(data)) {
-        console.log(`Received ${data.length} packing specs from API`);
-        
-        if (data.length > 0) {
-          console.log('Sample packing spec data:', JSON.stringify(data[0]).substring(0, 500) + '...');
-        } else {
-          console.log('No packing specs found for this contact in API response');
-        }
-        
-        setSpecs(data as PackingSpec[]);
-        setIsRateLimitReached(false);
-        
-        if (data.length > 0) {
-          console.log('Caching packing specs data');
-          cacheUserData(cacheKey, data);
-        }
-        
-        initialLoadCompleted.current = true;
-      } else {
-        console.warn('Received invalid data from API:', data);
-        setFetchError('Received invalid data from API');
-      }
-    } catch (error) {
-      console.error('Error fetching specs:', error);
-      
-      if (error instanceof Error) {
-        setFetchError(error.message);
-      } else {
-        setFetchError('Unknown error occurred while fetching data');
-      }
-      
-      if (isRateLimited()) {
-        setIsRateLimitReached(true);
-        
-        toast({
-          title: 'API Rate Limit Reached',
-          description: 'Too many requests. Using cached data if available.',
-          variant: 'destructive',
-        });
-        
-        const cachedData = getCachedUserData(cacheKey);
-        if (cachedData) {
-          setSpecs(cachedData as PackingSpec[]);
-        }
-      } else {
-        if (!specs.length) {
-          toast({
-            title: 'Error',
-            description: 'Failed to load your packing specifications',
-            variant: 'destructive',
-          });
-        }
-      }
-    } finally {
-      setLoading(false);
-      apiCallInProgress.current = false;
-    }
-  }, [user, toast, getCacheKey, lastFetchAttempt, isRateLimitReached, specs.length, ensurePackingSpecAuth]);
-
-  useEffect(() => {
-    if (!podioConfigured) {
-      toast({
-        title: 'Podio Not Configured',
-        description: 'Please set up Podio API credentials first',
-        variant: 'destructive',
-      });
-      navigate('/podio-setup');
-      return;
-    }
-
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    if (user && !initialLoadCompleted.current) {
-      const cacheKey = getCacheKey();
-      if (cacheKey) {
-        const cachedData = getCachedUserData(cacheKey);
-        if (cachedData) {
-          console.log('Using cached data on initial load');
-          setSpecs(cachedData as PackingSpec[]);
-          setLoading(false);
-        }
-      }
-      
-      console.log('Performing initial fetch of packing specs');
-      fetchSpecs();
-    }
-    
-    return () => {
-      apiCallAttempted.current = false;
-      apiCallInProgress.current = false;
-    };
-  }, [user, toast, navigate, podioConfigured, fetchSpecs, getCacheKey]);
-
-  useEffect(() => {
-    const minimumRefreshInterval = 300000;
-    
-    if (user && 
-        location.pathname === '/dashboard' && 
-        location.key && 
-        Date.now() - lastFetchAttempt > minimumRefreshInterval) {
-      console.log('User navigated back to dashboard after 5+ minutes, refreshing specs data');
-      fetchSpecs(true);
-    }
-  }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
+  if (!user || !podioConfigured) {
+    return (
+      <div className="flex justify-center items-center h-[80vh]">
+        <LoadingSpinner 
+          size="lg" 
+          text="Loading..."
+        />
+      </div>
+    );
+  }
 
   const renderDebugInfo = () => {
     return (
@@ -312,8 +89,8 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Data Status:</span>
-              <Badge variant={specs.length ? "secondary" : "outline"} className="text-xs">
-                {specs.length ? `${specs.length} Specs Found` : "No Specs Found"}
+              <Badge variant={specs.all.length ? "secondary" : "outline"} className="text-xs">
+                {specs.all.length ? `${specs.all.length} Specs Found` : "No Specs Found"}
               </Badge>
             </div>
             {fetchError && (
@@ -325,7 +102,7 @@ const Dashboard = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => fetchSpecs(true)}
+            onClick={() => refetch(true)}
             className="mt-2 w-full text-xs h-7"
           >
             Refresh Data
@@ -333,25 +110,6 @@ const Dashboard = () => {
         </CardContent>
       </Card>
     );
-  };
-
-  if (!user || !podioConfigured) {
-    return (
-      <div className="flex justify-center items-center h-[80vh]">
-        <LoadingSpinner 
-          size="lg" 
-          text="Loading..."
-        />
-      </div>
-    );
-  }
-
-  const pendingSpecs = specs.filter(spec => spec.status === 'pending-approval');
-  const approvedSpecs = specs.filter(spec => spec.status === 'approved-by-customer');
-  const changesRequestedSpecs = specs.filter(spec => spec.status === 'changes-requested');
-
-  const refreshSpecs = () => {
-    fetchSpecs(true);
   };
 
   const getCompanyInitials = (name: string) => {
@@ -369,8 +127,8 @@ const Dashboard = () => {
     <div className="container mx-auto px-4 py-8 animate-fade-in">
       {isRateLimitReached && (
         <RateLimitWarning 
-          onRetry={refreshSpecs}
-          usingCachedData={specs.length > 0}
+          onRetry={() => refetch(true)}
+          usingCachedData={specs.all.length > 0}
         />
       )}
       
@@ -421,9 +179,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-amber-600">
-              {pendingSpecs.length}
+              {specs.pending.length}
               <span className="text-sm ml-2 font-normal text-amber-700/70">
-                {pendingSpecs.length === 1 ? 'specification' : 'specifications'}
+                {specs.pending.length === 1 ? 'specification' : 'specifications'}
               </span>
             </div>
           </CardContent>
@@ -438,9 +196,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-green-600">
-              {approvedSpecs.length}
+              {specs.approved.length}
               <span className="text-sm ml-2 font-normal text-green-700/70">
-                {approvedSpecs.length === 1 ? 'specification' : 'specifications'}
+                {specs.approved.length === 1 ? 'specification' : 'specifications'}
               </span>
             </div>
           </CardContent>
@@ -455,9 +213,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold flex items-center text-red-600">
-              {changesRequestedSpecs.length}
+              {specs.changesRequested.length}
               <span className="text-sm ml-2 font-normal text-red-700/70">
-                {changesRequestedSpecs.length === 1 ? 'specification' : 'specifications'}
+                {specs.changesRequested.length === 1 ? 'specification' : 'specifications'}
               </span>
             </div>
           </CardContent>
@@ -467,16 +225,16 @@ const Dashboard = () => {
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="mb-4 bg-muted/70 p-1 rounded-lg">
           <TabsTrigger value="pending" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            Pending ({pendingSpecs.length})
+            Pending ({specs.pending.length})
           </TabsTrigger>
           <TabsTrigger value="approved" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            Approved ({approvedSpecs.length})
+            Approved ({specs.approved.length})
           </TabsTrigger>
           <TabsTrigger value="changes" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            Changes Requested ({changesRequestedSpecs.length})
+            Changes Requested ({specs.changesRequested.length})
           </TabsTrigger>
           <TabsTrigger value="all" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            All Specifications ({specs.length})
+            All Specifications ({specs.all.length})
           </TabsTrigger>
         </TabsList>
         
@@ -487,8 +245,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <PackingSpecList 
-              specs={pendingSpecs} 
-              onUpdate={refreshSpecs} 
+              specs={specs.pending} 
+              onUpdate={() => refetch(true)} 
             />
           )}
         </TabsContent>
@@ -500,8 +258,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <PackingSpecList 
-              specs={approvedSpecs} 
-              onUpdate={refreshSpecs} 
+              specs={specs.approved} 
+              onUpdate={() => refetch(true)} 
               readOnly
             />
           )}
@@ -514,8 +272,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <PackingSpecList 
-              specs={changesRequestedSpecs} 
-              onUpdate={refreshSpecs} 
+              specs={specs.changesRequested} 
+              onUpdate={() => refetch(true)} 
               readOnly
             />
           )}
@@ -528,8 +286,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <PackingSpecList 
-              specs={specs} 
-              onUpdate={refreshSpecs} 
+              specs={specs.all} 
+              onUpdate={() => refetch(true)} 
             />
           )}
         </TabsContent>

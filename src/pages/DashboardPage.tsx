@@ -1,32 +1,26 @@
 
-
 import { useState, useEffect } from 'react';
 import Dashboard from '../components/Dashboard';
 import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured, isRateLimited, clearRateLimit, hasValidTokens } from '../services/podioAuth';
+import { isPodioConfigured } from '../services/podioAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import RateLimitWarning from '../components/RateLimitWarning';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [podioError, setPodioError] = useState(false);
-  const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Check Podio configuration and rate limit status
+    // Check Podio configuration
     const podioConfigured = isPodioConfigured();
-    const rateLimited = isRateLimited();
     
     if (!podioConfigured) {
       setPodioError(true);
     }
-    
-    setIsRateLimitReached(rateLimited);
     
     // Simulate loading for better UX (just brief enough to avoid flicker)
     const timer = setTimeout(() => {
@@ -38,12 +32,6 @@ const DashboardPage = () => {
   
   const handleReturnHome = () => {
     navigate('/');
-  };
-  
-  const handleRetry = () => {
-    // Clear rate limit and reload the page
-    clearRateLimit();
-    window.location.reload();
   };
   
   return (
@@ -85,17 +73,7 @@ const DashboardPage = () => {
           </div>
         </div>
       ) : (
-        <>
-          {isRateLimitReached && (
-            <div className="container mx-auto px-4 pt-6">
-              <RateLimitWarning 
-                onRetry={handleRetry}
-                usingCachedData={true}
-              />
-            </div>
-          )}
-          <Dashboard />
-        </>
+        <Dashboard />
       )}
     </MainLayout>
   );

@@ -64,12 +64,9 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     
     // Create the filter with the correct field key and values array
     const filterData = {
-      fields: [
-        {
-          key: "customer-brand-name",
-          values: [contactId]
-        }
-      ]
+      fields: {
+        "customer-brand-name": [contactId]
+      }
     };
     
     console.log(`Filtering packing specs with format:`, JSON.stringify(filterData));
@@ -98,35 +95,54 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       let customerName = 'Unknown Customer';
       let customerItemId = null;
       
-      if (customerField && customerField.values && customerField.values[0] && customerField.values[0].value) {
-        // For reference fields, the value is an array of objects with id and title
-        if (Array.isArray(customerField.values[0].value) && customerField.values[0].value.length > 0) {
-          customerName = customerField.values[0].value[0].title || 'Unknown Customer';
-          customerItemId = customerField.values[0].value[0].item_id;
-        } else if (typeof customerField.values[0].value === 'object') {
-          // Handle case when value is an object
-          customerName = customerField.values[0].value.title || 'Unknown Customer';
-          customerItemId = customerField.values[0].value.item_id;
+      if (customerField && typeof customerField === 'object') {
+        if (customerField.values && Array.isArray(customerField.values) && customerField.values.length > 0) {
+          const valueData = customerField.values[0];
+          if (valueData && typeof valueData === 'object' && valueData.value) {
+            if (Array.isArray(valueData.value) && valueData.value.length > 0) {
+              customerName = valueData.value[0]?.title || 'Unknown Customer';
+              customerItemId = valueData.value[0]?.item_id;
+            } else if (typeof valueData.value === 'object') {
+              customerName = valueData.value?.title || 'Unknown Customer';
+              customerItemId = valueData.value?.item_id;
+            }
+          }
         }
       }
       
       // Get the product name field value
       const productNameField = getFieldValueByExternalId(item, 'product-name');
-      const productName = productNameField && productNameField.values && productNameField.values[0] ? 
-                         productNameField.values[0].value || 'Unnamed Product' : 'Unnamed Product';
+      let productName = 'Unnamed Product';
+      
+      if (productNameField && typeof productNameField === 'object' && 
+          productNameField.values && Array.isArray(productNameField.values) && 
+          productNameField.values.length > 0 && productNameField.values[0].value) {
+        productName = productNameField.values[0].value || 'Unnamed Product';
+      }
       
       // Get the status field value
       const statusField = getFieldValueByExternalId(item, 'approval-status');
-      const status = statusField && statusField.values && statusField.values[0] && 
-                    typeof statusField.values[0].value === 'object' ? 
-                    statusField.values[0].value.text || 'Unknown Status' : 'Unknown Status';
+      let status = 'Unknown Status';
+      
+      if (statusField && typeof statusField === 'object' && 
+          statusField.values && Array.isArray(statusField.values) && 
+          statusField.values.length > 0 && statusField.values[0].value) {
+        if (typeof statusField.values[0].value === 'object') {
+          status = statusField.values[0].value.text || 'Unknown Status';
+        }
+      }
       
       // Get the customer approval status
       const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
-      const customerApprovalStatus = customerApprovalField && customerApprovalField.values && 
-                                    customerApprovalField.values[0] && 
-                                    typeof customerApprovalField.values[0].value === 'object' ? 
-                                    customerApprovalField.values[0].value.text || 'Pending' : 'Pending';
+      let customerApprovalStatus = 'Pending';
+      
+      if (customerApprovalField && typeof customerApprovalField === 'object' && 
+          customerApprovalField.values && Array.isArray(customerApprovalField.values) && 
+          customerApprovalField.values.length > 0 && customerApprovalField.values[0].value) {
+        if (typeof customerApprovalField.values[0].value === 'object') {
+          customerApprovalStatus = customerApprovalField.values[0].value.text || 'Pending';
+        }
+      }
       
       // Get created and updated dates
       const created = item.created_on || '';
