@@ -252,7 +252,7 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
 };
 
 // Generic function to call the Podio API via Edge Function
-export const callPodioApi = async (endpoint: string, options: RequestInit = {}, appToken?: string): Promise<any> => {
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
     console.log('API call prevented due to rate limiting');
@@ -280,12 +280,11 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       endpoint: normalizedEndpoint,
       options: {
         method: options.method || 'GET',
-        body: options.body, // This will be stringified again in the Edge Function
-        appToken
+        body: options.body // This will be stringified again in the Edge Function
       }
     };
     
-    console.log(`API call details: method=${options.method || 'GET'}, appToken=${appToken ? 'provided' : 'not provided'}`);
+    console.log(`API call details: method=${options.method || 'GET'}`);
     
     // For debug purposes, log the request body if available
     if (options.body) {
@@ -328,7 +327,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
           await refreshPodioToken();
           if (hasValidTokens()) {
             // If refresh was successful, retry the call once
-            return callPodioApi(endpoint, options, appToken);
+            return callPodioApi(endpoint, options);
           } else {
             // If refresh failed, clear tokens and throw error
             clearTokens();

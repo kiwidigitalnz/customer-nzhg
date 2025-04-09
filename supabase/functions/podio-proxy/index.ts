@@ -32,7 +32,20 @@ serve(async (req) => {
     // Extract headers and options
     const method = options?.method || 'GET';
     const body = options?.body;
-    const appToken = options?.appToken;
+    
+    // Determine which app token to use based on the endpoint
+    let appToken = null;
+    
+    // Check if this is a Packing Spec API call
+    if (normalizedEndpoint.includes('/app/29797638/')) {
+      appToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN');
+      console.log('Using Packing Spec app token');
+    }
+    // Check if this is a Contacts API call
+    else if (normalizedEndpoint.includes('/app/26969025/')) {
+      appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
+      console.log('Using Contacts app token');
+    }
 
     // Get Podio access token from request headers or auth server
     let accessToken;
@@ -104,10 +117,10 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // Add app token if provided
+    // Add app token if detected from endpoint
     if (appToken) {
       headers['X-Podio-App'] = appToken;
-      console.log(`Using app token: ${appToken}`);
+      console.log(`Using app token for this endpoint`);
     }
 
     // Construct full URL with the API base
@@ -127,7 +140,7 @@ serve(async (req) => {
       console.log(`Body: None`);
     }
     
-    console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
+    console.log(`App Token: ${appToken ? 'Detected from endpoint' : 'Not used for this endpoint'}`);
 
     // Make the actual request to Podio API
     const podioResponse = await fetch(fullUrl, {
