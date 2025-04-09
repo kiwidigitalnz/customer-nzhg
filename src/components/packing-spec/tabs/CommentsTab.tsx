@@ -8,6 +8,7 @@ import CommentsList from '../CommentsList';
 import { CommentItem } from '@/services/podio/podioComments';
 import { getCommentsFromPodio } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CommentsTabProps {
   spec: {
@@ -32,6 +33,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   const [comments, setComments] = useState<CommentItem[]>(spec.comments || []);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Fetch comments when tab becomes active
   useEffect(() => {
@@ -85,10 +87,31 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (newComment.trim() && !isAddingComment) {
-        onAddComment().then(() => {
-          refreshComments();
-        });
+        handleSubmitComment();
       }
+    }
+  };
+  
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
+    
+    // Add the company name prefix to the comment
+    const companyName = user?.name || "Customer";
+    const formattedComment = `[${companyName}] ${newComment}`;
+    
+    // Temporarily update textarea to show the formatted comment
+    onNewCommentChange(formattedComment);
+    
+    try {
+      await onAddComment();
+      // After successful submission, refresh to get the updated comment list
+      setTimeout(() => {
+        refreshComments();
+      }, 1000);
+    } catch (error) {
+      // If submission fails, restore the original comment text
+      onNewCommentChange(newComment);
+      console.error('Error submitting comment:', error);
     }
   };
 
@@ -117,11 +140,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
             </div>
             <div className="flex justify-end">
               <Button
-                onClick={() => {
-                  onAddComment().then(() => {
-                    refreshComments();
-                  });
-                }}
+                onClick={handleSubmitComment}
                 disabled={!newComment.trim() || isAddingComment}
                 className="flex items-center gap-2"
               >
@@ -160,6 +179,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
               specId={spec.id}
               isActive={isActive}
               isLoading={isLoadingComments}
+              onRefresh={refreshComments}
             />
           </div>
         </CardContent>

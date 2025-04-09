@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
@@ -85,39 +84,65 @@ const CommentsList: React.FC<CommentsListProps> = ({
   return (
     <div className="space-y-4">
       {sortedComments.map(comment => {
+        // Determine if this is a system or app-generated comment
+        const isSystemOrAppComment = 
+          comment.createdBy === "Packing Specification" || 
+          comment.createdBy.includes("System") ||
+          comment.createdBy.includes("Workflow automation");
+        
+        // Determine if this is a current user comment  
         const isCurrentUserComment = 
           comment.createdBy === authUsername || 
           comment.createdBy === "Customer Portal User" ||
           comment.createdBy.includes(authUsername || '');
         
+        // Initialize variables for display
         let displayName = comment.createdBy;
         let commentText = comment.text;
         
-        // Try to extract company name from comment format [CompanyName] Message
-        const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
-        if (companyMatch && companyMatch.length > 2) {
-          if (!isCurrentUserComment) {
-            displayName = companyMatch[1];
-          }
-          commentText = companyMatch[2];
+        // Handle system messages specially - we'll still show their content
+        if (isSystemOrAppComment) {
+          displayName = "System Notification";
+          // For system messages, we keep the markdown formatting
         }
-        
-        if (isCurrentUserComment) {
-          displayName = companyName;
+        // Try to extract company name from comment format [CompanyName] Message
+        else {
+          const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
+          if (companyMatch && companyMatch.length > 2) {
+            if (!isCurrentUserComment) {
+              // For messages from other users, use their company name from bracket
+              displayName = companyMatch[1];
+            }
+            // Extract just the message content without the [CompanyName] prefix
+            commentText = companyMatch[2];
+          }
+          
+          // For current user comments, always show their company name
+          if (isCurrentUserComment) {
+            displayName = companyName;
+          }
         }
         
         const commentDate = new Date(comment.createdAt);
         const timeString = formatNZTime(comment.createdAt);
         
+        // Determine comment styling based on source
+        const commentClassName = isSystemOrAppComment 
+          ? "bg-muted/30 rounded-md p-4 border border-muted" 
+          : "bg-card rounded-md p-4 border";
+        
         return (
           <div 
             key={comment.id} 
-            className="bg-card rounded-md p-4 border"
+            className={commentClassName}
           >
             <div className="flex justify-between items-start">
               <div className="flex items-center">
                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
                 <p className="font-medium text-sm">{displayName}</p>
+                {isSystemOrAppComment && (
+                  <Badge variant="outline" className="ml-2 text-xs">System</Badge>
+                )}
               </div>
               <div className="flex flex-col items-end text-xs">
                 <div className="text-muted-foreground">
@@ -129,7 +154,16 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 </div>
               </div>
             </div>
-            <p className="mt-2 whitespace-pre-line break-words">{commentText}</p>
+            
+            {isSystemOrAppComment ? (
+              // For system messages, preserve any markdown-like formatting
+              <div className="mt-2 text-sm text-muted-foreground whitespace-pre-line break-words">
+                {commentText}
+              </div>
+            ) : (
+              // Regular comment text
+              <p className="mt-2 whitespace-pre-line break-words">{commentText}</p>
+            )}
           </div>
         );
       })}
