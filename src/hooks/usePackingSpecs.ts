@@ -8,7 +8,6 @@ import {
   PODIO_CATEGORIES
 } from '../services/podio/podioPackingSpecs';
 import { 
-  authenticateWithClientCredentials, 
   isRateLimited, 
   isRateLimitedWithInfo,
   getCachedUserData,
@@ -28,7 +27,7 @@ interface CategorizedSpecs {
 }
 
 export function usePackingSpecs() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,27 +44,11 @@ export function usePackingSpecs() {
   const getCacheKey = useCallback(() => {
     return user ? `packing_specs_${user.id}` : null;
   }, [user]);
-
-  // Pre-authenticate before making API calls
-  const ensureAuthentication = useCallback(async () => {
-    if (isRateLimited()) {
-      console.log('Skipping authentication due to rate limit');
-      return false;
-    }
-    
-    try {
-      console.log('Pre-authenticating with client credentials...');
-      return await authenticateWithClientCredentials();
-    } catch (error) {
-      console.error('Pre-authentication failed:', error);
-      return false;
-    }
-  }, []);
   
   // Main fetch function with optimizations
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
-    if (!user) {
-      console.log('No user, skipping fetch');
+    if (!user || !isAuthenticated) {
+      console.log('No authenticated user, skipping fetch');
       return;
     }
     
@@ -128,14 +111,10 @@ export function usePackingSpecs() {
     }
     
     try {
-      // Ensure we're authenticated first
-      const authStatus = await ensureAuthentication();
-      console.log('Authentication status:', authStatus);
-      
       const contactId = user.podioItemId || user.id;
       console.log(`Fetching specs for contact ID: ${contactId}`);
       
-      // Actual data fetch
+      // Actual data fetch - no more auth prefetch
       const data = await getPackingSpecsForContact(contactId);
       
       // Only update state if component is still mounted
@@ -195,13 +174,13 @@ export function usePackingSpecs() {
       }
       fetchInProgress.current = false;
     }
-  }, [user, ensureAuthentication, getCacheKey, specs.length, isRateLimitReached, toast]);
+  }, [user, isAuthenticated, getCacheKey, specs.length, isRateLimitReached, toast]);
 
   // Initial data loading effect
   useEffect(() => {
     mountedRef.current = true;
     
-    if (user && !initialLoadCompleted.current) {
+    if (user && isAuthenticated && !initialLoadCompleted.current) {
       const cacheKey = getCacheKey();
       if (cacheKey) {
         const cachedData = getCachedUserData(cacheKey);
@@ -219,7 +198,7 @@ export function usePackingSpecs() {
     return () => {
       mountedRef.current = false;
     };
-  }, [user, fetchSpecs, getCacheKey]);
+  }, [user, isAuthenticated, fetchSpecs, getCacheKey]);
 
   // Process specs into categories
   const categorizedSpecs: CategorizedSpecs = {

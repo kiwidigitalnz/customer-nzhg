@@ -50,7 +50,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  const [lastAuthCheck, setLastAuthCheck] = useState(0);
+  
   // Check if the user has a valid session on component mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -72,14 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userData = JSON.parse(storedUser);
           setUser(userData);
           
-          // Check if tokens are valid on the server
-          const hasValidSession = await refreshPodioToken();
-          setIsAuthenticated(hasValidSession);
+          // Set authenticated immediately based on stored data
+          setIsAuthenticated(true);
           
-          if (!hasValidSession) {
-            console.log('No valid session found, clearing local user data');
-            localStorage.removeItem('podio_user_data');
-            setUser(null);
+          // Only verify with server occasionally to avoid too many calls
+          const now = Date.now();
+          if (now - lastAuthCheck > 5 * 60 * 1000) { // Check every 5 minutes
+            console.log('Verifying auth token with server (periodic check)');
+            const hasValidSession = await refreshPodioToken();
+            setLastAuthCheck(now);
+            
+            if (!hasValidSession) {
+              console.log('Server reports invalid session, logging out');
+              localStorage.removeItem('podio_user_data');
+              setUser(null);
+              setIsAuthenticated(false);
+            }
           }
         } else {
           setIsAuthenticated(false);
@@ -95,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkAuth();
-  }, []);
+  }, [lastAuthCheck]);
 
   // Login method 
   const login = useCallback(async (username?: string, password?: string): Promise<boolean> => {
@@ -119,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         localStorage.setItem('podio_user_data', JSON.stringify(dummyUser));
         setLoading(false);
+        setLastAuthCheck(Date.now());
         return true;
       }
       
@@ -127,7 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Username and password are required');
       }
 
-      // We still verify token is valid before trying to authenticate
+      // Only verify token once at login
+      console.log('Verifying token before authentication');
       const tokenValid = await refreshPodioToken();
       if (!tokenValid) {
         console.warn('Failed to get a valid token before user authentication');
@@ -158,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Also cache user data for offline access
         cacheUserData(`user_${userDataWithDefaults.id}`, userDataWithDefaults);
+        setLastAuthCheck(Date.now());
         
         return true;
       } else {
@@ -182,16 +194,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
   }, []);
 
-  // Check if session is valid
+  // Check if session is valid - used when we need to verify, not on every render
   const checkSession = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
-    return await refreshPodioToken();
+    const isValid = await refreshPodioToken();
+    setLastAuthCheck(Date.now());
+    return isValid;
   }, [user]);
 
   // Force reauthentication with Podio API
   const forceReauthenticate = useCallback(async (): Promise<boolean> => {
     try {
       const success = await refreshPodioToken();
+      setLastAuthCheck(Date.now());
       return success;
     } catch (err) {
       console.error('Force reauthentication error:', err);

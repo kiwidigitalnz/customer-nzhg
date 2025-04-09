@@ -16,9 +16,9 @@ export interface PackingSpec {
   updated: string;
   customerApprovalStatus: string;
   link: string;
-  description: string;     // No longer optional
-  createdAt: string;       // No longer optional
-  details: {               // No longer optional
+  description: string;
+  createdAt: string;
+  details: {
     product: string;
     productCode?: string;
     umfMgo?: string;
@@ -92,7 +92,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const title = item.title || 'Untitled Packing Spec';
       
       // Get the customer field value (ref to another item)
-      const customerField = getFieldValueByExternalId(item, 'customer-brand-name');
+      const customerField = item.fields?.find((f: any) => f.external_id === 'customer-brand-name');
       let customerName = 'Unknown Customer';
       let customerItemId = null;
       
@@ -112,7 +112,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       }
       
       // Get the product name field value
-      const productNameField = getFieldValueByExternalId(item, 'product-name');
+      const productNameField = item.fields?.find((f: any) => f.external_id === 'product-name');
       let productName = 'Unnamed Product';
       
       if (productNameField && typeof productNameField === 'object') {
@@ -123,7 +123,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       }
       
       // Get the status field value
-      const statusField = getFieldValueByExternalId(item, 'approval-status');
+      const statusField = item.fields?.find((f: any) => f.external_id === 'approval-status');
       let podioStatus = 'Unknown Status';
       
       if (statusField && typeof statusField === 'object') {
@@ -131,6 +131,8 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
             statusField.values.length > 0 && statusField.values[0].value) {
           if (typeof statusField.values[0].value === 'object') {
             podioStatus = statusField.values[0].value.text || 'Unknown Status';
+          } else {
+            podioStatus = String(statusField.values[0].value);
           }
         }
       }
@@ -139,7 +141,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const status: SpecStatus = mapPodioStatusToAppStatus(podioStatus);
       
       // Get the customer approval status
-      const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
+      const customerApprovalField = item.fields?.find((f: any) => f.external_id === 'customer-approval-status');
       let customerApprovalStatus = 'Pending';
       
       if (customerApprovalField && typeof customerApprovalField === 'object') {
@@ -147,6 +149,8 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
             customerApprovalField.values.length > 0 && customerApprovalField.values[0].value) {
           if (typeof customerApprovalField.values[0].value === 'object') {
             customerApprovalStatus = customerApprovalField.values[0].value.text || 'Pending';
+          } else {
+            customerApprovalStatus = String(customerApprovalField.values[0].value);
           }
         }
       }

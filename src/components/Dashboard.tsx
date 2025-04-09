@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
-import { isPodioConfigured } from '../services/podioAuth';
 import { usePackingSpecs } from '../hooks/usePackingSpecs';
 import { 
   Building, 
@@ -37,16 +36,13 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
 import { Badge } from '@/components/ui/badge';
-import { hasValidTokens } from '../services/podioAuth';
-import { PackingSpec } from '../services/podio/podioPackingSpecs';
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const podioConfigured = isPodioConfigured();
   
-  // Use our new hook for data fetching
+  // Use our hook for data fetching
   const { 
     specs,
     loading, 
@@ -55,7 +51,7 @@ const Dashboard = () => {
     refetch 
   } = usePackingSpecs();
   
-  if (!user || !podioConfigured) {
+  if (!user || !isAuthenticated) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
         <LoadingSpinner 
@@ -78,8 +74,8 @@ const Dashboard = () => {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Authentication:</span>
-              <Badge variant={hasValidTokens() ? "secondary" : "destructive"} className="text-xs">
-                {hasValidTokens() ? "Valid Token" : "No Valid Token"}
+              <Badge variant={isAuthenticated ? "secondary" : "destructive"} className="text-xs">
+                {isAuthenticated ? "Authenticated" : "Not Authenticated"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
