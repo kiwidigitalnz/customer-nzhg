@@ -31,18 +31,30 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
     
     console.log('Raw comment response from Podio:', response);
     
-    // Check if we have comments in the response
-    if (!response.comments || !Array.isArray(response.comments)) {
-      console.warn('No comments array found in Podio response or invalid format', response);
+    // Determine if we're dealing with the expected response format
+    let comments = [];
+    
+    if (Array.isArray(response)) {
+      // Direct array of comments
+      comments = response;
+    } else if (response.comments && Array.isArray(response.comments)) {
+      // Comments inside a comments property
+      comments = response.comments;
+    } else if (response.items && Array.isArray(response.items)) {
+      // Items property containing comments 
+      comments = response.items;
+    } else {
+      console.warn('Unexpected comment response format from Podio:', response);
       return [];
     }
     
-    console.log(`Found ${response.comments.length} comments from Podio`);
+    console.log(`Found ${comments.length} comments from Podio`);
     
     // Transform Podio comment format to our internal format
-    return response.comments.map((comment: any) => {
+    return comments.map((comment: any) => {
       // Extract creator name based on what's available
       let creatorName = 'Unknown';
+      
       if (comment.created_by) {
         if (comment.created_by.name) {
           creatorName = comment.created_by.name;
@@ -55,18 +67,28 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
         creatorName = comment.user.name;
       }
       
-      // Determine text content: prefer rich_value over value
-      const textContent = comment.rich_value || comment.value || '';
+      // Determine text content: prefer rich_value over value over text
+      const textContent = comment.rich_value || comment.value || comment.text || '';
+      
+      // Get the comment ID from either comment_id or id field
+      const commentId = comment.comment_id || comment.id;
+      
+      // Get created date from created_on or created_at field
+      const createdAt = comment.created_on || comment.created_at || new Date().toISOString();
+      
+      if (!commentId) {
+        console.warn('Comment without ID detected', comment);
+      }
       
       return {
-        id: comment.comment_id,
+        id: commentId,
         text: textContent,
         createdBy: creatorName,
-        createdAt: comment.created_on || new Date().toISOString(),
+        createdAt: createdAt,
         rich_value: comment.rich_value,
         files: comment.files || []
       };
-    });
+    }).filter((comment: any) => comment.id); // Filter out any comments that don't have an ID
   } catch (error) {
     console.error('Error fetching comments from Podio:', error);
     return [];

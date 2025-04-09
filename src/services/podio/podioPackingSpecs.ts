@@ -1,4 +1,3 @@
-
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -404,9 +403,25 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
       createdAt: created,
       details,
       images,
+      comments: [], // Initialize empty comments array
       // Include the raw Podio response for debugging if needed
       _podioResponse: response
     };
+    
+    // Try to fetch comments for this item
+    try {
+      console.log(`Fetching comments for packing spec ID: ${podioId}`);
+      const comments = await getCommentsFromPodio(podioId);
+      if (comments && comments.length > 0) {
+        packingSpec.comments = comments;
+        console.log(`Retrieved ${comments.length} comments for packing spec`);
+      } else {
+        console.log('No comments found for packing spec');
+      }
+    } catch (commentsError) {
+      console.error('Error fetching comments for packing spec:', commentsError);
+      // We'll continue with empty comments array if comments fetch fails
+    }
     
     console.log('Processed packing spec details with field count:', 
       Object.keys(details).filter(key => details[key] !== null && details[key] !== undefined).length);

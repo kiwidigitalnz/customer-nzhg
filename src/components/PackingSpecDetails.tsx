@@ -97,6 +97,10 @@ const PackingSpecDetails = () => {
           return;
         }
         
+        if (!data.comments) {
+          data.comments = [];
+        }
+        
         setSpec(data);
         console.log('Loaded specification:', data);
       } catch (err) {
@@ -249,26 +253,6 @@ const PackingSpecDetails = () => {
         });
         
         setNewComment('');
-        
-        console.log('Refreshing comments after adding new one');
-        setTimeout(async () => {
-          try {
-            const updatedComments = await getCommentsFromPodio(spec.id);
-            console.log('Received updated comments after adding new one:', updatedComments);
-            
-            if (updatedComments) {
-              setSpec(prev => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  comments: updatedComments
-                };
-              });
-            }
-          } catch (error) {
-            console.error('Error refreshing comments after adding a new one:', error);
-          }
-        }, 1000);
       } else {
         toast({
           title: 'Error',

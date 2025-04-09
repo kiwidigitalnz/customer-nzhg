@@ -1,11 +1,13 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Loader2, RefreshCcw } from 'lucide-react';
 import CommentsList from '../CommentsList';
 import { CommentItem } from '@/services/podio/podioComments';
+import { getCommentsFromPodio } from '@/services/podioApi';
+import { useToast } from '@/hooks/use-toast';
 
 interface CommentsTabProps {
   spec: {
@@ -27,21 +29,65 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onAddComment, 
   isAddingComment 
 }) => {
-  // Log when tab becomes active or inactive for debugging
+  const [comments, setComments] = useState<CommentItem[]>(spec.comments || []);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const { toast } = useToast();
+
+  // Fetch comments when tab becomes active
   useEffect(() => {
     console.log(`Comments tab active state changed: ${isActive ? 'active' : 'inactive'} for spec ID: ${spec.id}`);
     
-    if (isActive && spec.comments) {
-      console.log(`Comments tab has ${spec.comments.length} comments for spec ID: ${spec.id}`);
+    if (isActive) {
+      refreshComments();
     }
-  }, [isActive, spec.id, spec.comments]);
+  }, [isActive, spec.id]);
+
+  // Also refresh comments after a successful comment addition
+  useEffect(() => {
+    if (!isAddingComment && isActive && comments.length > 0) {
+      // This will run after a comment is successfully added (isAddingComment transitions from true to false)
+      const timer = setTimeout(() => {
+        refreshComments();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAddingComment, isActive]);
+
+  const refreshComments = async () => {
+    if (!spec.id) return;
+    
+    setIsLoadingComments(true);
+    try {
+      console.log(`Manually fetching comments for spec ID: ${spec.id}`);
+      const fetchedComments = await getCommentsFromPodio(spec.id);
+      
+      if (fetchedComments && fetchedComments.length > 0) {
+        console.log(`Retrieved ${fetchedComments.length} comments for spec ID: ${spec.id}`);
+        setComments(fetchedComments);
+      } else {
+        console.log(`No comments found for spec ID: ${spec.id}`);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toast({
+        title: 'Error loading comments',
+        description: 'Failed to load comments. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit on Ctrl+Enter or Cmd+Enter
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (newComment.trim() && !isAddingComment) {
-        onAddComment();
+        onAddComment().then(() => {
+          refreshComments();
+        });
       }
     }
   };
@@ -71,7 +117,11 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
             </div>
             <div className="flex justify-end">
               <Button
-                onClick={onAddComment}
+                onClick={() => {
+                  onAddComment().then(() => {
+                    refreshComments();
+                  });
+                }}
                 disabled={!newComment.trim() || isAddingComment}
                 className="flex items-center gap-2"
               >
@@ -89,10 +139,27 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
               </Button>
             </div>
             
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-muted-foreground">
+                {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshComments}
+                disabled={isLoadingComments}
+                className="flex items-center gap-1 text-xs"
+              >
+                <RefreshCcw className={`h-3 w-3 ${isLoadingComments ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+            
             <CommentsList 
-              comments={spec.comments || []} 
+              comments={comments} 
               specId={spec.id}
               isActive={isActive}
+              isLoading={isLoadingComments}
             />
           </div>
         </CardContent>

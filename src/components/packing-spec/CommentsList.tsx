@@ -1,12 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { formatDate } from '@/utils/formatters';
-import { MessageSquare, Clock, User, RefreshCcw, AlertCircle, Bell } from 'lucide-react';
+import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -16,68 +14,25 @@ interface CommentsListProps {
   comments: CommentItem[];
   specId?: number;
   isActive?: boolean;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 const CommentsList: React.FC<CommentsListProps> = ({ 
-  comments: initialComments, 
+  comments, 
   specId, 
-  isActive = true 
+  isActive = true,
+  isLoading = false,
+  onRefresh
 }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const {
-    comments: polledComments,
-    isLoading,
-    error,
-    refreshComments,
-    lastPolled,
-    newCommentsCount,
-    newCommentIds,
-    markAllAsSeen
-  } = useCommentPolling(
-    specId || 0,
-    initialComments,
-    isActive && !!specId,
-    false // Disable automatic polling
-  );
-  
-  // Use polled comments if available, otherwise fall back to initial comments
-  const comments = (specId && polledComments && polledComments.length > 0) 
-    ? polledComments 
-    : initialComments;
   
   console.log('CommentsList rendered with:', { 
     specId, 
     isActive, 
     commentsCount: comments?.length || 0,
-    initialCommentsCount: initialComments?.length || 0,
-    polledCommentsCount: polledComments?.length || 0
+    isLoading
   });
-  
-  // When tab becomes active, do an initial fetch
-  useEffect(() => {
-    if (isActive && specId) {
-      console.log(`Comments tab active (${isActive}) for spec ID: ${specId}, refreshing comments`);
-      refreshComments();
-    }
-  }, [isActive, specId]);
-  
-  useEffect(() => {
-    if (isActive && newCommentsCount > 0) {
-      markAllAsSeen();
-    }
-  }, [isActive, newCommentsCount]);
-  
-  const handleRefresh = () => {
-    console.log(`Manually refreshing comments for spec ID: ${specId}`);
-    refreshComments();
-    toast({
-      title: "Refreshing comments",
-      description: "Checking for the latest comments from Podio...",
-      duration: 2000
-    });
-  };
   
   const formatNZTime = (dateStr: string) => {
     try {
@@ -89,45 +44,29 @@ const CommentsList: React.FC<CommentsListProps> = ({
     }
   };
   
-  const formatLastPolledTime = (timestamp: number) => {
-    try {
-      const date = new Date(timestamp);
-      return format(date, 'h:mm a');
-    } catch (err) {
-      console.error('Error formatting last polled time:', err);
-      return '';
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-4">
+        <LoadingSpinner size="sm" text="Loading comments..." />
+      </div>
+    );
+  }
   
   if (!comments || comments.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
         <p>No comments yet</p>
-        {specId && (
+        {onRefresh && (
           <Button 
             variant="ghost" 
             size="sm" 
             className="mt-4" 
-            onClick={handleRefresh} 
-            disabled={isLoading}
+            onClick={onRefresh}
           >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Check for new comments
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Check for comments
           </Button>
-        )}
-        
-        {isLoading && (
-          <div className="mt-4 flex justify-center">
-            <LoadingSpinner size="sm" text="Checking for comments..." />
-          </div>
-        )}
-        
-        {error && (
-          <Alert variant="destructive" className="mt-4 mx-auto max-w-md">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
         )}
       </div>
     );
@@ -145,46 +84,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
   
   return (
     <div className="space-y-4">
-      {specId && (
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-xs text-muted-foreground">
-            {isLoading ? 'Checking for new comments...' : (
-              <>
-                Last updated: {formatDate(new Date(lastPolled).toISOString())} at {formatLastPolledTime(lastPolled)}
-              </>
-            )}
-          </p>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleRefresh} 
-            disabled={isLoading}
-            className="relative"
-          >
-            {newCommentsCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {newCommentsCount}
-              </span>
-            )}
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      )}
-      
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      {isLoading && comments.length === 0 && (
-        <div className="flex justify-center py-4">
-          <LoadingSpinner size="sm" text="Loading comments..." />
-        </div>
-      )}
-      
       {sortedComments.map(comment => {
         const isCurrentUserComment = 
           comment.createdBy === authUsername || 
@@ -210,22 +109,15 @@ const CommentsList: React.FC<CommentsListProps> = ({
         const commentDate = new Date(comment.createdAt);
         const timeString = formatNZTime(comment.createdAt);
         
-        const isNewComment = newCommentIds.has(comment.id);
-        
         return (
           <div 
             key={comment.id} 
-            className={`bg-card rounded-md p-4 border ${isNewComment ? 'border-primary' : ''}`}
+            className="bg-card rounded-md p-4 border"
           >
             <div className="flex justify-between items-start">
               <div className="flex items-center">
                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
                 <p className="font-medium text-sm">{displayName}</p>
-                {isNewComment && (
-                  <Badge variant="default" className="ml-2 bg-primary text-primary-foreground text-xs px-2">
-                    New
-                  </Badge>
-                )}
               </div>
               <div className="flex flex-col items-end text-xs">
                 <div className="text-muted-foreground">
