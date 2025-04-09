@@ -2,7 +2,7 @@
 // This module provides helper functions for dealing with Podio fields
 
 // Improved helper function to safely access field values by external_id
-export const getFieldValueByExternalId = (item: any, externalId: string): string | null | any[] => {
+export const getFieldValueByExternalId = (item: any, externalId: string): string | null | any[] | Record<string, any> => {
   // If item is invalid or doesn't have fields property, return null
   if (!item || !item.fields) {
     return null;
@@ -106,6 +106,7 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
   // Handle image fields
   if (field.type === 'image' && field.values[0]) {
     if (field.values[0].file) {
+      // Return as a single object, not part of an array
       return {
         file_id: field.values[0].file.file_id,
         link: field.values[0].file.link,
@@ -126,6 +127,7 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
   // Handle file fields
   if (field.type === 'file' && field.values[0]) {
     if (field.values[0].file) {
+      // Return as a single object, not part of an array
       return {
         file_id: field.values[0].file.file_id,
         link: field.values[0].file.link,
@@ -146,6 +148,7 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
   // Handle embed fields
   if (field.type === 'embed' && field.values[0]) {
     if (field.values[0].embed) {
+      // Return as a single object, not part of an array
       return {
         embed_id: field.values[0].embed.embed_id,
         url: field.values[0].embed.original_url,
