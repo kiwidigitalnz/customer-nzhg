@@ -117,35 +117,21 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       // Get the product name field value
       const productName = getFieldValueByExternalId(item, 'product-name') || 'Unnamed Product';
       
-      // Get the status field value and convert to our app's status format with null handling
+      // Get the status field value and convert to our app's status format with simplified handling
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
-      let statusText = 'Pending Approval';
+      const statusText = 'Pending Approval'; // Default status
       
-      // Check if podioStatus exists and has the expected structure
-      if (podioStatus !== null && podioStatus !== undefined) {
-        // Check if podioStatus is an object with a text property
-        if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
-          statusText = (podioStatus as any).text || 'Pending Approval';
-        } else if (typeof podioStatus === 'string') {
-          statusText = podioStatus;
-        }
-      }
+      // Map to our app's status format
+      const status: SpecStatus = mapPodioStatusToAppStatus(
+        typeof podioStatus === 'object' && podioStatus ? podioStatus.text || statusText : 
+        typeof podioStatus === 'string' ? podioStatus : statusText
+      );
       
-      const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
-      
-      // Get the customer approval status with null handling
+      // Get the customer approval status with simplified handling
       const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status');
-      let approvalStatusText = 'Pending';
-      
-      // Check if customerApprovalStatus exists and has the expected structure
-      if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
-        // Check if customerApprovalStatus is an object with a text property
-        if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
-          approvalStatusText = (customerApprovalStatus as any).text || 'Pending';
-        } else if (typeof customerApprovalStatus === 'string') {
-          approvalStatusText = customerApprovalStatus;
-        }
-      }
+      const approvalStatusText = typeof customerApprovalStatus === 'object' && customerApprovalStatus ? 
+        customerApprovalStatus.text || 'Pending' : 
+        typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -239,35 +225,21 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     // Get the product name field value
     const productName = getFieldValueByExternalId(response, 'product-name') || 'Unnamed Product';
     
-    // Get the status field value and convert to our app's status format
+    // Get the status field value and convert to our app's status format with simplified handling
     const podioStatus = getFieldValueByExternalId(response, 'approval-status');
-    let statusText = 'Pending Approval';
+    const statusText = 'Pending Approval'; // Default status
     
-    // Check if podioStatus exists and has the expected structure
-    if (podioStatus !== null && podioStatus !== undefined) {
-      // Check if podioStatus is an object with a text property
-      if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
-        statusText = (podioStatus as any).text || 'Pending Approval';
-      } else if (typeof podioStatus === 'string') {
-        statusText = podioStatus;
-      }
-    }
+    // Map to our app's status format - simplified handling to avoid null issues
+    const status: SpecStatus = mapPodioStatusToAppStatus(
+      typeof podioStatus === 'object' && podioStatus ? podioStatus.text || statusText : 
+      typeof podioStatus === 'string' ? podioStatus : statusText
+    );
     
-    const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
-    
-    // Get the customer approval status
+    // Get the customer approval status with simplified handling
     const customerApprovalStatus = getFieldValueByExternalId(response, 'customer-approval-status');
-    let approvalStatusText = 'Pending';
-    
-    // Check if customerApprovalStatus exists and has the expected structure
-    if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
-      // Check if customerApprovalStatus is an object with a text property
-      if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
-        approvalStatusText = (customerApprovalStatus as any).text || 'Pending';
-      } else if (typeof customerApprovalStatus === 'string') {
-        approvalStatusText = customerApprovalStatus;
-      }
-    }
+    const approvalStatusText = typeof customerApprovalStatus === 'object' && customerApprovalStatus ? 
+      customerApprovalStatus.text || 'Pending' : 
+      typeof customerApprovalStatus === 'string' ? customerApprovalStatus : 'Pending';
     
     // Extract files if any
     const files = response.files ? response.files.map((file: any) => ({
