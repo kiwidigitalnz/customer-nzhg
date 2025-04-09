@@ -1,3 +1,4 @@
+
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -118,12 +119,27 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       
       // Get the status field value and convert to our app's status format with null handling
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
-      const statusText = podioStatus?.text || 'Pending Approval';
+      let statusText = 'Pending Approval';
+      
+      // Check if podioStatus is an object with a text property
+      if (podioStatus && typeof podioStatus === 'object' && 'text' in podioStatus) {
+        statusText = podioStatus.text || 'Pending Approval';
+      } else if (typeof podioStatus === 'string') {
+        statusText = podioStatus;
+      }
+      
       const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
       
       // Get the customer approval status with null handling
       const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status');
-      const approvalStatusText = customerApprovalStatus?.text || 'Pending';
+      let approvalStatusText = 'Pending';
+      
+      // Check if customerApprovalStatus is an object with a text property
+      if (customerApprovalStatus && typeof customerApprovalStatus === 'object' && 'text' in customerApprovalStatus) {
+        approvalStatusText = customerApprovalStatus.text || 'Pending';
+      } else if (typeof customerApprovalStatus === 'string') {
+        approvalStatusText = customerApprovalStatus;
+      }
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -198,9 +214,21 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     // Process images if needed
     const images = extractPodioImages(response);
     
+    // Add customerInfo to the response for PackingSpecDetails component
+    const customerField = getFieldValueByExternalId(response, 'customer-brand-name');
+    const customerInfo = {
+      customerId: customerField && Array.isArray(customerField) && customerField.length > 0 
+        ? customerField[0]?.item_id 
+        : null
+    };
+    
     return {
       ...response,
-      images
+      images,
+      details: {
+        ...response.details,
+        ...customerInfo
+      }
     };
   } catch (error) {
     console.error('Error fetching packing spec details:', error);

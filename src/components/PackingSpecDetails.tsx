@@ -85,7 +85,14 @@ const PackingSpecDetails = () => {
           return;
         }
         
-        if (data.details.customerId && data.details.customerId !== user.id) {
+        const customerIdFromData = data.details?.customerId;
+        const userIdFromAuth = user?.id;
+        
+        if (customerIdFromData && userIdFromAuth && customerIdFromData !== userIdFromAuth) {
+          console.log('Permission check failed:', { 
+            customerId: customerIdFromData, 
+            userId: userIdFromAuth 
+          });
           setError('You do not have permission to view this specification');
           return;
         }
