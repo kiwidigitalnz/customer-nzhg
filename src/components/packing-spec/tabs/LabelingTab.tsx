@@ -58,7 +58,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Link</h4>
                   {details.labelLink ? (
                     <a 
-                      href={details.labelLink?.url || details.labelLink} 
+                      href={typeof details.labelLink === 'object' ? details.labelLink?.url || '' : details.labelLink} 
                       className="text-primary hover:underline flex items-center" 
                       target="_blank" 
                       rel="noopener noreferrer"

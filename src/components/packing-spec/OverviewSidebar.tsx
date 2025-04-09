@@ -43,6 +43,23 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
     return version;
   };
 
+  // Helper to handle the updatedBy field which might be an object with title and item_id
+  const renderUpdatedBy = (updatedBy: any) => {
+    if (!updatedBy) return "N/A";
+    
+    if (Array.isArray(updatedBy) && updatedBy.length > 0) {
+      if (typeof updatedBy[0].title === 'string') {
+        return updatedBy[0].title;
+      }
+    }
+    
+    if (typeof updatedBy === 'object' && updatedBy.title) {
+      return updatedBy.title;
+    }
+    
+    return String(updatedBy);
+  };
+
   return (
     <div className="space-y-6">
       {/* Overview Card */}
@@ -92,7 +109,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
                 <User className="mr-1.5 h-3.5 w-3.5" />
                 Specification Updated By
               </h4>
-              <p className="text-sm font-medium">{details.updatedBy || "N/A"}</p>
+              <p className="text-sm font-medium">{renderUpdatedBy(details.updatedBy)}</p>
             </div>
           </div>
         </CardContent>

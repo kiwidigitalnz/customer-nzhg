@@ -40,6 +40,16 @@ const SpecSection: React.FC<SpecSectionProps> = ({
   const defaultRenderValue = (value: any, fieldType?: string) => {
     if (value === undefined || value === null) return null;
     
+    // Handle array of objects with title property (app references from Podio)
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0].title) {
+      return value.map(item => item.title).join(', ');
+    }
+    
+    // Handle single object with title property
+    if (typeof value === 'object' && !Array.isArray(value) && value.title) {
+      return value.title;
+    }
+    
     switch (fieldType) {
       case 'category':
         return <CategoryDisplay categories={value} />;
