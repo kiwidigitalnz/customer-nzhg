@@ -26,7 +26,7 @@ serve(async (req) => {
     }
 
     // Ensure the endpoint starts with a slash
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     console.log(`Normalized endpoint: ${normalizedEndpoint}`);
 
     // Extract headers and options
@@ -55,35 +55,47 @@ serve(async (req) => {
       }
       
       console.log('No token provided, getting one via client credentials');
-      const authResponse = await fetch('https://podio.com/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          'grant_type': 'client_credentials',
-          'client_id': clientId,
-          'client_secret': clientSecret,
-          'scope': 'global', // Default scope as per Podio docs
-        }),
-      });
-      
-      if (!authResponse.ok) {
-        const errorText = await authResponse.text();
-        console.error(`Authentication error (${authResponse.status}): ${errorText}`);
+      try {
+        const authResponse = await fetch('https://podio.com/oauth/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            'grant_type': 'client_credentials',
+            'client_id': clientId,
+            'client_secret': clientSecret,
+            'scope': 'global', // Default scope as per Podio docs
+          }),
+        });
+        
+        if (!authResponse.ok) {
+          const errorText = await authResponse.text();
+          console.error(`Authentication error (${authResponse.status}): ${errorText}`);
+          return new Response(
+            JSON.stringify({ 
+              error: 'Failed to obtain authentication token',
+              details: errorText,
+              status: authResponse.status
+            }),
+            { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const authData = await authResponse.json();
+        accessToken = authData.access_token;
+        console.log('Successfully obtained access token via client credentials');
+      } catch (authError) {
+        console.error('Error authenticating with Podio:', authError);
         return new Response(
           JSON.stringify({ 
-            error: 'Failed to obtain authentication token',
-            details: errorText,
-            status: authResponse.status
+            error: 'Authentication error', 
+            details: authError.message,
+            status: 500
           }),
-          { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      const authData = await authResponse.json();
-      accessToken = authData.access_token;
-      console.log('Successfully obtained access token via client credentials');
     }
 
     // Prepare headers for the Podio API request
@@ -99,10 +111,22 @@ serve(async (req) => {
     }
 
     // Construct full URL with the API base
-    const fullUrl = `https://api.podio.com/${normalizedEndpoint}`;
+    const fullUrl = `https://api.podio.com${normalizedEndpoint}`;
     console.log(`Full URL: ${fullUrl}`);
     console.log(`Method: ${method}`);
-    console.log(`Body: ${body ? body.substring(0, 200) + (body.length > 200 ? '...' : '') : 'None'}`);
+    
+    // Debug log the request details
+    if (body) {
+      try {
+        const parsedBody = JSON.parse(body);
+        console.log(`Request body:`, JSON.stringify(parsedBody, null, 2));
+      } catch (e) {
+        console.log(`Body: ${body.substring(0, 200) + (body.length > 200 ? '...' : '')}`);
+      }
+    } else {
+      console.log(`Body: None`);
+    }
+    
     console.log(`App Token: ${appToken ? 'Provided' : 'Not provided'}`);
 
     // Make the actual request to Podio API
@@ -129,6 +153,12 @@ serve(async (req) => {
     
     if (podioResponse.status >= 400) {
       console.error('Podio API error response:', JSON.stringify(responseData));
+    } else {
+      // Debug log a sample of the response for successful calls
+      console.log('Podio API successful response snippet:', 
+        JSON.stringify(responseData).substring(0, 300) + 
+        (JSON.stringify(responseData).length > 300 ? '...' : '')
+      );
     }
 
     // Check for rate limiting

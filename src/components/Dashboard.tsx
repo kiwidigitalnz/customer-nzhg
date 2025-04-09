@@ -94,9 +94,12 @@ const Dashboard = () => {
     
     try {
       console.log('Pre-authenticating with client credentials...');
-      await authenticateWithClientCredentials();
+      const result = await authenticateWithClientCredentials();
+      console.log('Pre-authentication result:', result);
+      return result;
     } catch (error) {
       console.error('Pre-authentication failed:', error);
+      return false;
     }
   }, []);
   
@@ -166,7 +169,8 @@ const Dashboard = () => {
     
     try {
       console.log('Starting authentication process...');
-      await ensurePackingSpecAuth();
+      const authResult = await ensurePackingSpecAuth();
+      console.log('Authentication result:', authResult);
       
       const contactId = user.podioItemId || user.id;
       
@@ -180,6 +184,8 @@ const Dashboard = () => {
         
         if (data.length > 0) {
           console.log('Sample packing spec data:', JSON.stringify(data[0]).substring(0, 500) + '...');
+        } else {
+          console.log('No packing specs found for this contact in API response');
         }
         
         setSpecs(data as PackingSpec[]);
@@ -281,6 +287,53 @@ const Dashboard = () => {
     }
   }, [location.pathname, location.key, user, fetchSpecs, lastFetchAttempt]);
 
+  const renderDebugInfo = () => {
+    return (
+      <Card className="mb-8 bg-slate-50 border-amber-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center">
+            <Database className="h-4 w-4 mr-2 text-amber-500" /> Connection Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs font-mono pt-0">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Authentication:</span>
+              <Badge variant={hasValidTokens() ? "success" : "destructive"} className="text-xs">
+                {hasValidTokens() ? "Valid Token" : "No Valid Token"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Connection:</span>
+              <Badge variant={isRateLimitReached ? "destructive" : "success"} className="text-xs">
+                {isRateLimitReached ? "Rate Limited" : "OK"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Data Status:</span>
+              <Badge variant={specs.length ? "success" : "outline"} className="text-xs">
+                {specs.length ? `${specs.length} Specs Found` : "No Specs Found"}
+              </Badge>
+            </div>
+            {fetchError && (
+              <div className="mt-2 p-2 bg-red-50 text-red-800 rounded border border-red-200 text-xs">
+                <p><strong>Error:</strong> {fetchError}</p>
+              </div>
+            )}
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => fetchSpecs(true)}
+            className="mt-2 w-full text-xs h-7"
+          >
+            Refresh Data
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (!user || !podioConfigured) {
     return (
       <div className="flex justify-center items-center h-[80vh]">
@@ -355,35 +408,7 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* User data debug card - only shown in development mode */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="mb-8 bg-slate-50">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">User Data (Debug)</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs font-mono">
-            <pre className="overflow-auto max-h-40">
-              {JSON.stringify({
-                id: user.id,
-                podioItemId: user.podioItemId,
-                name: user.name,
-                email: user.email,
-                username: user.username,
-                logoFileId: user.logoFileId,
-                logoUrl: user.logoUrl
-              }, null, 2)}
-            </pre>
-            {fetchError && (
-              <div className="mt-2 p-2 bg-red-50 text-red-800 rounded border border-red-200">
-                <p><strong>Fetch Error:</strong> {fetchError}</p>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="text-xs text-muted-foreground">
-            This debug information is only visible in development mode
-          </CardFooter>
-        </Card>
-      )}
+      {renderDebugInfo()}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">

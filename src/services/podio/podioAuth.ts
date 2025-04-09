@@ -265,6 +265,16 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     
     console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
     
+    // Get the access token from localStorage
+    const accessToken = localStorage.getItem('podio_access_token');
+    if (!accessToken) {
+      console.error('No access token available, attempting to refresh');
+      const refreshed = await refreshPodioToken();
+      if (!refreshed) {
+        throw new Error('Failed to obtain Podio access token');
+      }
+    }
+    
     // Prepare the request payload
     const payload = {
       endpoint: normalizedEndpoint,
@@ -277,9 +287,23 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
     
     console.log(`API call details: method=${options.method || 'GET'}, appToken=${appToken ? 'provided' : 'not provided'}`);
     
+    // For debug purposes, log the request body if available
+    if (options.body) {
+      try {
+        const parsedBody = JSON.parse(options.body as string);
+        console.log('Request body:', parsedBody);
+      } catch (e) {
+        console.log('Request body (raw):', options.body);
+      }
+    }
+    
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
+      headers: {
+        // Include access token in the Authorization header
+        'Authorization': `Bearer ${accessToken}`
+      },
       body: payload
     });
     
@@ -299,9 +323,17 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}, 
       // Handle authentication errors
       if (error.message?.includes('401') || error.message?.includes('403')) {
         if (error.message?.includes('401')) {
-          console.warn('Authentication failed, clearing tokens');
-          clearTokens();
-          throw new Error('Authentication failed. Please log in again.');
+          console.warn('Authentication failed, clearing tokens and trying to refresh');
+          // Try to refresh the token instead of just clearing
+          await refreshPodioToken();
+          if (hasValidTokens()) {
+            // If refresh was successful, retry the call once
+            return callPodioApi(endpoint, options, appToken);
+          } else {
+            // If refresh failed, clear tokens and throw error
+            clearTokens();
+            throw new Error('Authentication failed. Please log in again.');
+          }
         } else {
           throw new Error('Access denied. You do not have permission to access this resource.');
         }
