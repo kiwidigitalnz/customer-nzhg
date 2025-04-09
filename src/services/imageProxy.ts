@@ -1,10 +1,9 @@
-
 /**
  * Image proxy service for Podio files
  * Handles authenticated requests to Podio's file API
  */
 
-import { callPodioApi, hasValidPodioTokens, refreshPodioToken } from './podioApi';
+import { callPodioApi, refreshPodioToken } from './podioApi';
 
 interface ImageData {
   blob: Blob;
@@ -22,9 +21,12 @@ export const getFileFromPodio = async (fileId: string | number): Promise<ImageDa
   
   console.log(`Fetching Podio file with ID: ${fileId}`);
   
-  // Ensure we have valid tokens
-  if (!hasValidPodioTokens() && !await refreshPodioToken()) {
-    throw new Error('Not authenticated with Podio API');
+  // Simply attempt to refresh the token if needed - we no longer check validity
+  try {
+    await refreshPodioToken();
+  } catch (error) {
+    console.error('Failed to refresh Podio token:', error);
+    // Continue anyway as the token might still be valid
   }
   
   try {
