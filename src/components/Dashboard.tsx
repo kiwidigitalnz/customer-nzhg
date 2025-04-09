@@ -10,7 +10,8 @@ import {
   PackageCheck, 
   CheckCircle,
   AlertCircle,
-  Database
+  Database,
+  Filter
 } from 'lucide-react';
 import { 
   Card, 
@@ -88,6 +89,13 @@ const Dashboard = () => {
               <span className="text-muted-foreground">Data Status:</span>
               <Badge variant={specs.all.length ? "secondary" : "outline"} className="text-xs">
                 {specs.all.length ? `${specs.all.length} Specs Found` : "No Specs Found"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Filter:</span>
+              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                {user?.podioItemId ? "Showing your specs only" : "Showing all specs"}
               </Badge>
             </div>
             {fetchError && (

@@ -58,13 +58,34 @@ export const PODIO_CATEGORIES = {
   }
 };
 
-// Get all packing specs without filtering by contact
-export const getPackingSpecsForContact = async (_contactId?: number): Promise<PackingSpec[]> => {
+// Get packing specs filtered by contact/customer
+export const getPackingSpecsForContact = async (contactId?: number): Promise<PackingSpec[]> => {
   try {
-    console.log(`Fetching all packing specs without contact filter`);
+    // If contactId is provided, construct a filter to only show specs for that customer
+    let endpoint = `/item/app/${PODIO_PACKING_SPEC_APP_ID}/`;
+    let options: RequestInit = {};
     
-    // Call the Podio API to get all items in the app without filtering
-    const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/`);
+    if (contactId) {
+      console.log(`Fetching packing specs for contact ID: ${contactId}`);
+      
+      // Construct a filter payload to find items where the customer field references the contactId
+      const filterPayload = {
+        filters: {
+          "customer-brand-name": [contactId] // Reference field filtered by item_id
+        }
+      };
+      
+      // Use POST to apply filtering
+      options = {
+        method: 'POST',
+        body: JSON.stringify(filterPayload)
+      };
+    } else {
+      console.log(`Fetching all packing specs without contact filter`);
+    }
+    
+    // Call the Podio API to get all items in the app
+    const response = await callPodioApi(endpoint, options);
     
     if (!response || !response.items) {
       console.log('No items found in response');
@@ -235,3 +256,4 @@ export const updatePackingSpecStatus = async (
     throw error;
   }
 };
+

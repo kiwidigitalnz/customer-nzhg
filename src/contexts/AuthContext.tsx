@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (process.env.NODE_ENV === 'development' && !username && !password) {
         const dummyUser: UserData = {
           id: 1,
-          podioItemId: 1,
+          podioItemId: 1, // Set a dummy podioItemId for development
           name: "Test Company",
           email: "test@example.com",
           username: "testuser",
@@ -129,9 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.error);
       }
       
-      // Store user data in localStorage
+      // Store user data in localStorage - ensure podioItemId is included
       const userData = {
         id: data.id,
+        podioItemId: data.podioItemId || data.id, // Use podioItemId or fallback to id
         name: data.name,
         email: data.email,
         username: data.username,
@@ -208,3 +209,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+

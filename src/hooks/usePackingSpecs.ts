@@ -16,7 +16,7 @@ interface CategorizedSpecs {
 }
 
 export function usePackingSpecs() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +61,16 @@ export function usePackingSpecs() {
       return;
     }
     
-    console.log('Performing fetch of all packing specs');
+    // Get the user's podioItemId if available
+    const contactId = user?.podioItemId;
+    
+    console.log(`Performing fetch of packing specs for contact ID: ${contactId || 'none (showing all)'}`);
     fetchInProgressRef.current = true;
     setLoading(true);
     
     try {
-      // Call the API function without passing contactId
-      const data = await getPackingSpecsForContact();
+      // Call the API function with the contactId if available
+      const data = await getPackingSpecsForContact(contactId);
       
       // Process the data
       if (Array.isArray(data) && data.length > 0) {
@@ -142,7 +145,7 @@ export function usePackingSpecs() {
       setLoading(false);
       fetchInProgressRef.current = false;
     }
-  }, [isAuthenticated, toast]);
+  }, [isAuthenticated, toast, user?.podioItemId]);
 
   // Initial data loading effect
   useEffect(() => {
