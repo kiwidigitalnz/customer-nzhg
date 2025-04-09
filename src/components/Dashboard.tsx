@@ -8,7 +8,8 @@ import {
   isRateLimited, 
   isRateLimitedWithInfo,
   getCachedUserData,
-  cacheUserData
+  cacheUserData,
+  hasValidTokens
 } from '../services/podioAuth';
 import { getPackingSpecsForContact } from '../services/podioApi';
 import { 
@@ -299,19 +300,19 @@ const Dashboard = () => {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Authentication:</span>
-              <Badge variant={hasValidTokens() ? "success" : "destructive"} className="text-xs">
+              <Badge variant={hasValidTokens() ? "secondary" : "destructive"} className="text-xs">
                 {hasValidTokens() ? "Valid Token" : "No Valid Token"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Connection:</span>
-              <Badge variant={isRateLimitReached ? "destructive" : "success"} className="text-xs">
+              <Badge variant={isRateLimitReached ? "destructive" : "secondary"} className="text-xs">
                 {isRateLimitReached ? "Rate Limited" : "OK"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Data Status:</span>
-              <Badge variant={specs.length ? "success" : "outline"} className="text-xs">
+              <Badge variant={specs.length ? "secondary" : "outline"} className="text-xs">
                 {specs.length ? `${specs.length} Specs Found` : "No Specs Found"}
               </Badge>
             </div>

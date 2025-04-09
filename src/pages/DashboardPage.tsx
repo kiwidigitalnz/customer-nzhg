@@ -1,11 +1,12 @@
 
+
 import { useState, useEffect } from 'react';
 import Dashboard from '../components/Dashboard';
 import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured, isRateLimited, clearRateLimit } from '../services/podioApi';
+import { isPodioConfigured, isRateLimited, clearRateLimit, hasValidTokens } from '../services/podioAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import RateLimitWarning from '../components/RateLimitWarning';
