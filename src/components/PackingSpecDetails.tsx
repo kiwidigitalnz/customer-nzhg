@@ -241,9 +241,13 @@ const PackingSpecDetails = () => {
     
     try {
       console.log(`Attempting to add comment to spec ID ${spec.id}`);
+      
+      const companyName = user?.name || "Customer";
+      const formattedComment = `[${companyName}] ${newComment}`;
+      
       const success = await addCommentToPackingSpec(
         spec.id, 
-        newComment
+        formattedComment
       );
       
       if (success) {

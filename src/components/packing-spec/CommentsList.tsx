@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User, RefreshCcw, AlertCircle } from 'lucide-react';
@@ -103,17 +104,13 @@ const CommentsList: React.FC<CommentsListProps> = ({
         // Handle system messages specially - we'll still show their content
         if (isSystemOrAppComment) {
           displayName = "System Notification";
-          // For system messages, we keep the markdown formatting
         }
-        // Try to extract company name from comment format [CompanyName] Message
         else {
+          // Try to extract company name from comment format [CompanyName] Message
           const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
           if (companyMatch && companyMatch.length > 2) {
-            if (!isCurrentUserComment) {
-              // For messages from other users, use their company name from bracket
-              displayName = companyMatch[1];
-            }
-            // Extract just the message content without the [CompanyName] prefix
+            // Extract the company name and remove the prefix from the display text
+            displayName = companyMatch[1];
             commentText = companyMatch[2];
           }
           

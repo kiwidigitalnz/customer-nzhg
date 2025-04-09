@@ -95,22 +95,16 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
     
-    // Add the company name prefix to the comment
-    const companyName = user?.name || "Customer";
-    const formattedComment = `[${companyName}] ${newComment}`;
-    
-    // Temporarily update textarea to show the formatted comment
-    onNewCommentChange(formattedComment);
-    
     try {
+      // Don't format the comment for display yet - we want the raw input 
+      // from the user for the textarea
       await onAddComment();
+      
       // After successful submission, refresh to get the updated comment list
       setTimeout(() => {
         refreshComments();
       }, 1000);
     } catch (error) {
-      // If submission fails, restore the original comment text
-      onNewCommentChange(newComment);
       console.error('Error submitting comment:', error);
     }
   };
