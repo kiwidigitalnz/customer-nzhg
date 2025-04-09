@@ -108,9 +108,12 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const productName = getFieldValueByExternalId(item, 'product-name') || 'Unnamed Product';
       
       // Get the status field value and convert to our app's status format
-      const podioStatus = getFieldValueByExternalId(item, 'approval-status') || 'Unknown Status';
+      const podioStatus = getFieldValueByExternalId(item, 'approval-status');
+      // FIX: Handle null podioStatus with a default value
       const status: SpecStatus = mapPodioStatusToAppStatus(
-        typeof podioStatus === 'object' ? podioStatus.text : String(podioStatus)
+        typeof podioStatus === 'object' && podioStatus !== null 
+          ? podioStatus.text 
+          : (podioStatus !== null ? String(podioStatus) : 'Pending Approval')
       );
       
       // Get the customer approval status
@@ -157,8 +160,12 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         customerItemId: customerItemId || contactId, // Fallback to contactId if itemId not found
         created,
         updated,
-        customerApprovalStatus: typeof customerApprovalStatus === 'object' ? 
-          customerApprovalStatus.text : String(customerApprovalStatus),
+        // FIX: Handle null customerApprovalStatus with safe string conversion
+        customerApprovalStatus: customerApprovalStatus === null 
+          ? 'Pending' 
+          : (typeof customerApprovalStatus === 'object' 
+              ? customerApprovalStatus.text 
+              : String(customerApprovalStatus)),
         link,
         files,
         description,
