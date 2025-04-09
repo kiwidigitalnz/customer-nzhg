@@ -4,20 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './use-toast';
 import { 
   getPackingSpecsForContact, 
-  PackingSpec,
-  PODIO_CATEGORIES
-} from '../services/podio/podioPackingSpecs';
-import { 
-  isRateLimited, 
-  isRateLimitedWithInfo,
-  getCachedUserData,
-  cacheUserData,
-} from '../services/podio/podioAuth';
+  PackingSpec
+} from '../services/podioApi';
 import { SpecStatus } from '@/components/packing-spec/StatusBadge';
-
-// Constants
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const MIN_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
 interface CategorizedSpecs {
   pending: PackingSpec[];
@@ -34,110 +23,55 @@ export function usePackingSpecs() {
   const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const { toast } = useToast();
 
-  // Refs to track API call state
-  const fetchInProgress = useRef(false);
-  const lastFetchTimestamp = useRef(0);
-  const mountedRef = useRef(true);
-  const initialLoadCompleted = useRef(false);
+  // Mock data for development
+  const mockSpecs: PackingSpec[] = [
+    {
+      id: 1,
+      title: 'Sample Packing Specification',
+      productName: 'Premium Honey',
+      status: 'pending-approval' as SpecStatus,
+      customer: 'Test Customer',
+      customerItemId: 1234,
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+      customerApprovalStatus: 'Pending',
+      link: '#',
+      description: 'Sample packing specification',
+      createdAt: new Date().toISOString(),
+      details: {
+        product: 'Premium Honey',
+        productCode: 'PH-001',
+        umfMgo: 'UMF 10+',
+        honeyType: 'Manuka'
+      }
+    }
+  ];
 
-  // Generate cache key based on user ID
-  const getCacheKey = useCallback(() => {
-    return user ? `packing_specs_${user.id}` : null;
-  }, [user]);
-  
-  // Main fetch function with optimizations
+  // Simplified fetch function (placeholder)
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user || !isAuthenticated) {
       console.log('No authenticated user, skipping fetch');
       return;
     }
     
-    if (fetchInProgress.current) {
-      console.log('API call already in progress, skipping duplicate call');
-      return;
-    }
-    
-    const now = Date.now();
-    const cacheKey = getCacheKey();
-    
-    // First, check rate limit
-    const rateLimitInfo = isRateLimitedWithInfo();
-    if (rateLimitInfo.isLimited) {
-      console.log('Rate limited, using cached data if available');
-      setIsRateLimitReached(true);
-      
-      const cachedData = getCachedUserData(cacheKey || '');
-      if (cachedData) {
-        console.log('Using cached data during rate limit');
-        setSpecs(cachedData as PackingSpec[]);
-        setLoading(false);
-      }
-      return;
-    }
-    
-    // Then check refresh interval
-    if (!forceRefresh && (now - lastFetchTimestamp.current < MIN_REFRESH_INTERVAL)) {
-      console.log(`Skipping fetch due to recent attempt (${Math.round((now - lastFetchTimestamp.current) / 1000)}s ago)`);
-      return;
-    }
-    
-    // Load from cache first if available (immediate feedback)
-    if (!forceRefresh) {
-      const cachedData = getCachedUserData(cacheKey || '');
-      const cacheTimestamp = Number(localStorage.getItem(`podio_cache_${cacheKey}_timestamp`)) || 0;
-      const isCacheValid = cachedData && (now - cacheTimestamp < CACHE_DURATION);
-      
-      if (isCacheValid) {
-        console.log('Using recent cache data while fetching in background');
-        setSpecs(cachedData as PackingSpec[]);
-        setLoading(false);
-        initialLoadCompleted.current = true;
-        
-        // If cache is very fresh, don't fetch again
-        if (now - cacheTimestamp < MIN_REFRESH_INTERVAL) {
-          console.log('Cache is fresh, skipping network request');
-          return;
-        }
-      }
-    }
-    
-    // Set flags and state for fetch
-    fetchInProgress.current = true;
-    lastFetchTimestamp.current = now;
-    setError(null);
-    
-    if (!specs.length && !isRateLimitReached) {
-      setLoading(true);
-    }
-    
+    setLoading(true);
     try {
+      // Simulate API call
+      console.log('Placeholder: Fetching packing specs for user:', user.id);
+      
+      // Use actual API function but with safety wrapper
       const contactId = user.podioItemId || user.id;
       console.log(`Fetching specs for contact ID: ${contactId}`);
       
-      // Actual data fetch - no more auth prefetch or token verification
-      const data = await getPackingSpecsForContact(contactId);
+      // Uncomment the following when API is ready
+      // const data = await getPackingSpecsForContact(contactId);
       
-      // Only update state if component is still mounted
-      if (!mountedRef.current) return;
+      // Use mock data for now
+      const data = mockSpecs;
       
-      if (data && Array.isArray(data)) {
-        console.log(`Received ${data.length} packing specs from API`);
-        
-        if (data.length > 0) {
-          cacheUserData(cacheKey || '', data);
-        }
-        
-        setSpecs(data);
-        setIsRateLimitReached(false);
-        initialLoadCompleted.current = true;
-      } else {
-        console.warn('Received invalid data from API:', data);
-        setError('Invalid data format received');
-      }
+      setSpecs(data);
+      setIsRateLimitReached(false);
     } catch (error) {
-      // Only update error state if component is still mounted
-      if (!mountedRef.current) return;
-      
       console.error('Error fetching specs:', error);
       
       if (error instanceof Error) {
@@ -146,60 +80,28 @@ export function usePackingSpecs() {
         setError('Unknown error occurred');
       }
       
-      // Check if rate limited
-      if (isRateLimited()) {
-        setIsRateLimitReached(true);
-        
-        toast({
-          title: 'API Rate Limit Reached',
-          description: 'Using cached data if available. Please try again later.',
-          variant: 'destructive',
-        });
-        
-        // Try to use cached data
-        const cachedData = getCachedUserData(cacheKey || '');
-        if (cachedData) {
-          setSpecs(cachedData as PackingSpec[]);
-        }
-      } else if (!specs.length) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load packing specifications',
-          variant: 'destructive',
-        });
-      }
+      // Show toast notification for errors
+      toast({
+        title: 'Error',
+        description: 'Failed to load packing specifications',
+        variant: 'destructive',
+      });
     } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-      fetchInProgress.current = false;
+      setLoading(false);
     }
-  }, [user, isAuthenticated, getCacheKey, specs.length, isRateLimitReached, toast]);
+  }, [user, isAuthenticated, toast]);
 
-  // Initial data loading effect - simplified to avoid redundant checks
+  // Initial data loading effect
   useEffect(() => {
-    mountedRef.current = true;
-    
-    if (user && isAuthenticated && !initialLoadCompleted.current) {
-      const cacheKey = getCacheKey();
-      if (cacheKey) {
-        const cachedData = getCachedUserData(cacheKey);
-        if (cachedData) {
-          console.log('Using cached data on initial load');
-          setSpecs(cachedData as PackingSpec[]);
-          setLoading(false);
-        }
-      }
-      
-      // Only fetch once
-      console.log('Performing initial fetch of packing specs');
+    if (user && isAuthenticated) {
       fetchSpecs();
     }
     
+    // Cleanup function
     return () => {
-      mountedRef.current = false;
+      // Any cleanup if needed
     };
-  }, [user, isAuthenticated, fetchSpecs, getCacheKey]);
+  }, [user, isAuthenticated, fetchSpecs]);
 
   // Process specs into categories
   const categorizedSpecs: CategorizedSpecs = {
