@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { formatDate } from '@/utils/formatters';
 import { MessageSquare, Clock, User, RefreshCcw, AlertCircle, Bell } from 'lucide-react';
@@ -44,10 +45,18 @@ const CommentsList: React.FC<CommentsListProps> = ({
   } = useCommentPolling(
     specId || 0,
     initialComments,
-    isActive && !!specId
+    isActive && !!specId,
+    false // Disable automatic polling
   );
   
   const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
+  
+  // When tab becomes active, do an initial fetch
+  useEffect(() => {
+    if (isActive && specId) {
+      refreshComments();
+    }
+  }, [isActive, specId]);
   
   useEffect(() => {
     if (isActive && newCommentsCount > 0) {

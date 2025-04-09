@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,11 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onAddComment, 
   isAddingComment 
 }) => {
+  // Log when tab becomes active or inactive for debugging
+  useEffect(() => {
+    console.log(`Comments tab active state changed: ${isActive ? 'active' : 'inactive'}`);
+  }, [isActive]);
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       <Card className="shadow-sm border-muted">

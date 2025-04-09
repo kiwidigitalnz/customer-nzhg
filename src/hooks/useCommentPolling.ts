@@ -12,16 +12,18 @@ interface Comment {
 }
 
 /**
- * Custom hook that polls for new comments from Podio
+ * Custom hook that handles comments from Podio with manual refresh
  * @param itemId The ID of the item to get comments for
  * @param initialComments Initial comments to start with
- * @param isActive Whether polling should be active (e.g., comments tab is open)
- * @param pollingInterval How often to poll for new comments (in ms)
+ * @param isActive Whether the comments tab is active
+ * @param enableAutomaticPolling Whether to enable automatic polling (default: false)
+ * @param pollingInterval How often to poll for new comments if automatic polling is enabled (in ms)
  */
 export const useCommentPolling = (
   itemId: number,
   initialComments: Comment[] = [],
   isActive: boolean = true,
+  enableAutomaticPolling: boolean = false,
   pollingInterval: number = 15000
 ) => {
   const [comments, setComments] = useState<Comment[]>(initialComments);
@@ -45,7 +47,7 @@ export const useCommentPolling = (
 
   // Function to fetch comments
   const fetchComments = async () => {
-    if (!itemId || !isActive) return;
+    if (!itemId) return;
     
     setIsLoading(true);
     setError(null);
@@ -123,7 +125,7 @@ export const useCommentPolling = (
     }
   };
 
-  // Setup polling when component becomes active
+  // Setup polling or fetch comments once when component becomes active
   useEffect(() => {
     if (!isActive) {
       // Clear interval if component becomes inactive
@@ -135,11 +137,13 @@ export const useCommentPolling = (
       return;
     }
     
-    // Initial fetch on mount or when becoming active
+    // Initial fetch when tab becomes active
     fetchComments();
     
-    // Set up polling interval
-    pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
+    // Set up polling interval only if automatic polling is enabled
+    if (enableAutomaticPolling) {
+      pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
+    }
     
     // Mark comments as seen when tab is active
     if (isActive) {
@@ -157,7 +161,7 @@ export const useCommentPolling = (
         newCommentsTimeoutRef.current = null;
       }
     };
-  }, [itemId, isActive, pollingInterval]);
+  }, [itemId, isActive, enableAutomaticPolling, pollingInterval]);
 
   // Update comments if initialComments change
   useEffect(() => {
