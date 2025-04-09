@@ -5,7 +5,6 @@
 export {
   authenticateUser,
   isPodioConfigured,
-  hasValidTokens as hasValidPodioTokens,
   refreshPodioToken,
   callPodioApi,
   authenticateWithClientCredentials,

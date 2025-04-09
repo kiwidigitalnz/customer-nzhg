@@ -6,7 +6,6 @@ import { getFieldValueByExternalId } from './podio/podioFieldHelpers';
 export { 
   authenticateUser,
   isPodioConfigured,
-  hasValidTokens,
   refreshPodioToken,
   callPodioApi,
   authenticateWithClientCredentials,
