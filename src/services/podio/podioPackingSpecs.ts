@@ -1,4 +1,3 @@
-
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -61,20 +60,20 @@ export const PODIO_CATEGORIES = {
 // Get packing specs filtered by contact/customer
 export const getPackingSpecsForContact = async (contactId?: number): Promise<PackingSpec[]> => {
   try {
-    // If contactId is provided, use the filter endpoint
+    // Determine endpoint and options based on whether we're filtering
     let endpoint = `/item/app/${PODIO_PACKING_SPEC_APP_ID}/`;
     let options: RequestInit = {};
     
     if (contactId) {
       console.log(`Fetching packing specs for contact ID: ${contactId}`);
       
-      // Use the correct Podio API filter endpoint
+      // Use the filter endpoint with the correct field ID for customer/brand
       endpoint = `/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`;
       
-      // Construct the correct filter payload format according to Podio API docs
+      // Construct the filter payload using the field ID (265909622)
       const filterPayload = {
         filters: {
-          "customer-brand-name": [contactId]
+          "265909622": [contactId] // Using field ID instead of external ID
         }
       };
       
@@ -82,11 +81,13 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
         method: 'POST',
         body: JSON.stringify(filterPayload)
       };
+      
+      console.log('Filter payload:', filterPayload);
     } else {
       console.log(`Fetching all packing specs without contact filter`);
     }
     
-    // Call the Podio API to get the filtered or unfiltered items
+    // Call the Podio API
     const response = await callPodioApi(endpoint, options);
     
     if (!response || !response.items) {
@@ -98,7 +99,7 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
     
     // Map the Podio response to our PackingSpec interface
     const packingSpecs: PackingSpec[] = response.items.map((item: any) => {
-      // Extract the basic fields
+      // Extract basic fields
       const podioId = item.item_id;
       const title = item.title || 'Untitled Packing Spec';
       
@@ -115,21 +116,14 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       // Get the product name field value
       const productName = getFieldValueByExternalId(item, 'product-name') || 'Unnamed Product';
       
-      // Get the status field value and convert to our app's status format
+      // Get the status field value and convert to our app's status format with null handling
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
-      
-      // Handle null podioStatus with a default value
-      let statusText = 'Pending Approval';
-      if (podioStatus !== null && podioStatus !== undefined) {
-        statusText = typeof podioStatus === 'object' ? 
-          (podioStatus?.text || 'Pending Approval') : 
-          String(podioStatus);
-      }
-      
+      const statusText = podioStatus?.text || 'Pending Approval';
       const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
       
-      // Get the customer approval status
+      // Get the customer approval status with null handling
       const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status');
+      const approvalStatusText = customerApprovalStatus?.text || 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -162,22 +156,13 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
         lidColour: getFieldValueByExternalId(item, 'lid-color') || '',
       };
       
-      // Handle null customerApprovalStatus with a safe conversion
-      let approvalStatusText = 'Pending';
-      if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
-        approvalStatusText = typeof customerApprovalStatus === 'object' ? 
-          (customerApprovalStatus?.text || 'Pending') : 
-          String(customerApprovalStatus);
-      }
-      
-      // Return a properly formatted PackingSpec object
       return {
         id: podioId,
         title,
         productName,
         status,
         customer: customerName,
-        customerItemId: customerItemId || 0, // Use 0 as fallback if no customer ID found
+        customerItemId: customerItemId || 0,
         created,
         updated,
         customerApprovalStatus: approvalStatusText,
