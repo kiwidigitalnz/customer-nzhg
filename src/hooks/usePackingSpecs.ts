@@ -22,8 +22,9 @@ export function usePackingSpecs() {
   const [error, setError] = useState<string | null>(null);
   const [isRateLimitReached, setIsRateLimitReached] = useState(false);
   const { toast } = useToast();
+  const fetchInProgressRef = useRef(false);
 
-  // Mock data for development
+  // Mock data for development and fallback
   const mockSpecs: PackingSpec[] = [
     {
       id: 1,
@@ -47,47 +48,103 @@ export function usePackingSpecs() {
     }
   ];
 
-  // Simplified fetch function (placeholder)
+  // Fetch function with debouncing and error handling
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!user || !isAuthenticated) {
       console.log('No authenticated user, skipping fetch');
       return;
     }
     
+    // Prevent duplicate calls
+    if (fetchInProgressRef.current && !forceRefresh) {
+      console.log('API call already in progress, skipping duplicate call');
+      return;
+    }
+    
+    console.log('Performing initial fetch of packing specs');
+    fetchInProgressRef.current = true;
     setLoading(true);
+    
     try {
-      // Simulate API call
-      console.log('Placeholder: Fetching packing specs for user:', user.id);
-      
-      // Use actual API function but with safety wrapper
+      // Get contact ID from user
       const contactId = user.podioItemId || user.id;
       console.log(`Fetching specs for contact ID: ${contactId}`);
       
-      // Uncomment the following when API is ready
-      // const data = await getPackingSpecsForContact(contactId);
+      // Call the API function
+      const data = await getPackingSpecsForContact(contactId);
       
-      // Use mock data for now
-      const data = mockSpecs;
-      
-      setSpecs(data);
-      setIsRateLimitReached(false);
+      // Process the data
+      if (Array.isArray(data) && data.length > 0) {
+        setSpecs(data);
+        // Cache the data for fallback
+        localStorage.setItem('cached_packing_specs', JSON.stringify(data));
+        setIsRateLimitReached(false);
+      } else {
+        // If no data is returned, use cached data if available
+        const cachedData = localStorage.getItem('cached_packing_specs');
+        if (cachedData) {
+          setSpecs(JSON.parse(cachedData));
+          console.log('Using cached packing specs data');
+        } else {
+          // Default to mock data in development
+          if (process.env.NODE_ENV === 'development') {
+            setSpecs(mockSpecs);
+            console.log('Using mock packing specs data for development');
+          } else {
+            setSpecs([]);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching specs:', error);
       
       if (error instanceof Error) {
         setError(error.message);
+        
+        // Check for rate limiting in the error message
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
+          setIsRateLimitReached(true);
+          toast({
+            title: 'Rate Limit Reached',
+            description: 'Too many requests. Please try again later.',
+            variant: 'destructive',
+          });
+          
+          // Try to use cached data
+          const cachedData = localStorage.getItem('cached_packing_specs');
+          if (cachedData) {
+            setSpecs(JSON.parse(cachedData));
+            console.log('Using cached packing specs data due to rate limiting');
+          } else if (process.env.NODE_ENV === 'development') {
+            setSpecs(mockSpecs);
+          }
+        } else {
+          // General error
+          toast({
+            title: 'Error',
+            description: 'Failed to load packing specifications',
+            variant: 'destructive',
+          });
+        }
       } else {
         setError('Unknown error occurred');
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while loading specifications',
+          variant: 'destructive',
+        });
       }
       
-      // Show toast notification for errors
-      toast({
-        title: 'Error',
-        description: 'Failed to load packing specifications',
-        variant: 'destructive',
-      });
+      // Fallback to cached or mock data
+      const cachedData = localStorage.getItem('cached_packing_specs');
+      if (cachedData) {
+        setSpecs(JSON.parse(cachedData));
+      } else if (process.env.NODE_ENV === 'development') {
+        setSpecs(mockSpecs);
+      }
     } finally {
       setLoading(false);
+      fetchInProgressRef.current = false;
     }
   }, [user, isAuthenticated, toast]);
 

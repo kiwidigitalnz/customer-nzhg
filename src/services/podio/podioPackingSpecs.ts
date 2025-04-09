@@ -58,21 +58,24 @@ export const PODIO_CATEGORIES = {
   }
 };
 
-// Get all packing specs for a contact - no authentication check
+// Get all packing specs for a contact
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
     console.log(`Fetching packing specs for contact ID: ${contactId}`);
     
-    // Create the filter with the correct field key and values array
+    // Follow the Podio API filter format correctly
+    // Use the views/filter endpoint with the correct payload structure
     const filterData = {
-      fields: {
-        "customer-brand-name": [contactId]
+      filters: {
+        "customer-brand-name": {
+          values: [contactId]
+        }
       }
     };
     
     console.log(`Filtering packing specs with format:`, JSON.stringify(filterData));
     
-    // Call the Podio API with the filter - no authentication check
+    // Call the Podio API with the filter using the views endpoint
     const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
       body: JSON.stringify(filterData)
@@ -92,68 +95,26 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const title = item.title || 'Untitled Packing Spec';
       
       // Get the customer field value (ref to another item)
-      const customerField = item.fields?.find((f: any) => f.external_id === 'customer-brand-name');
+      const customerField = getFieldValueByExternalId(item, 'customer-brand-name');
       let customerName = 'Unknown Customer';
       let customerItemId = null;
       
-      if (customerField && typeof customerField === 'object') {
-        if (customerField.values && Array.isArray(customerField.values) && customerField.values.length > 0) {
-          const valueData = customerField.values[0];
-          if (valueData && typeof valueData === 'object' && valueData.value) {
-            if (Array.isArray(valueData.value) && valueData.value.length > 0) {
-              customerName = valueData.value[0]?.title || 'Unknown Customer';
-              customerItemId = valueData.value[0]?.item_id;
-            } else if (typeof valueData.value === 'object') {
-              customerName = valueData.value?.title || 'Unknown Customer';
-              customerItemId = valueData.value?.item_id;
-            }
-          }
-        }
+      if (customerField && Array.isArray(customerField) && customerField.length > 0) {
+        customerName = customerField[0]?.title || 'Unknown Customer';
+        customerItemId = customerField[0]?.item_id;
       }
       
       // Get the product name field value
-      const productNameField = item.fields?.find((f: any) => f.external_id === 'product-name');
-      let productName = 'Unnamed Product';
+      const productName = getFieldValueByExternalId(item, 'product-name') || 'Unnamed Product';
       
-      if (productNameField && typeof productNameField === 'object') {
-        if (productNameField.values && Array.isArray(productNameField.values) && 
-            productNameField.values.length > 0 && productNameField.values[0].value) {
-          productName = productNameField.values[0].value || 'Unnamed Product';
-        }
-      }
-      
-      // Get the status field value
-      const statusField = item.fields?.find((f: any) => f.external_id === 'approval-status');
-      let podioStatus = 'Unknown Status';
-      
-      if (statusField && typeof statusField === 'object') {
-        if (statusField.values && Array.isArray(statusField.values) && 
-            statusField.values.length > 0 && statusField.values[0].value) {
-          if (typeof statusField.values[0].value === 'object') {
-            podioStatus = statusField.values[0].value.text || 'Unknown Status';
-          } else {
-            podioStatus = String(statusField.values[0].value);
-          }
-        }
-      }
-      
-      // Convert podio status to our app's status format
-      const status: SpecStatus = mapPodioStatusToAppStatus(podioStatus);
+      // Get the status field value and convert to our app's status format
+      const podioStatus = getFieldValueByExternalId(item, 'approval-status') || 'Unknown Status';
+      const status: SpecStatus = mapPodioStatusToAppStatus(
+        typeof podioStatus === 'object' ? podioStatus.text : String(podioStatus)
+      );
       
       // Get the customer approval status
-      const customerApprovalField = item.fields?.find((f: any) => f.external_id === 'customer-approval-status');
-      let customerApprovalStatus = 'Pending';
-      
-      if (customerApprovalField && typeof customerApprovalField === 'object') {
-        if (customerApprovalField.values && Array.isArray(customerApprovalField.values) && 
-            customerApprovalField.values.length > 0 && customerApprovalField.values[0].value) {
-          if (typeof customerApprovalField.values[0].value === 'object') {
-            customerApprovalStatus = customerApprovalField.values[0].value.text || 'Pending';
-          } else {
-            customerApprovalStatus = String(customerApprovalField.values[0].value);
-          }
-        }
-      }
+      const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status') || 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -173,10 +134,17 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const description = 'Packing specification'; // Default description
       const createdAt = created;
       
-      // Create details object with product field
+      // Extract additional details for the spec
       const details = {
         product: productName,
-        productCode: item.fields?.find((f: any) => f.external_id === 'product-code')?.values?.[0]?.value || ''
+        productCode: getFieldValueByExternalId(item, 'product-code') || '',
+        umfMgo: getFieldValueByExternalId(item, 'umf-mgo') || '',
+        honeyType: getFieldValueByExternalId(item, 'honey-type') || '',
+        jarSize: getFieldValueByExternalId(item, 'jar-size') || '',
+        jarColour: getFieldValueByExternalId(item, 'jar-color') || '',
+        jarMaterial: getFieldValueByExternalId(item, 'jar-material') || '',
+        lidSize: getFieldValueByExternalId(item, 'lid-size') || '',
+        lidColour: getFieldValueByExternalId(item, 'lid-color') || '',
       };
       
       // Return a properly formatted PackingSpec object
@@ -189,10 +157,10 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         customerItemId: customerItemId || contactId, // Fallback to contactId if itemId not found
         created,
         updated,
-        customerApprovalStatus,
+        customerApprovalStatus: typeof customerApprovalStatus === 'object' ? 
+          customerApprovalStatus.text : String(customerApprovalStatus),
         link,
         files,
-        // Add the following to match the Dashboard.tsx interface
         description,
         createdAt,
         details
@@ -206,7 +174,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   }
 };
 
-// Get details for a specific packing spec - no authentication check
+// Get details for a specific packing spec
 export const getPackingSpecDetails = async (specId: number): Promise<any> => {
   try {
     console.log(`Fetching packing spec details for ID: ${specId}`);
@@ -233,7 +201,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
   }
 };
 
-// Update the status of a packing spec - no authentication check
+// Update the status of a packing spec
 export const updatePackingSpecStatus = async (
   specId: number, 
   status: string,
@@ -252,6 +220,14 @@ export const updatePackingSpecStatus = async (
       method: 'PUT',
       body: JSON.stringify({ fields })
     });
+    
+    // Add a comment if provided
+    if (comments) {
+      await callPodioApi(`/comment/item/${specId}`, {
+        method: 'POST',
+        body: JSON.stringify({ value: comments })
+      });
+    }
     
     console.log('Packing spec update response:', response);
     return true;

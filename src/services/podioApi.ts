@@ -1,4 +1,3 @@
-
 // This file serves as the main entry point for Podio API services
 
 // Export authentication-related functions
@@ -33,70 +32,25 @@ export {
   validatePodioAuthState
 } from './podio/podioOAuth';
 
-// Create placeholder packing spec related functions and types
-export const PODIO_CATEGORIES = {
-  PENDING_APPROVAL: "Pending Approval",
-  APPROVED: "Approved",
-  NEEDS_CHANGES: "Needs Changes",
-  DRAFT: "Draft",
-  APPROVAL_STATUS: {
-    APPROVED_BY_CUSTOMER: { id: 1, text: "Approved by Customer" },
-    CHANGES_REQUESTED: { id: 2, text: "Changes Requested" }
-  }
-};
+// Export packing specs related functions, types and constants
+export {
+  getPackingSpecsForContact,
+  getPackingSpecDetails,
+  updatePackingSpecStatus,
+  PODIO_CATEGORIES,
+  type PackingSpec
+} from './podio/podioPackingSpecs';
 
-// Placeholder functions for packing specs
-export const getPackingSpecsForContact = async (contactId: number) => {
-  console.log('Placeholder: getPackingSpecsForContact called with ID:', contactId);
-  return [];
-};
+// Export field helper functions from the correct file
+export {
+  getFieldValueByExternalId,
+  getFieldIdValue,
+  getDateFieldValue,
+  extractPodioImages,
+  mapPodioStatusToAppStatus
+} from './podio/podioFieldHelpers';
 
-export const getPackingSpecDetails = async (specId: number) => {
-  console.log('Placeholder: getPackingSpecDetails called with ID:', specId);
-  return null;
-};
-
-export const updatePackingSpecStatus = async (
-  specId: number, 
-  status: string,
-  comments?: string
-) => {
-  console.log('Placeholder: updatePackingSpecStatus called', { specId, status, comments });
-  return true;
-};
-
-// Placeholder for PackingSpec type
-export interface PackingSpec {
-  id: number;
-  title: string;
-  productName: string;
-  status: any;
-  customer: string;
-  customerItemId: number;
-  created: string;
-  updated: string;
-  customerApprovalStatus: string;
-  link: string;
-  description: string;
-  createdAt: string;
-  details: {
-    product: string;
-    [key: string]: any;
-  };
-  files?: Array<{
-    id: number;
-    name: string;
-    link: string;
-  }>;
-  comments?: Array<{
-    id: number;
-    text: string;
-    createdBy: string;
-    createdAt: string;
-  }>;
-}
-
-// Placeholder functions for comments
+// Export comment functions
 export const getCommentsFromPodio = async (itemId: number) => {
   console.log('Placeholder: getCommentsFromPodio called with ID:', itemId);
   return [];
@@ -129,12 +83,3 @@ export const uploadFileToPodio = async (file: File, itemId: number, fieldId: num
 export const shouldProceedWithoutSignature = () => {
   return false;
 };
-
-// Export field helper functions from the correct file
-export {
-  getFieldValueByExternalId,
-  getFieldIdValue,
-  getDateFieldValue,
-  extractPodioImages,
-  mapPodioStatusToAppStatus
-} from './podio/podioFieldHelpers';
