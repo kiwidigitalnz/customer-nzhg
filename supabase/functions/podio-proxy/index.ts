@@ -47,16 +47,17 @@ serve(async (req) => {
       console.log('Using Contacts app token');
     }
 
-    // Get Podio access token from request headers or auth server
+    // First try to get token from the request Authorization header
     let accessToken;
     const authHeader = req.headers.get('Authorization');
+    let tokenSource = '';
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       accessToken = authHeader.substring(7);
-      console.log('Using provided access token from client');
+      tokenSource = 'request header';
+      console.log('Using access token from client request headers');
     } else {
-      // Get one from client credentials - this aligns with Podio server-side auth
-      // https://developers.podio.com/authentication/server_side
+      // If no token in request header, try client credentials authentication
       const clientId = Deno.env.get('PODIO_CLIENT_ID');
       const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
       
@@ -71,7 +72,9 @@ serve(async (req) => {
         );
       }
       
-      console.log('No token provided, getting one via client credentials');
+      console.log('No token in request header, getting one via client credentials');
+      tokenSource = 'client credentials';
+      
       try {
         const authResponse = await fetch('https://podio.com/oauth/token', {
           method: 'POST',
@@ -106,8 +109,7 @@ serve(async (req) => {
         
         const authData = await authResponse.json();
         accessToken = authData.access_token;
-        console.log('Successfully obtained access token via client credentials');
-        console.log(`Token type: ${authData.token_type}, expires in: ${authData.expires_in} seconds`);
+        console.log(`Successfully obtained access token via client credentials (expires in: ${authData.expires_in} seconds)`);
       } catch (authError) {
         console.error('Error authenticating with Podio:', authError);
         return new Response(
@@ -122,9 +124,12 @@ serve(async (req) => {
     }
 
     if (!accessToken) {
-      console.error('Failed to obtain access token');
+      console.error('Failed to obtain access token from any source');
       return new Response(
-        JSON.stringify({ error: 'Access token not available' }),
+        JSON.stringify({ 
+          error: 'Access token not available',
+          details: 'Could not obtain a valid token from request header or client credentials' 
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -147,6 +152,7 @@ serve(async (req) => {
     const fullUrl = `https://api.podio.com${normalizedEndpoint}`;
     console.log(`Full URL: ${fullUrl}`);
     console.log(`Method: ${method}`);
+    console.log(`Token source: ${tokenSource}`);
     
     // Debug log the request details
     if (body) {
@@ -160,15 +166,12 @@ serve(async (req) => {
         } else if (normalizedEndpoint.includes('/filter') && parsedBody.fields) {
           console.log('Using fields filter structure:', JSON.stringify(parsedBody.fields, null, 2));
         }
-        
       } catch (e) {
         console.log(`Body: ${body.substring(0, 200) + (body.length > 200 ? '...' : '')}`);
       }
     } else {
       console.log(`Body: None`);
     }
-    
-    console.log(`App Token: ${appToken ? 'Detected from endpoint' : 'Not used for this endpoint'}`);
 
     // Make the actual request to Podio API
     const podioResponse = await fetch(fullUrl, {
@@ -204,8 +207,25 @@ serve(async (req) => {
         method,
         hasBody: !!body,
         hasAppToken: !!appToken,
+        tokenSource,
         statusCode: podioResponse.status
       });
+      
+      // Return error response with original status code and detailed information
+      return new Response(
+        JSON.stringify({
+          error: `Podio API error (${podioResponse.status})`,
+          details: responseData,
+          requestInfo: {
+            endpoint: normalizedEndpoint,
+            method
+          }
+        }),
+        { 
+          status: podioResponse.status, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     } else {
       // Debug log a sample of the response for successful calls
       console.log('Podio API successful response snippet:', 
@@ -237,27 +257,6 @@ serve(async (req) => {
         }),
         { 
           status: 429, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Check for auth errors
-    if (podioResponse.status === 401 || podioResponse.status === 403) {
-      console.warn(`Authentication error: ${podioResponse.status}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: podioResponse.status === 401 ? 'Authentication failed' : 'Access denied',
-          details: responseData,
-          status: podioResponse.status,
-          requestInfo: {
-            endpoint: normalizedEndpoint,
-            method
-          }
-        }),
-        { 
-          status: podioResponse.status, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );

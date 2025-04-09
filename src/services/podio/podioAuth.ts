@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -266,12 +267,19 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
     
     // Get the access token from localStorage
-    const accessToken = localStorage.getItem('podio_access_token');
-    if (!accessToken) {
-      console.error('No access token available, attempting to refresh');
+    let accessToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    
+    // If no token is available or it's expired, try to refresh it
+    if (!accessToken || !hasValidTokens()) {
+      console.log('No valid access token available, attempting to refresh');
       const refreshed = await refreshPodioToken();
       if (!refreshed) {
         throw new Error('Failed to obtain Podio access token');
+      }
+      // Get the new token after refresh
+      accessToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!accessToken) {
+        throw new Error('Still no access token available after refresh');
       }
     }
     
@@ -296,41 +304,55 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       }
     }
     
+    // Add authorization header only if token is available
+    const headers: { [key: string]: string } = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
-      headers: {
-        // Include access token in the Authorization header
-        'Authorization': `Bearer ${accessToken}`
-      },
+      headers,
       body: payload
     });
     
     const { data, error } = response;
     
-    // Handle rate limiting - check for 429 in error or message
-    if (error && (error.message?.includes('429') || response.error?.status === 429)) {
-      console.error('API call rate limited:', error);
-      setRateLimit(endpoint);
-      throw new Error('Rate limit reached. Please try again later.');
-    }
-    
-    // Handle other error responses
+    // Enhanced error handling with detailed logging
     if (error) {
       console.error('Podio API error:', error);
+      console.error('Error context:', {
+        endpoint: normalizedEndpoint,
+        method: options.method || 'GET',
+        hasToken: Boolean(accessToken),
+        statusCode: error.status || error.code
+      });
+      
+      // Handle rate limiting - check for 429 in error or message
+      if (error.message?.includes('429') || response.error?.status === 429) {
+        console.error('API call rate limited:', error);
+        setRateLimit(endpoint);
+        throw new Error('Rate limit reached. Please try again later.');
+      }
       
       // Handle authentication errors
-      if (error.message?.includes('401') || error.message?.includes('403')) {
-        if (error.message?.includes('401')) {
+      if (error.message?.includes('401') || error.message?.includes('403') || 
+          error.status === 401 || error.status === 403) {
+        console.warn('Authentication error detected:', error.message);
+        
+        if (error.message?.includes('401') || error.status === 401) {
           console.warn('Authentication failed, clearing tokens and trying to refresh');
-          // Try to refresh the token instead of just clearing
-          await refreshPodioToken();
-          if (hasValidTokens()) {
+          // Clear tokens and try to refresh
+          clearTokens();
+          const refreshSuccess = await refreshPodioToken();
+          
+          if (refreshSuccess) {
+            console.log('Token refreshed successfully, retrying the request');
             // If refresh was successful, retry the call once
             return callPodioApi(endpoint, options);
           } else {
-            // If refresh failed, clear tokens and throw error
-            clearTokens();
+            console.error('Token refresh failed, authentication error persists');
             throw new Error('Authentication failed. Please log in again.');
           }
         } else {
@@ -338,6 +360,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         }
       }
       
+      // Handle other error types
       throw new Error(error.message || 'Podio API error');
     }
     
