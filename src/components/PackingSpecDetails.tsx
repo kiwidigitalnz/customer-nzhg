@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -105,7 +104,6 @@ const PackingSpecDetails = () => {
   }, [specId, user, navigate]);
 
   const handleGoBack = () => {
-    // Navigate back to dashboard with replace to force a refresh
     navigate('/dashboard', { replace: true });
   };
 
@@ -122,20 +120,12 @@ const PackingSpecDetails = () => {
     setIsUpdatingStatus(true);
     
     try {
-      const approvalData = {
-        approvedByName: data.approvedByName,
-        comments: data.comments || '',
-        signature: data.signature,
-        status: 'approve-specification'
-      };
-      
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
       
       const success = await updatePackingSpecStatus(
         spec.id, 
         'approved-by-customer',
-        comments,
-        approvalData
+        comments
       );
       
       if (success) {
@@ -145,7 +135,6 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        // Update state after a brief delay to avoid UI conflicts
         setTimeout(() => {
           setSpec(prev => prev ? {
             ...prev, 
@@ -173,7 +162,6 @@ const PackingSpecDetails = () => {
         variant: 'destructive',
       });
     } finally {
-      // Use a timeout to ensure all state updates settle
       setTimeout(() => {
         setIsSubmitting(false);
         setIsApprovalPending(false);
@@ -190,16 +178,10 @@ const PackingSpecDetails = () => {
     setIsUpdatingStatus(true);
     
     try {
-      const rejectionData = {
-        customerRequestedChanges: data.customerRequestedChanges,
-        status: 'request-changes'
-      };
-      
       const success = await updatePackingSpecStatus(
         spec.id, 
         'changes-requested',
-        data.customerRequestedChanges,
-        rejectionData
+        data.customerRequestedChanges
       );
       
       if (success) {
@@ -209,7 +191,6 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        // Update state after a brief delay to avoid UI conflicts
         setTimeout(() => {
           setSpec(prev => prev ? {
             ...prev, 
@@ -235,7 +216,6 @@ const PackingSpecDetails = () => {
         variant: 'destructive',
       });
     } finally {
-      // Use a timeout to ensure all state updates settle
       setTimeout(() => {
         setIsSubmitting(false);
         setIsUpdatingStatus(false);
@@ -356,8 +336,6 @@ const PackingSpecDetails = () => {
     </div>
   );
 
-  // Determine if there are any pending changes by checking if a signature has been provided
-  // but not yet submitted for approval
   const hasPendingChanges = isApprovalPending;
 
   return (

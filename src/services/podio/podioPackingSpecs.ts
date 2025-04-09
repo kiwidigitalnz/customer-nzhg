@@ -15,11 +15,34 @@ export interface PackingSpec {
   updated: string;
   customerApprovalStatus: string;
   link: string;
+  description?: string;     // Added to match Dashboard.tsx PackingSpec
+  createdAt?: string;       // Added to match Dashboard.tsx PackingSpec
+  details?: {               // Added to match Dashboard.tsx PackingSpec
+    product: string;
+    productCode?: string;
+    umfMgo?: string;
+    honeyType?: string;
+    jarSize?: string;
+    jarColour?: string;
+    jarMaterial?: string;
+    lidSize?: string;
+    lidColour?: string;
+    batchSize?: string;
+    packagingType?: string;
+    specialRequirements?: string;
+    [key: string]: any;
+  };
   files?: {
     id: number;
     name: string;
     link: string;
   }[];
+  comments?: Array<{       // Added to match Dashboard.tsx PackingSpec
+    id: number;
+    text: string;
+    createdBy: string;
+    createdAt: string;
+  }>;
 }
 
 // Define categories for easier search/filter
@@ -28,6 +51,10 @@ export const PODIO_CATEGORIES = {
   APPROVED: "Approved",
   NEEDS_CHANGES: "Needs Changes",
   DRAFT: "Draft",
+  APPROVAL_STATUS: {
+    APPROVED_BY_CUSTOMER: { id: 1, text: "Approved by Customer" },
+    CHANGES_REQUESTED: { id: 2, text: "Changes Requested" }
+  }
 };
 
 // Get all packing specs for a contact
@@ -81,15 +108,16 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       
       // Get the product name field value
       const productNameField = getFieldValueByExternalId(item, 'product-name');
-      const productName = productNameField?.value || 'Unnamed Product';
+      const productName = productNameField && productNameField.value ? productNameField.value : 'Unnamed Product';
       
       // Get the status field value
       const statusField = getFieldValueByExternalId(item, 'approval-status');
-      const status = statusField?.value?.text || 'Unknown Status';
+      const status = statusField && statusField.value && statusField.value.text ? statusField.value.text : 'Unknown Status';
       
       // Get the customer approval status
       const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
-      const customerApprovalStatus = customerApprovalField?.value?.text || 'Pending';
+      const customerApprovalStatus = customerApprovalField && customerApprovalField.value && customerApprovalField.value.text ? 
+        customerApprovalField.value.text : 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
@@ -105,6 +133,16 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         link: file.link
       })) : [];
       
+      // Add additional properties required by Dashboard component
+      const description = 'Packing specification'; // Default description
+      const createdAt = created;
+      
+      // Create details object with product field
+      const details = {
+        product: productName,
+        productCode: item.fields?.find((f: any) => f.external_id === 'product-code')?.values?.[0]?.value || ''
+      };
+      
       // Return a properly formatted PackingSpec object
       return {
         id: podioId,
@@ -117,7 +155,11 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         updated,
         customerApprovalStatus,
         link,
-        files
+        files,
+        // Add the following to match the Dashboard.tsx interface
+        description,
+        createdAt,
+        details
       };
     });
     
@@ -161,8 +203,8 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
 // Update the status of a packing spec
 export const updatePackingSpecStatus = async (
   specId: number, 
-  status: string, 
-  additionalFields?: any
+  status: string,
+  comments?: string
 ): Promise<boolean> => {
   try {
     console.log(`Updating packing spec ${specId} status to: ${status}`);
@@ -171,11 +213,6 @@ export const updatePackingSpecStatus = async (
     const fields: any = {
       'customer-approval-status': status
     };
-    
-    // Add any additional fields from the parameters
-    if (additionalFields) {
-      Object.assign(fields, additionalFields);
-    }
     
     // Call the Podio API to update the item
     const response = await callPodioApi(`/item/${specId}`, {

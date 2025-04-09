@@ -177,18 +177,10 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     try {
       const comments = data.comments ? `Approved by ${data.approvedByName}. ${data.comments}` : `Approved by ${data.approvedByName}`;
       
-      const approvalData = {
-        approvedByName: data.approvedByName,
-        comments: data.comments || '',
-        signature: data.signature,
-        status: 'approve-specification'
-      };
-      
       const success = await updatePackingSpecStatus(
         selectedSpec.id, 
         'approved-by-customer',
-        comments,
-        approvalData
+        comments
       );
       
       if (success) {
@@ -231,16 +223,10 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     setError(null);
     
     try {
-      const rejectionData = {
-        customerRequestedChanges: data.customerRequestedChanges,
-        status: 'request-changes'
-      };
-      
       const success = await updatePackingSpecStatus(
         selectedSpec.id, 
         'changes-requested',
-        data.customerRequestedChanges,
-        rejectionData
+        data.customerRequestedChanges
       );
       
       if (success) {
