@@ -1,26 +1,17 @@
 
 import { useState, useEffect } from 'react';
-import PackingSpecDetails from '../components/PackingSpecDetails';
 import MainLayout from '../components/MainLayout';
 import { Package, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { isPodioConfigured } from '../services/podioApi';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 const PackingSpecDetailsPage = () => {
   const [loading, setLoading] = useState(true);
-  const [podioError, setPodioError] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Check Podio configuration
-    const podioConfigured = isPodioConfigured();
-    
-    if (!podioConfigured) {
-      setPodioError(true);
-    }
-    
     // Simulate loading for better UX
     const timer = setTimeout(() => {
       setLoading(false);
@@ -31,7 +22,6 @@ const PackingSpecDetailsPage = () => {
   
   // Function to handle navigating back to dashboard
   const handleBackToDashboard = () => {
-    // Force a refresh of the dashboard when going back
     navigate('/', { replace: true });
   };
   
@@ -46,25 +36,27 @@ const PackingSpecDetailsPage = () => {
             subtext="This may take a moment"
           />
         </div>
-      ) : podioError ? (
+      ) : (
         <div className="container mx-auto px-4 py-8">
+          <Button variant="outline" onClick={handleBackToDashboard} className="mb-6">
+            Back to Dashboard
+          </Button>
+          
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Connection Issue</AlertTitle>
+            <AlertTitle>Feature Unavailable</AlertTitle>
             <AlertDescription>
-              We're having trouble connecting to our data service. Please try again later or contact support.
+              The packing specification feature is currently being rebuilt.
             </AlertDescription>
           </Alert>
+          
           <div className="text-center py-16">
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Service Temporarily Unavailable</h2>
+            <h2 className="text-2xl font-bold text-gray-700 mb-2">Packing Specification System</h2>
             <p className="text-gray-600 max-w-md mx-auto">
-              We're working to restore full functionality as soon as possible. 
-              Please check back later or contact our support team for assistance.
+              The packing specification system is being redeveloped. Please check back later.
             </p>
           </div>
         </div>
-      ) : (
-        <PackingSpecDetails />
       )}
     </MainLayout>
   );

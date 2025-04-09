@@ -11,9 +11,6 @@ export {
   validateContactsAppAccess,
   clearTokens as clearPodioTokens,
   PODIO_CONTACTS_APP_ID,
-  PODIO_PACKING_SPEC_APP_ID,
-  CONTACT_FIELD_IDS,
-  PACKING_SPEC_FIELD_IDS,
   isRateLimited,
   isRateLimitedWithInfo,
   setRateLimit,
@@ -32,23 +29,6 @@ export {
   getPodioAuthUrl,
   validatePodioAuthState
 } from './podio/podioOAuth';
-
-// Export packing spec related functions and types
-export {
-  getPackingSpecsForContact,
-  getPackingSpecDetails,
-  updatePackingSpecStatus,
-  PODIO_CATEGORIES
-} from './podio/podioPackingSpecs';
-export type { PackingSpec } from './podio/podioPackingSpecs';
-
-// Export comment-related functions and types
-export {
-  getCommentsFromPodio,
-  addCommentToPodio,
-  addCommentToPackingSpec,
-} from './podio/podioComments';
-export type { CommentItem } from './podio/podioComments';
 
 // Export file upload related functions
 export {

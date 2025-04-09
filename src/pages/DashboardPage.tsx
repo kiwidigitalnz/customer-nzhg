@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import Dashboard from '../components/Dashboard';
 import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -65,7 +64,14 @@ const DashboardPage = () => {
           </div>
         </div>
       ) : (
-        <Dashboard />
+        <div className="container mx-auto px-4 py-8 animate-fade-in">
+          <div className="text-center py-16">
+            <h2 className="text-2xl font-bold text-gray-700 mb-2">Welcome to Your Dashboard</h2>
+            <p className="text-gray-600 max-w-md mx-auto">
+              This is a placeholder for your dashboard content.
+            </p>
+          </div>
+        </div>
       )}
     </MainLayout>
   );
