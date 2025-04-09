@@ -6,6 +6,8 @@ export interface CommentItem {
   text: string;
   createdBy: string;
   createdAt: string;
+  rich_value?: string;
+  files?: any[];
 }
 
 // Get comments for a specific item from Podio
@@ -18,10 +20,11 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
     
     console.log(`Fetching comments for Podio item ID: ${itemId}`);
     // Call the correct Podio API endpoint for comments
+    // According to Podio docs: GET /comment/item/{item_id}/
     const response = await callPodioApi(`/comment/item/${itemId}/`);
     
-    if (!response || !response.comments) {
-      console.warn('No comments found in Podio response', response);
+    if (!response || !Array.isArray(response.comments)) {
+      console.warn('No comments found in Podio response or invalid format', response);
       return [];
     }
     
@@ -43,11 +46,16 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
         creatorName = comment.user.name;
       }
       
+      // Determine text content: prefer rich_value over value
+      const textContent = comment.rich_value || comment.value || '';
+      
       return {
         id: comment.comment_id,
-        text: comment.value || comment.rich_value || '',
+        text: textContent,
         createdBy: creatorName,
-        createdAt: comment.created_on || new Date().toISOString()
+        createdAt: comment.created_on || new Date().toISOString(),
+        rich_value: comment.rich_value,
+        files: comment.files || []
       };
     });
   } catch (error) {
@@ -71,7 +79,8 @@ export const addCommentToPodio = async (itemId: number, comment: string): Promis
     
     console.log(`Adding comment to Podio item ID: ${itemId}`);
     
-    // Call the correct Podio API endpoint with POST method
+    // According to Podio docs, we should POST to /comment/item/{item_id}/
+    // The request body needs a 'value' field with the comment text
     const response = await callPodioApi(`/comment/item/${itemId}/`, {
       method: 'POST',
       body: JSON.stringify({
@@ -79,8 +88,8 @@ export const addCommentToPodio = async (itemId: number, comment: string): Promis
       })
     });
     
-    if (!response) {
-      console.warn('No response received when adding comment to Podio');
+    if (!response || !response.comment_id) {
+      console.warn('No valid response received when adding comment to Podio:', response);
       return false;
     }
     

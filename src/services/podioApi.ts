@@ -59,12 +59,5 @@ export {
   type CommentItem
 } from './podio/podioComments';
 
-// Placeholder file upload related functions
-export const uploadFileToPodio = async (file: File, itemId: number, fieldId: number) => {
-  console.log('Placeholder: uploadFileToPodio called', { itemId, fieldId });
-  return { fileId: 12345, name: file.name };
-};
-
-export const shouldProceedWithoutSignature = () => {
-  return false;
-};
+// Export file upload related functions from the dedicated file
+export { uploadFileToPodio, shouldProceedWithoutSignature } from './podio/podioFiles';

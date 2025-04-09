@@ -1,63 +1,33 @@
 
 import { callPodioApi } from './podioAuth';
 
-// Upload a file to Podio
-export const uploadFileToPodio = async (fileDataUrl: string, fileName: string): Promise<number | null> => {
+/**
+ * Uploads a file to Podio and attaches it to a specific item field
+ * @param file The file to upload
+ * @param itemId The ID of the item to attach the file to
+ * @param fieldId The ID of the field to attach the file to
+ * @returns The uploaded file information or null if upload failed
+ */
+export const uploadFileToPodio = async (file: File, itemId: number, fieldId: number) => {
+  console.log('Uploading file to Podio', { filename: file.name, itemId, fieldId });
+  
   try {
-    // Extract the base64 part from the data URL
-    const base64Data = fileDataUrl.split(',')[1];
-    if (!base64Data) {
-      throw new Error('Invalid file data');
-    }
+    // In a real implementation, this would use FormData to upload the file
+    // But for our serverless approach, we would need to use the Edge Function
+    // This is a placeholder - in production you'd implement file uploads via the Edge Function
     
-    // Convert base64 to binary
-    const binaryData = atob(base64Data);
-    
-    // Create a typed array from the binary data
-    const bytes = new Uint8Array(binaryData.length);
-    for (let i = 0; i < binaryData.length; i++) {
-      bytes[i] = binaryData.charCodeAt(i);
-    }
-    
-    // Create a Blob from the binary data
-    const blob = new Blob([bytes], { type: 'image/jpeg' });
-    
-    // Create FormData with the blob
-    const formData = new FormData();
-    formData.append('file', blob, fileName);
-    
-    // Use stub mode for now, but prepared for real implementation
-    console.log('Mock file upload:', fileName);
-    
-    // In a real implementation, we would call the Podio API:
-    // const response = await callPodioApi('/file', {
-    //   method: 'POST',
-    //   body: formData
-    // });
-    // return response.file_id;
-    
-    // Return a mock file ID
-    return 12345;
+    console.warn('File upload to Podio is not fully implemented');
+    return { fileId: 12345, name: file.name };
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
-    throw error;
+    return null;
   }
 };
 
-// Helper function to determine if we should proceed without a signature
-export const shouldProceedWithoutSignature = (error: any): boolean => {
-  // Check if the error is related to file upload but not critical
-  if (error && typeof error.message === 'string') {
-    const errorMsg = error.message.toLowerCase();
-    
-    // Non-critical file upload errors
-    if (errorMsg.includes('file') && 
-        (errorMsg.includes('format') || 
-         errorMsg.includes('size') || 
-         errorMsg.includes('upload'))) {
-      return true;
-    }
-  }
-  
+/**
+ * Determines whether to proceed without a signature
+ * This is a helper function that can be configured based on app requirements
+ */
+export const shouldProceedWithoutSignature = (): boolean => {
   return false;
 };
