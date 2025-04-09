@@ -1,12 +1,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
-  authenticateUser, 
   clearTokens,
-  refreshPodioToken,
-  isPodioConfigured,
   cacheUserData
 } from '../services/podio/podioAuth';
+import { supabase } from '../integrations/supabase/client';
 
 // User data interface with authentication information
 export interface UserData {
@@ -26,7 +24,6 @@ interface AuthContextType {
   error: any;
   login: (username?: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  checkSession: () => Promise<boolean>;
   isAuthenticated: boolean;
   forceReauthenticate: () => Promise<boolean>;
 }
@@ -38,7 +35,6 @@ const AuthContext = createContext<AuthContextType>({
   error: null,
   login: async () => false,
   logout: () => {},
-  checkSession: async () => false,
   isAuthenticated: false,
   forceReauthenticate: async () => false,
 });
@@ -50,46 +46,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [lastAuthCheck, setLastAuthCheck] = useState(0);
   
-  // Check if the user has a valid session on component mount
+  // Check for existing user data in localStorage on component mount
   useEffect(() => {
     const checkAuth = async () => {
       setLoading(true);
       try {
-        // Check if API is configured
-        if (!isPodioConfigured()) {
-          console.log('Podio API not configured');
-          setIsAuthenticated(false);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-
         // Check for existing user data in localStorage
         const storedUser = localStorage.getItem('podio_user_data');
         
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
-          
-          // Set authenticated immediately based on stored data
           setIsAuthenticated(true);
-          
-          // Only verify with server occasionally to avoid too many calls
-          const now = Date.now();
-          if (now - lastAuthCheck > 5 * 60 * 1000) { // Check every 5 minutes
-            console.log('Verifying auth token with server (periodic check)');
-            const hasValidSession = await refreshPodioToken();
-            setLastAuthCheck(now);
-            
-            if (!hasValidSession) {
-              console.log('Server reports invalid session, logging out');
-              localStorage.removeItem('podio_user_data');
-              setUser(null);
-              setIsAuthenticated(false);
-            }
-          }
         } else {
           setIsAuthenticated(false);
           setUser(null);
@@ -104,9 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkAuth();
-  }, [lastAuthCheck]);
+  }, []);
 
-  // Login method 
+  // Login method - simplified to reduce token verification
   const login = useCallback(async (username?: string, password?: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
@@ -128,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         localStorage.setItem('podio_user_data', JSON.stringify(dummyUser));
         setLoading(false);
-        setLastAuthCheck(Date.now());
         return true;
       }
       
@@ -137,44 +105,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Username and password are required');
       }
 
-      // Only verify token once at login
-      console.log('Verifying token before authentication');
-      const tokenValid = await refreshPodioToken();
-      if (!tokenValid) {
-        console.warn('Failed to get a valid token before user authentication');
+      // Call the edge function to authenticate the user
+      const { data, error } = await supabase.functions.invoke('podio-user-auth', {
+        method: 'POST',
+        body: {
+          username,
+          password
+        }
+      });
+      
+      if (error) {
+        console.error('User authentication failed:', error);
+        throw new Error(error.message || 'Authentication failed');
       }
       
-      // Now find the user in the contacts app
-      const userData = await authenticateUser(username, password);
-      
-      if (userData) {
-        console.log('User data from Podio:', userData);
-        
-        // Ensure required fields exist
-        const userDataWithDefaults: UserData = {
-          id: userData.id,
-          podioItemId: userData.podioItemId || userData.id,
-          name: userData.name || 'Unknown',
-          email: userData.email || '',
-          username: userData.username,
-          logoFileId: userData.logoFileId || null,
-          logoUrl: userData.logoUrl || null,
-        };
-        
-        setUser(userDataWithDefaults);
-        setIsAuthenticated(true);
-        
-        // Store user data for session persistence
-        localStorage.setItem('podio_user_data', JSON.stringify(userDataWithDefaults));
-        
-        // Also cache user data for offline access
-        cacheUserData(`user_${userDataWithDefaults.id}`, userDataWithDefaults);
-        setLastAuthCheck(Date.now());
-        
-        return true;
-      } else {
-        throw new Error('User not found');
+      if (!data) {
+        console.error('Empty response from user authentication');
+        throw new Error('Empty response from authentication service');
       }
+      
+      if (data.error) {
+        console.error('Authentication error:', data.error);
+        throw new Error(data.error);
+      }
+      
+      // Store user data in localStorage
+      const userData = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        username: data.username,
+        logoUrl: data.logoUrl
+      };
+      
+      localStorage.setItem('podio_user_data', JSON.stringify(userData));
+      
+      // Cache user data for offline access
+      cacheUserData(`user_${userData.id}`, userData);
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      
+      return true;
     } catch (err) {
       console.error('Login error:', err);
       setError(err);
@@ -194,26 +166,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
   }, []);
 
-  // Check if session is valid - used when we need to verify, not on every render
-  const checkSession = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
-    const isValid = await refreshPodioToken();
-    setLastAuthCheck(Date.now());
-    return isValid;
-  }, [user]);
-
-  // Force reauthentication with Podio API
+  // Force reauthentication with Podio API - simplified to just return true if already authenticated
   const forceReauthenticate = useCallback(async (): Promise<boolean> => {
+    // If we're already authenticated, return true immediately
+    if (isAuthenticated) {
+      return true;
+    }
+    
     try {
-      const success = await refreshPodioToken();
-      setLastAuthCheck(Date.now());
-      return success;
+      // Only refresh token if not authenticated
+      const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+        method: 'POST'
+      });
+      
+      if (error || !data || !data.access_token) {
+        return false;
+      }
+      
+      return true;
     } catch (err) {
       console.error('Force reauthentication error:', err);
       setError(err);
       return false;
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Combine auth context value
   const authContextValue: AuthContextType = {
@@ -222,7 +198,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     login,
     logout,
-    checkSession,
     isAuthenticated,
     forceReauthenticate,
   };

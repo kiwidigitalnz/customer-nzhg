@@ -58,7 +58,7 @@ export const PODIO_CATEGORIES = {
   }
 };
 
-// Get all packing specs for a contact
+// Get all packing specs for a contact - no authentication check
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
     console.log(`Fetching packing specs for contact ID: ${contactId}`);
@@ -72,7 +72,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
     
     console.log(`Filtering packing specs with format:`, JSON.stringify(filterData));
     
-    // Call the Podio API with the filter
+    // Call the Podio API with the filter - no authentication check
     const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
       body: JSON.stringify(filterData)
@@ -206,7 +206,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
   }
 };
 
-// Get details for a specific packing spec
+// Get details for a specific packing spec - no authentication check
 export const getPackingSpecDetails = async (specId: number): Promise<any> => {
   try {
     console.log(`Fetching packing spec details for ID: ${specId}`);
@@ -233,7 +233,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
   }
 };
 
-// Update the status of a packing spec
+// Update the status of a packing spec - no authentication check
 export const updatePackingSpecStatus = async (
   specId: number, 
   status: string,

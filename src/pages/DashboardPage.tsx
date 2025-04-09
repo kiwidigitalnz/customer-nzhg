@@ -5,24 +5,17 @@ import MainLayout from '../components/MainLayout';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { isPodioConfigured } from '../services/podioAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
-  const [podioError, setPodioError] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   
   useEffect(() => {
-    // Check Podio configuration
-    const podioConfigured = isPodioConfigured();
-    
-    if (!podioConfigured) {
-      setPodioError(true);
-    }
-    
-    // Simulate loading for better UX (just brief enough to avoid flicker)
+    // Simple loading for better UX (just brief enough to avoid flicker)
     const timer = setTimeout(() => {
       setLoading(false);
     }, 200);
@@ -45,14 +38,14 @@ const DashboardPage = () => {
             subtext="This may take a moment"
           />
         </div>
-      ) : podioError ? (
+      ) : !isAuthenticated ? (
         <div className="container mx-auto px-4 py-8">
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Connection Issue</AlertTitle>
+            <AlertTitle>Authentication Issue</AlertTitle>
             <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                We're having trouble connecting to our data service. Please check your Podio configuration settings.
+                You need to be logged in to access this page.
               </div>
               <Button 
                 variant="outline" 
@@ -65,10 +58,9 @@ const DashboardPage = () => {
             </AlertDescription>
           </Alert>
           <div className="text-center py-16">
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Service Temporarily Unavailable</h2>
+            <h2 className="text-2xl font-bold text-gray-700 mb-2">Authentication Required</h2>
             <p className="text-gray-600 max-w-md mx-auto">
-              We're working to restore full functionality as soon as possible. 
-              Please check back later or contact our support team for assistance.
+              Please log in to view your dashboard.
             </p>
           </div>
         </div>

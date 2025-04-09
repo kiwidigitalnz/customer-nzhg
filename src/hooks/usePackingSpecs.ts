@@ -114,7 +114,7 @@ export function usePackingSpecs() {
       const contactId = user.podioItemId || user.id;
       console.log(`Fetching specs for contact ID: ${contactId}`);
       
-      // Actual data fetch - no more auth prefetch
+      // Actual data fetch - no more auth prefetch or token verification
       const data = await getPackingSpecsForContact(contactId);
       
       // Only update state if component is still mounted
@@ -176,7 +176,7 @@ export function usePackingSpecs() {
     }
   }, [user, isAuthenticated, getCacheKey, specs.length, isRateLimitReached, toast]);
 
-  // Initial data loading effect
+  // Initial data loading effect - simplified to avoid redundant checks
   useEffect(() => {
     mountedRef.current = true;
     
@@ -191,6 +191,7 @@ export function usePackingSpecs() {
         }
       }
       
+      // Only fetch once
       console.log('Performing initial fetch of packing specs');
       fetchSpecs();
     }

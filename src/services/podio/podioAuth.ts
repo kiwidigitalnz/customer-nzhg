@@ -94,44 +94,17 @@ export const isPodioConfigured = (): boolean => {
   return true; // We're using Supabase edge functions now, so this is always true
 };
 
-// We've simplified token handling - now we just check if we can get a valid token from the server
-export const hasValidTokens = async (): Promise<boolean> => {
+// Server-side token refresh via Supabase Edge Function - simplified to just return true/false
+export const refreshPodioToken = async (): Promise<boolean> => {
   try {
     const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
       method: 'POST'
     });
     
     if (error || !data || !data.access_token) {
-      console.warn('No valid token available:', error?.message || 'Unknown error');
       return false;
     }
     
-    return true;
-  } catch (error) {
-    console.error('Error checking token validity:', error);
-    return false;
-  }
-};
-
-// Call the Supabase Edge Function to refresh the token
-export const refreshPodioToken = async (): Promise<boolean> => {
-  try {
-    console.log('Getting Podio OAuth token from server');
-    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
-      method: 'POST'
-    });
-    
-    if (error) {
-      console.error('OAuth token refresh failed:', error);
-      return false;
-    }
-    
-    if (!data || !data.access_token) {
-      console.error('No valid Podio OAuth token found');
-      return false;
-    }
-    
-    console.log('Successfully verified Podio OAuth token');
     return true;
   } catch (error) {
     console.error('Failed to get Podio OAuth token:', error);
@@ -139,25 +112,10 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   }
 };
 
-// Authenticate with client credentials via Edge Function
-export const authenticateWithClientCredentials = async (): Promise<boolean> => {
-  console.log('Attempting to authenticate with client credentials...');
-  return refreshPodioToken(); // Now just an alias for refreshPodioToken for simplicity
-};
-
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
     console.log(`Authenticating user: ${username}`);
-    
-    // First ensure we have a valid access token
-    const hasToken = await hasValidTokens();
-    if (!hasToken) {
-      const tokenRefreshed = await refreshPodioToken();
-      if (!tokenRefreshed) {
-        throw new Error('Failed to obtain Podio access token');
-      }
-    }
     
     // Call the Edge Function to find the user in the Contacts app
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
@@ -183,51 +141,14 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error(data.error);
     }
     
-    // Store user data in localStorage
-    const userData = {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      username: data.username,
-      logoUrl: data.logoUrl
-    };
-    
-    localStorage.setItem('podio_user_data', JSON.stringify(userData));
-    console.log('User authenticated successfully');
-    
-    return userData;
+    return data;
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
   }
 };
 
-// Validate access to the Contacts app
-export const validateContactsAppAccess = async (): Promise<boolean> => {
-  try {
-    console.log(`Validating access to Contacts app: ${PODIO_CONTACTS_APP_ID}`);
-    // Use the Edge Function to validate app access
-    const { data, error } = await supabase.functions.invoke('podio-validate-access', {
-      method: 'POST',
-      body: {
-        app_id: PODIO_CONTACTS_APP_ID
-      }
-    });
-    
-    if (error) {
-      console.error('Failed to validate Contacts app access:', error);
-      return false;
-    }
-    
-    console.log(`Access validation result:`, data);
-    return data?.hasAccess || false;
-  } catch (error) {
-    console.error('Failed to validate Contacts app access:', error);
-    return false;
-  }
-};
-
-// Generic function to call the Podio API via Edge Function
+// Generic function to call the Podio API via Edge Function - removed token verification
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
@@ -241,14 +162,12 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
     
-    // Server handles token validation/refresh, so we don't need to check locally
-    
-    // Prepare the request payload
+    // Prepare the request payload - no token verification
     const payload = {
       endpoint: normalizedEndpoint,
       options: {
         method: options.method || 'GET',
-        body: options.body // This will be stringified again in the Edge Function
+        body: options.body
       }
     };
     
@@ -264,8 +183,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       }
     }
     
-    // No auth headers needed anymore - the edge function will get the tokens from the database
-    
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
@@ -277,11 +194,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Enhanced error handling with detailed logging
     if (error) {
       console.error('Podio API error:', error);
-      console.error('Error context:', {
-        endpoint: normalizedEndpoint,
-        method: options.method || 'GET',
-        statusCode: error.status || error.code
-      });
       
       // Handle rate limiting - check for 429 in error or message
       if (error.message?.includes('429') || response.error?.status === 429) {
@@ -376,4 +288,13 @@ export const getCachedUserData = (key: string): any => {
     console.error('Failed to get cached user data:', error);
     return null;
   }
+};
+
+// Remove unused functions
+export const authenticateWithClientCredentials = async (): Promise<boolean> => {
+  return true; // Simplified since we're relying on server-side auth
+};
+
+export const validateContactsAppAccess = async (): Promise<boolean> => {
+  return true; // Simplified since we're relying on server-side auth
 };
