@@ -61,21 +61,23 @@ export const PODIO_CATEGORIES = {
 // Get packing specs filtered by contact/customer
 export const getPackingSpecsForContact = async (contactId?: number): Promise<PackingSpec[]> => {
   try {
-    // If contactId is provided, construct a filter to only show specs for that customer
+    // If contactId is provided, use the filter endpoint
     let endpoint = `/item/app/${PODIO_PACKING_SPEC_APP_ID}/`;
     let options: RequestInit = {};
     
     if (contactId) {
       console.log(`Fetching packing specs for contact ID: ${contactId}`);
       
-      // Construct a filter payload to find items where the customer field references the contactId
+      // Use the correct Podio API filter endpoint
+      endpoint = `/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`;
+      
+      // Construct the correct filter payload format according to Podio API docs
       const filterPayload = {
         filters: {
-          "customer-brand-name": [contactId] // Reference field filtered by item_id
+          "customer-brand-name": [contactId]
         }
       };
       
-      // Use POST to apply filtering
       options = {
         method: 'POST',
         body: JSON.stringify(filterPayload)
@@ -84,7 +86,7 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       console.log(`Fetching all packing specs without contact filter`);
     }
     
-    // Call the Podio API to get all items in the app
+    // Call the Podio API to get the filtered or unfiltered items
     const response = await callPodioApi(endpoint, options);
     
     if (!response || !response.items) {
@@ -256,4 +258,3 @@ export const updatePackingSpecStatus = async (
     throw error;
   }
 };
-
