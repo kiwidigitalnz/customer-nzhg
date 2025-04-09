@@ -28,6 +28,7 @@ export const useCommentPolling = (
   const seenCommentsRef = useRef<Set<number>>(new Set());
   const newCommentsTimeoutRef = useRef<number | null>(null);
   const hasViewedTabRef = useRef<boolean>(false);
+  const lastItemIdRef = useRef<number>(itemId);
   
   // Initialize seen comments with initial comments
   useEffect(() => {
@@ -37,6 +38,19 @@ export const useCommentPolling = (
       seenCommentsRef.current = initialIds;
     }
   }, []);
+
+  // Reset state when itemId changes
+  useEffect(() => {
+    if (itemId !== lastItemIdRef.current) {
+      console.log(`Item ID changed from ${lastItemIdRef.current} to ${itemId}, resetting comment state`);
+      lastItemIdRef.current = itemId;
+      setComments([]);
+      setNewCommentsCount(0);
+      setNewCommentIds(new Set());
+      seenCommentsRef.current = new Set();
+      hasViewedTabRef.current = false;
+    }
+  }, [itemId]);
 
   // Function to fetch comments
   const fetchComments = async () => {
@@ -52,13 +66,13 @@ export const useCommentPolling = (
       console.log(`Fetching comments for item ID: ${itemId}`);
       const fetchedComments = await getCommentsFromPodio(itemId);
       
-      console.log(`Received ${fetchedComments.length} comments from Podio`);
+      console.log(`Received ${fetchedComments.length} comments from Podio for item ID ${itemId}`);
       
       // Check if we have new comments by comparing with what we've seen before
       const newComments = fetchedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
       
       if (newComments.length > 0) {
-        console.log(`Found ${newComments.length} new comments`);
+        console.log(`Found ${newComments.length} new comments for item ID ${itemId}`);
         
         setNewCommentsCount(prevCount => {
           // Only add to count if the tab is not currently active or has not been viewed yet
@@ -76,14 +90,14 @@ export const useCommentPolling = (
             comment.id !== comments[index].id || 
             comment.text !== comments[index].text
           )) {
-        console.log('Updating comments list with new data');
+        console.log('Updating comments list with new data for item ID ' + itemId);
         // Update comments without causing a flicker
         setComments(fetchedComments);
       }
       
       lastPollTimeRef.current = Date.now();
     } catch (err) {
-      console.error('Error polling for comments:', err);
+      console.error(`Error polling for comments for item ID ${itemId}:`, err);
       setError('Failed to fetch comments from Podio');
     } finally {
       setIsLoading(false);
@@ -92,7 +106,7 @@ export const useCommentPolling = (
 
   // Manual refresh function for immediate updates and mark all as seen
   const refreshComments = () => {
-    console.log('Manual refresh of comments triggered');
+    console.log(`Manual refresh of comments triggered for item ID ${itemId}`);
     fetchComments();
     // Mark all as seen when manually refreshed
     markAllAsSeen();
@@ -111,7 +125,7 @@ export const useCommentPolling = (
       
       // Set a timeout to clear new comments after 5 seconds
       newCommentsTimeoutRef.current = window.setTimeout(() => {
-        console.log('Marking all comments as seen');
+        console.log(`Marking all comments as seen for item ID ${itemId}`);
         comments.forEach(comment => {
           seenCommentsRef.current.add(comment.id);
         });
@@ -123,8 +137,8 @@ export const useCommentPolling = (
 
   // Setup polling or fetch comments once when component becomes active
   useEffect(() => {
-    if (!isActive) {
-      console.log('Comments tab is inactive, clearing polling interval');
+    if (!isActive || !itemId) {
+      console.log(`Comments tab is inactive or no item ID (${itemId}), clearing polling interval`);
       // Clear interval if component becomes inactive
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -140,7 +154,7 @@ export const useCommentPolling = (
     
     // Set up polling interval only if automatic polling is enabled
     if (enableAutomaticPolling) {
-      console.log(`Setting up automatic polling every ${pollingInterval}ms`);
+      console.log(`Setting up automatic polling every ${pollingInterval}ms for item ID ${itemId}`);
       pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
     }
     
@@ -165,7 +179,7 @@ export const useCommentPolling = (
   // Update comments if initialComments change
   useEffect(() => {
     if (initialComments && initialComments.length > 0) {
-      console.log(`Initial comments updated with ${initialComments.length} comments`);
+      console.log(`Initial comments updated with ${initialComments.length} comments for item ID ${itemId}`);
       setComments(initialComments);
       
       // Update seen comments with initial comments
@@ -173,15 +187,15 @@ export const useCommentPolling = (
         seenCommentsRef.current.add(comment.id);
       });
     }
-  }, [initialComments]);
+  }, [initialComments, itemId]);
 
   // Mark comments as seen when the tab becomes active
   useEffect(() => {
     if (isActive) {
-      console.log('Tab became active, marking comments as seen');
+      console.log(`Tab became active for item ID ${itemId}, marking comments as seen`);
       markAllAsSeen();
     }
-  }, [isActive]);
+  }, [isActive, itemId]);
 
   // Clean up timeout on unmount
   useEffect(() => {

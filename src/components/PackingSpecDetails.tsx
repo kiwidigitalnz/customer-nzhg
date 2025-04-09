@@ -236,6 +236,7 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
+      console.log(`Attempting to add comment to spec ID ${spec.id}`);
       const success = await addCommentToPackingSpec(
         spec.id, 
         newComment
@@ -247,27 +248,15 @@ const PackingSpecDetails = () => {
           variant: 'default',
         });
         
-        const newCommentItem: CommentItem = {
-          id: Date.now(),
-          text: newComment,
-          createdBy: user?.name || 'You',
-          createdAt: new Date().toISOString()
-        };
-        
-        setSpec(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            comments: [...(prev.comments || []), newCommentItem]
-          };
-        });
-        
         setNewComment('');
         
+        console.log('Refreshing comments after adding new one');
         setTimeout(async () => {
           try {
             const updatedComments = await getCommentsFromPodio(spec.id);
-            if (updatedComments && updatedComments.length > 0) {
+            console.log('Received updated comments after adding new one:', updatedComments);
+            
+            if (updatedComments) {
               setSpec(prev => {
                 if (!prev) return prev;
                 return {

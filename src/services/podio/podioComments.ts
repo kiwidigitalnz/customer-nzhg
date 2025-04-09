@@ -19,12 +19,21 @@ export const getCommentsFromPodio = async (itemId: number): Promise<CommentItem[
     }
     
     console.log(`Fetching comments for Podio item ID: ${itemId}`);
+    
     // Call the correct Podio API endpoint for comments
     // According to Podio docs: GET /comment/item/{item_id}/
     const response = await callPodioApi(`/comment/item/${itemId}/`);
     
-    if (!response || !Array.isArray(response.comments)) {
-      console.warn('No comments found in Podio response or invalid format', response);
+    if (!response) {
+      console.warn('No response received from Podio API for comments');
+      return [];
+    }
+    
+    console.log('Raw comment response from Podio:', response);
+    
+    // Check if we have comments in the response
+    if (!response.comments || !Array.isArray(response.comments)) {
+      console.warn('No comments array found in Podio response or invalid format', response);
       return [];
     }
     
@@ -88,12 +97,14 @@ export const addCommentToPodio = async (itemId: number, comment: string): Promis
       })
     });
     
+    console.log('Comment submission response:', response);
+    
     if (!response || !response.comment_id) {
       console.warn('No valid response received when adding comment to Podio:', response);
       return false;
     }
     
-    console.log('Successfully added comment to Podio:', response);
+    console.log('Successfully added comment to Podio with ID:', response.comment_id);
     return true;
   } catch (error) {
     console.error('Error adding comment to Podio:', error);

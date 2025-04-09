@@ -30,7 +30,11 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   // Log when tab becomes active or inactive for debugging
   useEffect(() => {
     console.log(`Comments tab active state changed: ${isActive ? 'active' : 'inactive'} for spec ID: ${spec.id}`);
-  }, [isActive, spec.id]);
+    
+    if (isActive && spec.comments) {
+      console.log(`Comments tab has ${spec.comments.length} comments for spec ID: ${spec.id}`);
+    }
+  }, [isActive, spec.id, spec.comments]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit on Ctrl+Enter or Cmd+Enter

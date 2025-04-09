@@ -42,7 +42,18 @@ const CommentsList: React.FC<CommentsListProps> = ({
     false // Disable automatic polling
   );
   
-  const comments = (specId && polledComments.length > 0) ? polledComments : initialComments;
+  // Use polled comments if available, otherwise fall back to initial comments
+  const comments = (specId && polledComments && polledComments.length > 0) 
+    ? polledComments 
+    : initialComments;
+  
+  console.log('CommentsList rendered with:', { 
+    specId, 
+    isActive, 
+    commentsCount: comments?.length || 0,
+    initialCommentsCount: initialComments?.length || 0,
+    polledCommentsCount: polledComments?.length || 0
+  });
   
   // When tab becomes active, do an initial fetch
   useEffect(() => {
@@ -122,9 +133,12 @@ const CommentsList: React.FC<CommentsListProps> = ({
     );
   }
   
+  // Sort comments by creation date (newest first)
   const sortedComments = [...comments].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+  
+  console.log('Sorted comments:', sortedComments.map(c => ({ id: c.id, text: c.text.substring(0, 20) })));
   
   const companyName = user?.name || "Unknown Company";
   const authUsername = user?.username || null;
@@ -180,6 +194,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
         let displayName = comment.createdBy;
         let commentText = comment.text;
         
+        // Try to extract company name from comment format [CompanyName] Message
         const companyMatch = comment.text.match(/^\[(.*?)\]\s(.*)/);
         if (companyMatch && companyMatch.length > 2) {
           if (!isCurrentUserComment) {
@@ -198,7 +213,10 @@ const CommentsList: React.FC<CommentsListProps> = ({
         const isNewComment = newCommentIds.has(comment.id);
         
         return (
-          <div key={comment.id} className={`bg-card rounded-md p-4 border ${isNewComment ? 'border-primary' : ''}`}>
+          <div 
+            key={comment.id} 
+            className={`bg-card rounded-md p-4 border ${isNewComment ? 'border-primary' : ''}`}
+          >
             <div className="flex justify-between items-start">
               <div className="flex items-center">
                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
