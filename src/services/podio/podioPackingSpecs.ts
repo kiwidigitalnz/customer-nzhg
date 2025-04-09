@@ -82,18 +82,23 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       throw new Error('Not authenticated with Podio API');
     }
     
-    // Format the filter properly for Podio API according to the docs
-    // For app reference fields that reference an item_id, use the field external_id
+    // Format the filter properly according to Podio API docs
+    // This matches the structure used successfully in the contacts app
     const filters = {
-      [PACKING_SPEC_FIELD_IDS.customerBrandName]: [contactId]
+      "fields": [
+        {
+          "key": PACKING_SPEC_FIELD_IDS.customerBrandName,
+          "values": [contactId]
+        }
+      ]
     };
     
-    console.log('Filtering packing specs with:', JSON.stringify(filters));
+    console.log('Filtering packing specs with format:', JSON.stringify(filters));
     
-    // Call Podio API to get the items without explicit app token
+    // Call Podio API to get the items
     const response = await callPodioApi(`item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
-      body: JSON.stringify({ filters })
+      body: JSON.stringify(filters)
     });
     
     console.log('Packing specs API response received:', response ? 'Data found' : 'No data');

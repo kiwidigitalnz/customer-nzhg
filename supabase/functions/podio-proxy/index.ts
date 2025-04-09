@@ -61,8 +61,12 @@ serve(async (req) => {
       const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
       
       if (!clientId || !clientSecret) {
+        console.error('Podio credentials not configured. Missing client ID or secret.');
         return new Response(
-          JSON.stringify({ error: 'Podio credentials not configured' }),
+          JSON.stringify({ 
+            error: 'Podio credentials not configured',
+            details: 'Client ID or Client Secret missing in environment variables'
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -89,7 +93,12 @@ serve(async (req) => {
             JSON.stringify({ 
               error: 'Failed to obtain authentication token',
               details: errorText,
-              status: authResponse.status
+              status: authResponse.status,
+              requestInfo: {
+                endpoint: 'https://podio.com/oauth/token',
+                method: 'POST',
+                grantType: 'client_credentials'
+              }
             }),
             { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -98,6 +107,7 @@ serve(async (req) => {
         const authData = await authResponse.json();
         accessToken = authData.access_token;
         console.log('Successfully obtained access token via client credentials');
+        console.log(`Token type: ${authData.token_type}, expires in: ${authData.expires_in} seconds`);
       } catch (authError) {
         console.error('Error authenticating with Podio:', authError);
         return new Response(
@@ -111,6 +121,14 @@ serve(async (req) => {
       }
     }
 
+    if (!accessToken) {
+      console.error('Failed to obtain access token');
+      return new Response(
+        JSON.stringify({ error: 'Access token not available' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Prepare headers for the Podio API request
     const headers: HeadersInit = {
       'Authorization': `OAuth2 ${accessToken}`,
@@ -121,6 +139,8 @@ serve(async (req) => {
     if (appToken) {
       headers['X-Podio-App'] = appToken;
       console.log(`Using app token for this endpoint`);
+    } else {
+      console.log('No app token required for this endpoint');
     }
 
     // Construct full URL with the API base
@@ -133,6 +153,14 @@ serve(async (req) => {
       try {
         const parsedBody = JSON.parse(body);
         console.log(`Request body:`, JSON.stringify(parsedBody, null, 2));
+        
+        // Special logging for filter requests to debug packing specs issue
+        if (normalizedEndpoint.includes('/filter') && parsedBody.filters) {
+          console.log('Filter structure:', JSON.stringify(parsedBody.filters, null, 2));
+        } else if (normalizedEndpoint.includes('/filter') && parsedBody.fields) {
+          console.log('Using fields filter structure:', JSON.stringify(parsedBody.fields, null, 2));
+        }
+        
       } catch (e) {
         console.log(`Body: ${body.substring(0, 200) + (body.length > 200 ? '...' : '')}`);
       }
@@ -154,7 +182,10 @@ serve(async (req) => {
     const contentType = podioResponse.headers.get('Content-Type') || '';
     
     if (contentType.includes('application/json')) {
-      responseData = await podioResponse.json().catch(() => ({}));
+      responseData = await podioResponse.json().catch((e) => {
+        console.error('Error parsing JSON response:', e);
+        return { error: 'Invalid JSON response from Podio API' };
+      });
     } else {
       const text = await podioResponse.text();
       responseData = { text };
@@ -165,13 +196,32 @@ serve(async (req) => {
     console.log(`Response content type: ${contentType}`);
     
     if (podioResponse.status >= 400) {
-      console.error('Podio API error response:', JSON.stringify(responseData));
+      console.error('Podio API error response:', JSON.stringify(responseData, null, 2));
+      
+      // Enhanced error logging
+      console.error('Request details that caused error:', {
+        endpoint: normalizedEndpoint,
+        method,
+        hasBody: !!body,
+        hasAppToken: !!appToken,
+        statusCode: podioResponse.status
+      });
     } else {
       // Debug log a sample of the response for successful calls
       console.log('Podio API successful response snippet:', 
         JSON.stringify(responseData).substring(0, 300) + 
         (JSON.stringify(responseData).length > 300 ? '...' : '')
       );
+      
+      // If this is a filter call for packing specs, log the item count
+      if (normalizedEndpoint.includes('/app/29797638/filter')) {
+        const itemCount = responseData?.items?.length || 0;
+        console.log(`Packing specs filter returned ${itemCount} items`);
+        
+        if (itemCount === 0 && responseData) {
+          console.log('Filter response structure:', JSON.stringify(Object.keys(responseData), null, 2));
+        }
+      }
     }
 
     // Check for rate limiting
@@ -200,7 +250,11 @@ serve(async (req) => {
         JSON.stringify({ 
           error: podioResponse.status === 401 ? 'Authentication failed' : 'Access denied',
           details: responseData,
-          status: podioResponse.status
+          status: podioResponse.status,
+          requestInfo: {
+            endpoint: normalizedEndpoint,
+            method
+          }
         }),
         { 
           status: podioResponse.status, 
@@ -220,8 +274,19 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error proxying Podio API request:', error);
     
+    // Create a more detailed error response
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      time: new Date().toISOString()
+    };
+    
     return new Response(
-      JSON.stringify({ error: 'Failed to proxy Podio API request', details: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to proxy Podio API request', 
+        details: errorDetails
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
