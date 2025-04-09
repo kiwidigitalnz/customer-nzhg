@@ -9,9 +9,7 @@ import {
   LogOut, 
   PackageCheck, 
   CheckCircle,
-  AlertCircle,
-  Database,
-  Filter
+  AlertCircle
 } from 'lucide-react';
 import { 
   Card, 
@@ -62,60 +60,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  const renderDebugInfo = () => {
-    return (
-      <Card className="mb-8 bg-slate-50 border-amber-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center">
-            <Database className="h-4 w-4 mr-2 text-amber-500" /> Connection Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs font-mono pt-0">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Authentication:</span>
-              <Badge variant={isAuthenticated ? "secondary" : "destructive"} className="text-xs">
-                {isAuthenticated ? "Authenticated" : "Not Authenticated"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Connection:</span>
-              <Badge variant={isRateLimitReached ? "destructive" : "secondary"} className="text-xs">
-                {isRateLimitReached ? "Rate Limited" : "OK"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Data Status:</span>
-              <Badge variant={specs.all.length ? "secondary" : "outline"} className="text-xs">
-                {specs.all.length ? `${specs.all.length} Specs Found` : "No Specs Found"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Filter:</span>
-              <Badge variant="outline" className="text-xs flex items-center gap-1">
-                <Filter className="h-3 w-3" />
-                {user?.podioItemId ? "Showing your specs only" : "Showing all specs"}
-              </Badge>
-            </div>
-            {fetchError && (
-              <div className="mt-2 p-2 bg-red-50 text-red-800 rounded border border-red-200 text-xs">
-                <p><strong>Error:</strong> {fetchError}</p>
-              </div>
-            )}
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => refetch(true)}
-            className="mt-2 w-full text-xs h-7"
-          >
-            Refresh Data
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  };
 
   const getCompanyInitials = (name: string) => {
     if (!name) return '';
@@ -171,8 +115,6 @@ const Dashboard = () => {
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
       </div>
-
-      {renderDebugInfo()}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">

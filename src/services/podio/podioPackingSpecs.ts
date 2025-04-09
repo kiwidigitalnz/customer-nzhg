@@ -122,10 +122,10 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       let statusText = 'Pending Approval';
       
       // Check if podioStatus exists and has the expected structure
-      if (podioStatus) {
+      if (podioStatus !== null && podioStatus !== undefined) {
         // Check if podioStatus is an object with a text property
         if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
-          statusText = podioStatus.text || 'Pending Approval';
+          statusText = (podioStatus as any).text || 'Pending Approval';
         } else if (typeof podioStatus === 'string') {
           statusText = podioStatus;
         }
@@ -138,10 +138,10 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       let approvalStatusText = 'Pending';
       
       // Check if customerApprovalStatus exists and has the expected structure
-      if (customerApprovalStatus) {
+      if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
         // Check if customerApprovalStatus is an object with a text property
         if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
-          approvalStatusText = customerApprovalStatus.text || 'Pending';
+          approvalStatusText = (customerApprovalStatus as any).text || 'Pending';
         } else if (typeof customerApprovalStatus === 'string') {
           approvalStatusText = customerApprovalStatus;
         }
@@ -244,10 +244,10 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     let statusText = 'Pending Approval';
     
     // Check if podioStatus exists and has the expected structure
-    if (podioStatus) {
+    if (podioStatus !== null && podioStatus !== undefined) {
       // Check if podioStatus is an object with a text property
       if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
-        statusText = podioStatus.text || 'Pending Approval';
+        statusText = (podioStatus as any).text || 'Pending Approval';
       } else if (typeof podioStatus === 'string') {
         statusText = podioStatus;
       }
@@ -260,10 +260,10 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     let approvalStatusText = 'Pending';
     
     // Check if customerApprovalStatus exists and has the expected structure
-    if (customerApprovalStatus) {
+    if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
       // Check if customerApprovalStatus is an object with a text property
       if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
-        approvalStatusText = customerApprovalStatus.text || 'Pending';
+        approvalStatusText = (customerApprovalStatus as any).text || 'Pending';
       } else if (typeof customerApprovalStatus === 'string') {
         approvalStatusText = customerApprovalStatus;
       }
