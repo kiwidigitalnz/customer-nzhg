@@ -15,9 +15,9 @@ export interface PackingSpec {
   updated: string;
   customerApprovalStatus: string;
   link: string;
-  description?: string;     // Added to match Dashboard.tsx PackingSpec
-  createdAt?: string;       // Added to match Dashboard.tsx PackingSpec
-  details?: {               // Added to match Dashboard.tsx PackingSpec
+  description: string;     // No longer optional
+  createdAt: string;       // No longer optional
+  details: {               // No longer optional
     product: string;
     productCode?: string;
     umfMgo?: string;
@@ -37,7 +37,7 @@ export interface PackingSpec {
     name: string;
     link: string;
   }[];
-  comments?: Array<{       // Added to match Dashboard.tsx PackingSpec
+  comments?: Array<{
     id: number;
     text: string;
     createdBy: string;
@@ -98,26 +98,35 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       let customerName = 'Unknown Customer';
       let customerItemId = null;
       
-      if (customerField && customerField.value) {
+      if (customerField && customerField.values && customerField.values[0] && customerField.values[0].value) {
         // For reference fields, the value is an array of objects with id and title
-        if (Array.isArray(customerField.value) && customerField.value.length > 0) {
-          customerName = customerField.value[0].title || 'Unknown Customer';
-          customerItemId = customerField.value[0].item_id;
+        if (Array.isArray(customerField.values[0].value) && customerField.values[0].value.length > 0) {
+          customerName = customerField.values[0].value[0].title || 'Unknown Customer';
+          customerItemId = customerField.values[0].value[0].item_id;
+        } else if (typeof customerField.values[0].value === 'object') {
+          // Handle case when value is an object
+          customerName = customerField.values[0].value.title || 'Unknown Customer';
+          customerItemId = customerField.values[0].value.item_id;
         }
       }
       
       // Get the product name field value
       const productNameField = getFieldValueByExternalId(item, 'product-name');
-      const productName = productNameField && productNameField.value ? productNameField.value : 'Unnamed Product';
+      const productName = productNameField && productNameField.values && productNameField.values[0] ? 
+                         productNameField.values[0].value || 'Unnamed Product' : 'Unnamed Product';
       
       // Get the status field value
       const statusField = getFieldValueByExternalId(item, 'approval-status');
-      const status = statusField && statusField.value && statusField.value.text ? statusField.value.text : 'Unknown Status';
+      const status = statusField && statusField.values && statusField.values[0] && 
+                    typeof statusField.values[0].value === 'object' ? 
+                    statusField.values[0].value.text || 'Unknown Status' : 'Unknown Status';
       
       // Get the customer approval status
       const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
-      const customerApprovalStatus = customerApprovalField && customerApprovalField.value && customerApprovalField.value.text ? 
-        customerApprovalField.value.text : 'Pending';
+      const customerApprovalStatus = customerApprovalField && customerApprovalField.values && 
+                                    customerApprovalField.values[0] && 
+                                    typeof customerApprovalField.values[0].value === 'object' ? 
+                                    customerApprovalField.values[0].value.text || 'Pending' : 'Pending';
       
       // Get created and updated dates
       const created = item.created_on || '';
