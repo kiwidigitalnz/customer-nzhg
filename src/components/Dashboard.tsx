@@ -38,6 +38,7 @@ import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
 import { Badge } from '@/components/ui/badge';
 import { hasValidTokens } from '../services/podioAuth';
+import { PackingSpec } from '../services/podio/podioPackingSpecs';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();

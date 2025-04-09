@@ -14,10 +14,18 @@ import {
   getCachedUserData,
   cacheUserData,
 } from '../services/podio/podioAuth';
+import { SpecStatus } from '@/components/packing-spec/StatusBadge';
 
 // Constants
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const MIN_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
+
+interface CategorizedSpecs {
+  pending: PackingSpec[];
+  approved: PackingSpec[];
+  changesRequested: PackingSpec[];
+  all: PackingSpec[];
+}
 
 export function usePackingSpecs() {
   const { user } = useAuth();
@@ -214,7 +222,7 @@ export function usePackingSpecs() {
   }, [user, fetchSpecs, getCacheKey]);
 
   // Process specs into categories
-  const categorizedSpecs = {
+  const categorizedSpecs: CategorizedSpecs = {
     pending: specs.filter(spec => spec.status === 'pending-approval'),
     approved: specs.filter(spec => spec.status === 'approved-by-customer'),
     changesRequested: specs.filter(spec => spec.status === 'changes-requested'),

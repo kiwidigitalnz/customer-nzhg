@@ -1,3 +1,4 @@
+
 // This module provides helper functions for dealing with Podio fields
 
 // Helper function to get field value by external_id
@@ -95,38 +96,23 @@ export const getDateFieldValue = (fields: any[], externalId: string): string | n
   return null;
 };
 
-// Helper function to extract images from Podio fields
-export const extractPodioImages = (fields: any[], fieldId: number): any[] | null => {
-  const field = fields.find(f => f.field_id === fieldId);
-  
-  if (!field || !field.values || field.values.length === 0) {
-    console.log(`No values found for field ID ${fieldId}`);
-    return null;
+// Helper function to extract images from Podio fields - fixed to accept a single response parameter
+export const extractPodioImages = (response: any): any[] => {
+  if (!response || !response.files) {
+    return [];
   }
   
-  console.log(`Extracting images from field ${fieldId}, found ${field.values.length} values`);
-  
-  const images = [];
-  
-  for (const value of field.values) {
-    // Check if it's a file type
-    if (value.file) {
-      console.log('Found file:', value.file);
-      images.push(value.file);
-    } 
-    // For direct value objects
-    else if (value.value) {
-      console.log('Found value object:', value.value);
-      images.push(value.value);
-    }
-    // For any other format, just add the value
-    else {
-      console.log('Found other format:', value);
-      images.push(value);
-    }
+  try {
+    return response.files.map((file: any) => ({
+      id: file.file_id,
+      name: file.name,
+      link: file.link,
+      thumbnail: file.thumbnail || file.link
+    }));
+  } catch (error) {
+    console.error('Error extracting images:', error);
+    return [];
   }
-  
-  return images.length > 0 ? images : null;
 };
 
 // Map Podio approval status to our app's status format

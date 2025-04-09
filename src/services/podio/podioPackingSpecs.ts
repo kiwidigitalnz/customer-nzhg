@@ -1,14 +1,15 @@
 
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
-import { getFieldValueByExternalId, extractPodioImages } from './podioFieldHelpers';
+import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
+import { SpecStatus } from '@/components/packing-spec/StatusBadge';
 
 // Define the PackingSpec interface
 export interface PackingSpec {
   id: number;
   title: string;
   productName: string;
-  status: string;
+  status: SpecStatus;
   customer: string;
   customerItemId: number;
   created: string;
@@ -114,33 +115,39 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       const productNameField = getFieldValueByExternalId(item, 'product-name');
       let productName = 'Unnamed Product';
       
-      if (productNameField && typeof productNameField === 'object' && 
-          productNameField.values && Array.isArray(productNameField.values) && 
-          productNameField.values.length > 0 && productNameField.values[0].value) {
-        productName = productNameField.values[0].value || 'Unnamed Product';
+      if (productNameField && typeof productNameField === 'object') {
+        if (productNameField.values && Array.isArray(productNameField.values) && 
+            productNameField.values.length > 0 && productNameField.values[0].value) {
+          productName = productNameField.values[0].value || 'Unnamed Product';
+        }
       }
       
       // Get the status field value
       const statusField = getFieldValueByExternalId(item, 'approval-status');
-      let status = 'Unknown Status';
+      let podioStatus = 'Unknown Status';
       
-      if (statusField && typeof statusField === 'object' && 
-          statusField.values && Array.isArray(statusField.values) && 
-          statusField.values.length > 0 && statusField.values[0].value) {
-        if (typeof statusField.values[0].value === 'object') {
-          status = statusField.values[0].value.text || 'Unknown Status';
+      if (statusField && typeof statusField === 'object') {
+        if (statusField.values && Array.isArray(statusField.values) && 
+            statusField.values.length > 0 && statusField.values[0].value) {
+          if (typeof statusField.values[0].value === 'object') {
+            podioStatus = statusField.values[0].value.text || 'Unknown Status';
+          }
         }
       }
+      
+      // Convert podio status to our app's status format
+      const status: SpecStatus = mapPodioStatusToAppStatus(podioStatus);
       
       // Get the customer approval status
       const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
       let customerApprovalStatus = 'Pending';
       
-      if (customerApprovalField && typeof customerApprovalField === 'object' && 
-          customerApprovalField.values && Array.isArray(customerApprovalField.values) && 
-          customerApprovalField.values.length > 0 && customerApprovalField.values[0].value) {
-        if (typeof customerApprovalField.values[0].value === 'object') {
-          customerApprovalStatus = customerApprovalField.values[0].value.text || 'Pending';
+      if (customerApprovalField && typeof customerApprovalField === 'object') {
+        if (customerApprovalField.values && Array.isArray(customerApprovalField.values) && 
+            customerApprovalField.values.length > 0 && customerApprovalField.values[0].value) {
+          if (typeof customerApprovalField.values[0].value === 'object') {
+            customerApprovalStatus = customerApprovalField.values[0].value.text || 'Pending';
+          }
         }
       }
       
@@ -211,9 +218,6 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     
     // Process images if needed
     const images = extractPodioImages(response);
-    if (images.length > 0) {
-      console.log(`Found ${images.length} images in the packing spec`);
-    }
     
     return {
       ...response,
