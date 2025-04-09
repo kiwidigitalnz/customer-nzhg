@@ -1,6 +1,7 @@
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
+import { getCommentsFromPodio } from './podioComments';
 import { SpecStatus } from '@/components/packing-spec/StatusBadge';
 
 // Define the PackingSpec interface
