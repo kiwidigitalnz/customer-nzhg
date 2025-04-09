@@ -1,3 +1,4 @@
+
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -120,11 +121,14 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
       let statusText = 'Pending Approval';
       
-      // Check if podioStatus is an object with a text property
-      if (podioStatus && typeof podioStatus === 'object' && 'text' in podioStatus) {
-        statusText = podioStatus.text || 'Pending Approval';
-      } else if (typeof podioStatus === 'string') {
-        statusText = podioStatus;
+      // Check if podioStatus exists and has the expected structure
+      if (podioStatus) {
+        // Check if podioStatus is an object with a text property
+        if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
+          statusText = podioStatus.text || 'Pending Approval';
+        } else if (typeof podioStatus === 'string') {
+          statusText = podioStatus;
+        }
       }
       
       const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
@@ -133,11 +137,14 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       const customerApprovalStatus = getFieldValueByExternalId(item, 'customer-approval-status');
       let approvalStatusText = 'Pending';
       
-      // Check if customerApprovalStatus is an object with a text property
-      if (customerApprovalStatus && typeof customerApprovalStatus === 'object' && 'text' in customerApprovalStatus) {
-        approvalStatusText = customerApprovalStatus.text || 'Pending';
-      } else if (typeof customerApprovalStatus === 'string') {
-        approvalStatusText = customerApprovalStatus;
+      // Check if customerApprovalStatus exists and has the expected structure
+      if (customerApprovalStatus) {
+        // Check if customerApprovalStatus is an object with a text property
+        if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
+          approvalStatusText = customerApprovalStatus.text || 'Pending';
+        } else if (typeof customerApprovalStatus === 'string') {
+          approvalStatusText = customerApprovalStatus;
+        }
       }
       
       // Get created and updated dates
@@ -236,11 +243,14 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     const podioStatus = getFieldValueByExternalId(response, 'approval-status');
     let statusText = 'Pending Approval';
     
-    // Check if podioStatus is an object with a text property
-    if (podioStatus && typeof podioStatus === 'object' && 'text' in podioStatus) {
-      statusText = podioStatus.text || 'Pending Approval';
-    } else if (typeof podioStatus === 'string') {
-      statusText = podioStatus;
+    // Check if podioStatus exists and has the expected structure
+    if (podioStatus) {
+      // Check if podioStatus is an object with a text property
+      if (typeof podioStatus === 'object' && podioStatus !== null && 'text' in podioStatus) {
+        statusText = podioStatus.text || 'Pending Approval';
+      } else if (typeof podioStatus === 'string') {
+        statusText = podioStatus;
+      }
     }
     
     const status: SpecStatus = mapPodioStatusToAppStatus(statusText);
@@ -249,11 +259,14 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     const customerApprovalStatus = getFieldValueByExternalId(response, 'customer-approval-status');
     let approvalStatusText = 'Pending';
     
-    // Check if customerApprovalStatus is an object with a text property
-    if (customerApprovalStatus && typeof customerApprovalStatus === 'object' && 'text' in customerApprovalStatus) {
-      approvalStatusText = customerApprovalStatus.text || 'Pending';
-    } else if (typeof customerApprovalStatus === 'string') {
-      approvalStatusText = customerApprovalStatus;
+    // Check if customerApprovalStatus exists and has the expected structure
+    if (customerApprovalStatus) {
+      // Check if customerApprovalStatus is an object with a text property
+      if (typeof customerApprovalStatus === 'object' && customerApprovalStatus !== null && 'text' in customerApprovalStatus) {
+        approvalStatusText = customerApprovalStatus.text || 'Pending';
+      } else if (typeof customerApprovalStatus === 'string') {
+        approvalStatusText = customerApprovalStatus;
+      }
     }
     
     // Extract files if any
