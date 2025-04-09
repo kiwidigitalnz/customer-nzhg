@@ -40,10 +40,25 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                   <p className="font-medium">{details.labelCode || "N/A"}</p>
                 </div>
                 <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Label URL</h4>
+                  {details.labelUrl ? (
+                    <a 
+                      href={details.labelUrl} 
+                      className="text-primary hover:underline flex items-center" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      View Label URL
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground italic">No URL provided</p>
+                  )}
+                </div>
+                <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Link</h4>
                   {details.labelLink ? (
                     <a 
-                      href={details.labelLink} 
+                      href={details.labelLink?.url || details.labelLink} 
                       className="text-primary hover:underline flex items-center" 
                       target="_blank" 
                       rel="noopener noreferrer"
@@ -92,11 +107,11 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Information Located</h4>
-                  <p className="font-medium">{details.printingInfoLocated || "N/A"}</p>
+                  <p className="font-medium">{details.printingInfoLocation || "N/A"}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Colour</h4>
-                  <p className="font-medium">{details.printingColour || "N/A"}</p>
+                  <p className="font-medium">{details.printingColor || details.printingColour || "N/A"}</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -127,6 +142,21 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Number of Shipper Stickers on Carton</h4>
                   <p className="font-medium">{details.shipperStickerCount || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Sticker URL</h4>
+                  {details.shipperStickerUrl ? (
+                    <a 
+                      href={details.shipperStickerUrl} 
+                      className="text-primary hover:underline flex items-center" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      View Shipper Sticker
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground italic">No URL provided</p>
+                  )}
                 </div>
               </div>
               
