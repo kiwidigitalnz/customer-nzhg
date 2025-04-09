@@ -1,9 +1,15 @@
 
 // This module provides helper functions for dealing with Podio fields
 
-// Helper function to get field value by external_id
-export const getFieldValueByExternalId = (fields: any[], externalId: string): string | null => {
-  const field = fields.find(f => f.external_id === externalId);
+// Updated helper function to safely access field values by external_id
+export const getFieldValueByExternalId = (item: any, externalId: string): string | null => {
+  // If item is invalid or doesn't have fields property, return null
+  if (!item || !item.fields) {
+    return null;
+  }
+  
+  // Find the field in the item's fields array
+  const field = item.fields.find((f: any) => f.external_id === externalId);
   if (!field || !field.values || field.values.length === 0) {
     return null;
   }
@@ -43,8 +49,13 @@ export const getFieldValueByExternalId = (fields: any[], externalId: string): st
 };
 
 // Helper function to get ID value from a reference field
-export const getFieldIdValue = (fields: any[], fieldId: number): number | null => {
-  const field = fields.find(f => f.field_id === fieldId);
+export const getFieldIdValue = (item: any, fieldId: number): number | null => {
+  // If item is invalid or doesn't have fields property, return null
+  if (!item || !item.fields) {
+    return null;
+  }
+  
+  const field = item.fields.find((f: any) => f.field_id === fieldId);
   if (!field || !field.values || field.values.length === 0) {
     return null;
   }
@@ -69,8 +80,13 @@ export const getFieldIdValue = (fields: any[], fieldId: number): number | null =
 };
 
 // Helper function to get date field value from Podio date fields
-export const getDateFieldValue = (fields: any[], externalId: string): string | null => {
-  const field = fields.find(f => f.external_id === externalId);
+export const getDateFieldValue = (item: any, externalId: string): string | null => {
+  // If item is invalid or doesn't have fields property, return null
+  if (!item || !item.fields) {
+    return null;
+  }
+  
+  const field = item.fields.find((f: any) => f.external_id === externalId);
   
   if (!field || !field.values || field.values.length === 0) {
     return null;

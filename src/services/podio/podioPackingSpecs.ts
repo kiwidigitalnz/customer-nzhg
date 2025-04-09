@@ -95,9 +95,9 @@ export const getPackingSpecsForContact = async (_contactId?: number): Promise<Pa
       // Get the status field value and convert to our app's status format
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
       
-      // Handle null podioStatus with a default value and ensure it's never null when passing to mapPodioStatusToAppStatus
-      let statusText: string = 'Pending Approval';
-      if (podioStatus !== null) {
+      // Handle null podioStatus with a default value
+      let statusText = 'Pending Approval';
+      if (podioStatus !== null && podioStatus !== undefined) {
         statusText = typeof podioStatus === 'object' ? 
           (podioStatus?.text || 'Pending Approval') : 
           String(podioStatus);
@@ -139,9 +139,9 @@ export const getPackingSpecsForContact = async (_contactId?: number): Promise<Pa
         lidColour: getFieldValueByExternalId(item, 'lid-color') || '',
       };
       
-      // Handle null customerApprovalStatus with a safe conversion that ensures we always return a string
-      let approvalStatusText: string = 'Pending';
-      if (customerApprovalStatus !== null) {
+      // Handle null customerApprovalStatus with a safe conversion
+      let approvalStatusText = 'Pending';
+      if (customerApprovalStatus !== null && customerApprovalStatus !== undefined) {
         approvalStatusText = typeof customerApprovalStatus === 'object' ? 
           (customerApprovalStatus?.text || 'Pending') : 
           String(customerApprovalStatus);
