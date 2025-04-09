@@ -1,3 +1,4 @@
+
 // This file serves as the main entry point for Podio API services
 
 // Export authentication-related functions
@@ -51,28 +52,12 @@ export {
 } from './podio/podioFieldHelpers';
 
 // Export comment functions
-export const getCommentsFromPodio = async (itemId: number) => {
-  console.log('Placeholder: getCommentsFromPodio called with ID:', itemId);
-  return [];
-};
-
-export const addCommentToPodio = async (itemId: number, comment: string) => {
-  console.log('Placeholder: addCommentToPodio called', { itemId, comment });
-  return true;
-};
-
-export const addCommentToPackingSpec = async (specId: number, comment: string) => {
-  console.log('Placeholder: addCommentToPackingSpec called', { specId, comment });
-  return true;
-};
-
-// Placeholder comment item type
-export interface CommentItem {
-  id: number;
-  text: string;
-  createdBy: string;
-  createdAt: string;
-}
+export {
+  getCommentsFromPodio,
+  addCommentToPodio,
+  addCommentToPackingSpec,
+  type CommentItem
+} from './podio/podioComments';
 
 // Placeholder file upload related functions
 export const uploadFileToPodio = async (file: File, itemId: number, fieldId: number) => {

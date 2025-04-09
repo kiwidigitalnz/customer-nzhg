@@ -3,14 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { getCommentsFromPodio, CommentItem } from '../services/podio/podioComments';
 import { format } from 'date-fns';
 
-// Ensure our internal Comment interface matches the CommentItem interface from podioComments
-interface Comment {
-  id: number;
-  text: string;
-  createdBy: string;
-  createdAt: string;
-}
-
 /**
  * Custom hook that handles comments from Podio with manual refresh
  * @param itemId The ID of the item to get comments for
@@ -21,12 +13,12 @@ interface Comment {
  */
 export const useCommentPolling = (
   itemId: number,
-  initialComments: Comment[] = [],
+  initialComments: CommentItem[] = [],
   isActive: boolean = true,
   enableAutomaticPolling: boolean = false,
   pollingInterval: number = 15000
 ) => {
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [comments, setComments] = useState<CommentItem[]>(initialComments);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newCommentsCount, setNewCommentsCount] = useState(0);
@@ -40,6 +32,7 @@ export const useCommentPolling = (
   // Initialize seen comments with initial comments
   useEffect(() => {
     if (initialComments && initialComments.length > 0) {
+      console.log(`Initializing seen comments with ${initialComments.length} initial comments`);
       const initialIds = new Set(initialComments.map(comment => comment.id));
       seenCommentsRef.current = initialIds;
     }
@@ -47,26 +40,26 @@ export const useCommentPolling = (
 
   // Function to fetch comments
   const fetchComments = async () => {
-    if (!itemId) return;
+    if (!itemId) {
+      console.warn('Cannot fetch comments: No item ID provided');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log(`Fetching comments for item ID: ${itemId}`);
       const fetchedComments = await getCommentsFromPodio(itemId);
       
-      // Transform CommentItem[] to Comment[] to ensure type consistency
-      const transformedComments: Comment[] = fetchedComments.map(comment => ({
-        id: comment.id,
-        text: comment.text,
-        createdBy: comment.createdBy,
-        createdAt: comment.createdAt
-      }));
+      console.log(`Received ${fetchedComments.length} comments from Podio`);
       
       // Check if we have new comments by comparing with what we've seen before
-      const newComments = transformedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
+      const newComments = fetchedComments.filter(comment => !seenCommentsRef.current.has(comment.id));
       
       if (newComments.length > 0) {
+        console.log(`Found ${newComments.length} new comments`);
+        
         setNewCommentsCount(prevCount => {
           // Only add to count if the tab is not currently active or has not been viewed yet
           return isActive && hasViewedTabRef.current ? 0 : newComments.length;
@@ -77,14 +70,15 @@ export const useCommentPolling = (
       }
       
       // Check if we need to update the comments list
-      if (transformedComments.length !== comments.length || 
-          transformedComments.some((comment, index) => 
+      if (fetchedComments.length !== comments.length || 
+          fetchedComments.some((comment, index) => 
             index >= comments.length || 
             comment.id !== comments[index].id || 
             comment.text !== comments[index].text
           )) {
+        console.log('Updating comments list with new data');
         // Update comments without causing a flicker
-        setComments(transformedComments);
+        setComments(fetchedComments);
       }
       
       lastPollTimeRef.current = Date.now();
@@ -98,6 +92,7 @@ export const useCommentPolling = (
 
   // Manual refresh function for immediate updates and mark all as seen
   const refreshComments = () => {
+    console.log('Manual refresh of comments triggered');
     fetchComments();
     // Mark all as seen when manually refreshed
     markAllAsSeen();
@@ -116,6 +111,7 @@ export const useCommentPolling = (
       
       // Set a timeout to clear new comments after 5 seconds
       newCommentsTimeoutRef.current = window.setTimeout(() => {
+        console.log('Marking all comments as seen');
         comments.forEach(comment => {
           seenCommentsRef.current.add(comment.id);
         });
@@ -128,6 +124,7 @@ export const useCommentPolling = (
   // Setup polling or fetch comments once when component becomes active
   useEffect(() => {
     if (!isActive) {
+      console.log('Comments tab is inactive, clearing polling interval');
       // Clear interval if component becomes inactive
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -137,11 +134,13 @@ export const useCommentPolling = (
       return;
     }
     
+    console.log(`Comments tab became active for item ID: ${itemId}, fetching comments`);
     // Initial fetch when tab becomes active
     fetchComments();
     
     // Set up polling interval only if automatic polling is enabled
     if (enableAutomaticPolling) {
+      console.log(`Setting up automatic polling every ${pollingInterval}ms`);
       pollingIntervalRef.current = window.setInterval(fetchComments, pollingInterval);
     }
     
@@ -166,6 +165,7 @@ export const useCommentPolling = (
   // Update comments if initialComments change
   useEffect(() => {
     if (initialComments && initialComments.length > 0) {
+      console.log(`Initial comments updated with ${initialComments.length} comments`);
       setComments(initialComments);
       
       // Update seen comments with initial comments
@@ -178,6 +178,7 @@ export const useCommentPolling = (
   // Mark comments as seen when the tab becomes active
   useEffect(() => {
     if (isActive) {
+      console.log('Tab became active, marking comments as seen');
       markAllAsSeen();
     }
   }, [isActive]);

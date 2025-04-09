@@ -12,15 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CommentItem } from '@/services/podio/podioComments';
 
-interface Comment {
-  id: number;
-  text: string;
-  createdBy: string;
-  createdAt: string;
-}
-
 interface CommentsListProps {
-  comments: Comment[];
+  comments: CommentItem[];
   specId?: number;
   isActive?: boolean;
 }
@@ -54,6 +47,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
   // When tab becomes active, do an initial fetch
   useEffect(() => {
     if (isActive && specId) {
+      console.log(`Comments tab active (${isActive}) for spec ID: ${specId}, refreshing comments`);
       refreshComments();
     }
   }, [isActive, specId]);
@@ -62,9 +56,10 @@ const CommentsList: React.FC<CommentsListProps> = ({
     if (isActive && newCommentsCount > 0) {
       markAllAsSeen();
     }
-  }, [isActive, newCommentsCount, markAllAsSeen]);
+  }, [isActive, newCommentsCount]);
   
   const handleRefresh = () => {
+    console.log(`Manually refreshing comments for spec ID: ${specId}`);
     refreshComments();
     toast({
       title: "Refreshing comments",
@@ -91,28 +86,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
       console.error('Error formatting last polled time:', err);
       return '';
     }
-  };
-  
-  const ensureCommentFormat = (comment: any): Comment => {
-    if (typeof comment.createdBy === 'string') {
-      return comment as Comment;
-    }
-    
-    if (comment.author && comment.author.name) {
-      return {
-        id: comment.id,
-        text: comment.text,
-        createdBy: comment.createdBy || comment.author.name,
-        createdAt: comment.createdAt
-      };
-    }
-    
-    return {
-      id: comment.id,
-      text: comment.text,
-      createdBy: 'Unknown',
-      createdAt: comment.createdAt
-    };
   };
   
   if (!comments || comments.length === 0) {
