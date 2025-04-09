@@ -58,28 +58,13 @@ export const PODIO_CATEGORIES = {
   }
 };
 
-// Get all packing specs for a contact
-export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
+// Get all packing specs without filtering by contact
+export const getPackingSpecsForContact = async (_contactId?: number): Promise<PackingSpec[]> => {
   try {
-    console.log(`Fetching packing specs for contact ID: ${contactId}`);
+    console.log(`Fetching all packing specs without contact filter`);
     
-    // Follow the Podio API filter format correctly
-    // Use the views/filter endpoint with the correct payload structure
-    const filterData = {
-      filters: {
-        "customer-brand-name": {
-          values: [contactId]
-        }
-      }
-    };
-    
-    console.log(`Filtering packing specs with format:`, JSON.stringify(filterData));
-    
-    // Call the Podio API with the filter using the views endpoint
-    const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
-      method: 'POST',
-      body: JSON.stringify(filterData)
-    });
+    // Call the Podio API to get all items in the app without filtering
+    const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/`);
     
     if (!response || !response.items) {
       console.log('No items found in response');
@@ -110,7 +95,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
       // Get the status field value and convert to our app's status format
       const podioStatus = getFieldValueByExternalId(item, 'approval-status');
       
-      // FIX: Handle null podioStatus with a default value and ensure it's never null when passing to mapPodioStatusToAppStatus
+      // Handle null podioStatus with a default value and ensure it's never null when passing to mapPodioStatusToAppStatus
       let statusText: string = 'Pending Approval';
       if (podioStatus !== null) {
         statusText = typeof podioStatus === 'object' ? 
@@ -154,7 +139,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         lidColour: getFieldValueByExternalId(item, 'lid-color') || '',
       };
       
-      // FIX: Handle null customerApprovalStatus with a safe conversion that ensures we always return a string
+      // Handle null customerApprovalStatus with a safe conversion that ensures we always return a string
       let approvalStatusText: string = 'Pending';
       if (customerApprovalStatus !== null) {
         approvalStatusText = typeof customerApprovalStatus === 'object' ? 
@@ -169,7 +154,7 @@ export const getPackingSpecsForContact = async (contactId: number): Promise<Pack
         productName,
         status,
         customer: customerName,
-        customerItemId: customerItemId || contactId, // Fallback to contactId if itemId not found
+        customerItemId: customerItemId || 0, // Use 0 as fallback if no customer ID found
         created,
         updated,
         customerApprovalStatus: approvalStatusText,

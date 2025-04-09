@@ -16,7 +16,7 @@ interface CategorizedSpecs {
 }
 
 export function usePackingSpecs() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [specs, setSpecs] = useState<PackingSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export function usePackingSpecs() {
 
   // Fetch function with debouncing and error handling
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
-    if (!user || !isAuthenticated) {
+    if (!isAuthenticated) {
       console.log('No authenticated user, skipping fetch');
       return;
     }
@@ -61,17 +61,13 @@ export function usePackingSpecs() {
       return;
     }
     
-    console.log('Performing initial fetch of packing specs');
+    console.log('Performing fetch of all packing specs');
     fetchInProgressRef.current = true;
     setLoading(true);
     
     try {
-      // Get contact ID from user
-      const contactId = user.podioItemId || user.id;
-      console.log(`Fetching specs for contact ID: ${contactId}`);
-      
-      // Call the API function
-      const data = await getPackingSpecsForContact(contactId);
+      // Call the API function without passing contactId
+      const data = await getPackingSpecsForContact();
       
       // Process the data
       if (Array.isArray(data) && data.length > 0) {
@@ -146,11 +142,11 @@ export function usePackingSpecs() {
       setLoading(false);
       fetchInProgressRef.current = false;
     }
-  }, [user, isAuthenticated, toast]);
+  }, [isAuthenticated, toast]);
 
   // Initial data loading effect
   useEffect(() => {
-    if (user && isAuthenticated) {
+    if (isAuthenticated) {
       fetchSpecs();
     }
     
@@ -158,7 +154,7 @@ export function usePackingSpecs() {
     return () => {
       // Any cleanup if needed
     };
-  }, [user, isAuthenticated, fetchSpecs]);
+  }, [isAuthenticated, fetchSpecs]);
 
   // Process specs into categories
   const categorizedSpecs: CategorizedSpecs = {
