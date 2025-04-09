@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,22 +76,17 @@ export const PACKING_SPEC_FIELD_IDS = {
   updatedBy2: 271320234
 };
 
-// Token management
-const TOKEN_STORAGE_KEY = 'podio_access_token';
-const TOKEN_EXPIRY_KEY = 'podio_token_expiry';
-const USER_DATA_KEY = 'podio_user_data';
-
 // Rate limiting management
 const RATE_LIMIT_KEY = 'podio_rate_limited';
 const RATE_LIMIT_UNTIL_KEY = 'podio_rate_limited_until';
 const RATE_LIMIT_ENDPOINT_KEY = 'podio_rate_limited_endpoint';
 const RATE_LIMIT_DURATION = 10 * 60 * 1000;
 
-// Clear auth tokens from localStorage
+// Clear auth tokens (now a no-op since we don't store tokens locally)
 export const clearTokens = (): void => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem(TOKEN_EXPIRY_KEY);
-  localStorage.removeItem(USER_DATA_KEY);
+  console.log('Token management now handled by server - no local tokens to clear');
+  // We could clear user data here if needed
+  localStorage.removeItem('podio_user_data');
 };
 
 // Check if Podio API is configured
@@ -100,33 +94,35 @@ export const isPodioConfigured = (): boolean => {
   return true; // We're using Supabase edge functions now, so this is always true
 };
 
-// Check if we have valid tokens
-export const hasValidTokens = (): boolean => {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-  const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-  
-  if (!token || !expiry) {
+// We've simplified token handling - now we just check if we can get a valid token from the server
+export const hasValidTokens = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+      method: 'POST'
+    });
+    
+    if (error || !data || !data.access_token) {
+      console.warn('No valid token available:', error?.message || 'Unknown error');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error checking token validity:', error);
     return false;
   }
-  
-  // Check if token has expired
-  const expiryTime = parseInt(expiry, 10);
-  const now = Date.now();
-  
-  return expiryTime > now;
 };
 
 // Call the Supabase Edge Function to refresh the token
 export const refreshPodioToken = async (): Promise<boolean> => {
   try {
-    console.log('Getting Podio OAuth token from our database');
+    console.log('Getting Podio OAuth token from server');
     const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
       method: 'POST'
     });
     
     if (error) {
       console.error('OAuth token refresh failed:', error);
-      clearTokens();
       return false;
     }
     
@@ -135,17 +131,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       return false;
     }
     
-    // Store the access token with proper expiry handling
-    localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-    
-    // Use the enhanced response to set accurate expiry time
-    // But still subtract 5 minutes as a safety buffer
-    if (data.expires_at) {
-      const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-    }
-    
-    console.log('Successfully retrieved Podio OAuth token');
+    console.log('Successfully verified Podio OAuth token');
     return true;
   } catch (error) {
     console.error('Failed to get Podio OAuth token:', error);
@@ -165,7 +151,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     console.log(`Authenticating user: ${username}`);
     
     // First ensure we have a valid access token
-    const hasToken = hasValidTokens();
+    const hasToken = await hasValidTokens();
     if (!hasToken) {
       const tokenRefreshed = await refreshPodioToken();
       if (!tokenRefreshed) {
@@ -197,17 +183,6 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error(data.error);
     }
     
-    // Store access token from user auth
-    if (data.access_token) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
-      
-      // Calculate token expiry time (subtract 5 minutes for safety)
-      if (data.expires_at) {
-        const expiryTime = new Date(data.expires_at).getTime() - (5 * 60 * 1000);
-        localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-      }
-    }
-    
     // Store user data in localStorage
     const userData = {
       id: data.id,
@@ -217,7 +192,7 @@ export const authenticateUser = async (username: string, password: string): Prom
       logoUrl: data.logoUrl
     };
     
-    localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    localStorage.setItem('podio_user_data', JSON.stringify(userData));
     console.log('User authenticated successfully');
     
     return userData;
@@ -245,7 +220,7 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
     }
     
     console.log(`Access validation result:`, data);
-    return data.hasAccess || false;
+    return data?.hasAccess || false;
   } catch (error) {
     console.error('Failed to validate Contacts app access:', error);
     return false;
@@ -266,22 +241,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
     
-    // Get the access token from localStorage
-    let accessToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    
-    // If no token is available or it's expired, try to refresh it
-    if (!accessToken || !hasValidTokens()) {
-      console.log('No valid access token available, attempting to refresh');
-      const refreshed = await refreshPodioToken();
-      if (!refreshed) {
-        throw new Error('Failed to obtain Podio access token');
-      }
-      // Get the new token after refresh
-      accessToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (!accessToken) {
-        throw new Error('Still no access token available after refresh');
-      }
-    }
+    // Server handles token validation/refresh, so we don't need to check locally
     
     // Prepare the request payload
     const payload = {
@@ -304,16 +264,11 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       }
     }
     
-    // Add authorization header only if token is available
-    const headers: { [key: string]: string } = {};
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
+    // No auth headers needed anymore - the edge function will get the tokens from the database
     
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
       method: 'POST',
-      headers,
       body: payload
     });
     
@@ -325,7 +280,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       console.error('Error context:', {
         endpoint: normalizedEndpoint,
         method: options.method || 'GET',
-        hasToken: Boolean(accessToken),
         statusCode: error.status || error.code
       });
       
@@ -336,31 +290,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         throw new Error('Rate limit reached. Please try again later.');
       }
       
-      // Handle authentication errors
-      if (error.message?.includes('401') || error.message?.includes('403') || 
-          error.status === 401 || error.status === 403) {
-        console.warn('Authentication error detected:', error.message);
-        
-        if (error.message?.includes('401') || error.status === 401) {
-          console.warn('Authentication failed, clearing tokens and trying to refresh');
-          // Clear tokens and try to refresh
-          clearTokens();
-          const refreshSuccess = await refreshPodioToken();
-          
-          if (refreshSuccess) {
-            console.log('Token refreshed successfully, retrying the request');
-            // If refresh was successful, retry the call once
-            return callPodioApi(endpoint, options);
-          } else {
-            console.error('Token refresh failed, authentication error persists');
-            throw new Error('Authentication failed. Please log in again.');
-          }
-        } else {
-          throw new Error('Access denied. You do not have permission to access this resource.');
-        }
-      }
-      
-      // Handle other error types
       throw new Error(error.message || 'Podio API error');
     }
     

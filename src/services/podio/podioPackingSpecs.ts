@@ -1,315 +1,192 @@
 
-import { callPodioApi, hasValidTokens, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
-import { addCommentToPodio } from './podioComments';
+// Import only what's needed
+import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
+import { getFieldValueByExternalId, extractPodioImages } from './podioFieldHelpers';
 
-// Field IDs for Packing Spec app fields
-export const PACKING_SPEC_FIELD_IDS = {
-  approvalStatus: 'approval-status',
-  approvedByName: 'approved-by-name',
-  signature: 'signature',
-  approvalDate: 'approval-date',
-  customerRequestedChanges: 'customer-requested-changes',
-  customerApprovalStatus: 'customer-approval-status',
-  customerBrandName: 'customer-brand-name'
-};
-
-// Category IDs for various statuses
-export const PODIO_CATEGORIES = {
-  APPROVAL_STATUS: {
-    PENDING_APPROVAL: { id: 1, text: 'Pending Approval' },
-    APPROVED_BY_CUSTOMER: { id: 2, text: 'Approved by Customer' },
-    CHANGES_REQUESTED: { id: 3, text: 'Changes Requested' }
-  }
-};
-
-// Helper function to format a category value for Podio API
-const formatCategoryValue = (categoryId: number) => {
-  return { value: categoryId };
-};
-
-// Helper function to format date for Podio API
-const formatPodioDate = (date: Date) => {
-  return date.toISOString().split('T')[0];
-};
-
-// Helper function to add a comment to a packing spec
-export const addCommentToPackingSpec = async (specId: number, comment: string): Promise<boolean> => {
-  try {
-    return await addCommentToPodio(specId, comment);
-  } catch (error) {
-    console.error('Error adding comment to packing spec:', error);
-    throw error;
-  }
-};
-
-// Type definition for a packing specification
+// Define the PackingSpec interface
 export interface PackingSpec {
   id: number;
   title: string;
-  description: string;
-  status: 'pending-approval' | 'approved-by-customer' | 'changes-requested';
-  createdAt: string;
-  details: {
-    product: string;
-    productCode?: string;
-    umfMgo?: string;
-    honeyType?: string;
-    jarSize?: string;
-    jarColour?: string;
-    jarMaterial?: string;
-    lidSize?: string;
-    lidColour?: string;
-    batchSize?: string;
-    packagingType?: string;
-    specialRequirements?: string;
-    customerId?: number;
-    [key: string]: any; // Allow additional fields
-  };
-  comments?: Array<{
+  productName: string;
+  status: string;
+  customer: string;
+  customerItemId: number;
+  created: string;
+  updated: string;
+  customerApprovalStatus: string;
+  link: string;
+  files?: {
     id: number;
-    text: string;
-    createdBy: string;
-    createdAt: string;
-  }>;
+    name: string;
+    link: string;
+  }[];
 }
 
-// Get packing specs associated with a contact
+// Define categories for easier search/filter
+export const PODIO_CATEGORIES = {
+  PENDING_APPROVAL: "Pending Approval",
+  APPROVED: "Approved",
+  NEEDS_CHANGES: "Needs Changes",
+  DRAFT: "Draft",
+};
+
+// Get all packing specs for a contact
 export const getPackingSpecsForContact = async (contactId: number): Promise<PackingSpec[]> => {
   try {
     console.log(`Fetching packing specs for contact ID: ${contactId}`);
     
-    if (!hasValidTokens()) {
-      throw new Error('Not authenticated with Podio API');
-    }
-    
-    // Format the filter based on Podio API documentation
-    // Using the "fields" format which is more reliable than "filters"
-    const filterPayload = {
-      "fields": [
+    // Create the filter with the correct field key and values array
+    const filterData = {
+      fields: [
         {
-          "key": PACKING_SPEC_FIELD_IDS.customerBrandName || "customer-brand-name",
-          "values": [contactId]
+          key: "customer-brand-name",
+          values: [contactId]
         }
       ]
     };
     
-    console.log('Filtering packing specs with format:', JSON.stringify(filterPayload));
+    console.log(`Filtering packing specs with format:`, JSON.stringify(filterData));
     
-    // Call Podio API to get the items
-    const response = await callPodioApi(`item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
+    // Call the Podio API with the filter
+    const response = await callPodioApi(`/item/app/${PODIO_PACKING_SPEC_APP_ID}/filter/`, {
       method: 'POST',
-      body: JSON.stringify(filterPayload)
+      body: JSON.stringify(filterData)
     });
     
-    console.log('Packing specs API response received:', response ? 'Data found' : 'No data');
-    
     if (!response || !response.items) {
-      console.log('No packing specs found for this contact');
+      console.log('No items found in response');
       return [];
     }
     
-    console.log(`Found ${response.items.length} packing specs items`);
+    console.log(`Found ${response.items.length} packing specs`);
     
-    // Map the response to our PackingSpec interface
-    const specs = response.items.map((item: any) => {
-      // Transform Podio item into our data structure
-      const spec = {
-        id: item.item_id,
-        title: item.title,
-        description: item.fields?.description?.value || '',
-        status: mapStatusFromPodio(item),
-        createdAt: item.created_on,
-        details: extractDetailsFromPodioItem(item),
-      };
+    // Map the Podio response to our PackingSpec interface
+    const packingSpecs: PackingSpec[] = response.items.map((item: any) => {
+      // Extract the basic fields
+      const podioId = item.item_id;
+      const title = item.title || 'Untitled Packing Spec';
       
-      console.log(`Mapped spec ID ${spec.id}: ${spec.title} (${spec.status})`);
-      return spec;
+      // Get the customer field value (ref to another item)
+      const customerField = getFieldValueByExternalId(item, 'customer-brand-name');
+      let customerName = 'Unknown Customer';
+      let customerItemId = null;
+      
+      if (customerField && customerField.value) {
+        // For reference fields, the value is an array of objects with id and title
+        if (Array.isArray(customerField.value) && customerField.value.length > 0) {
+          customerName = customerField.value[0].title || 'Unknown Customer';
+          customerItemId = customerField.value[0].item_id;
+        }
+      }
+      
+      // Get the product name field value
+      const productNameField = getFieldValueByExternalId(item, 'product-name');
+      const productName = productNameField?.value || 'Unnamed Product';
+      
+      // Get the status field value
+      const statusField = getFieldValueByExternalId(item, 'approval-status');
+      const status = statusField?.value?.text || 'Unknown Status';
+      
+      // Get the customer approval status
+      const customerApprovalField = getFieldValueByExternalId(item, 'customer-approval-status');
+      const customerApprovalStatus = customerApprovalField?.value?.text || 'Pending';
+      
+      // Get created and updated dates
+      const created = item.created_on || '';
+      const updated = item.last_event_on || '';
+      
+      // Build the link to the packing spec in Podio
+      const link = `https://podio.com/nzhoneygroup/packing-specifications/apps/packing-specifications/items/${podioId}`;
+      
+      // Extract files if any
+      const files = item.files ? item.files.map((file: any) => ({
+        id: file.file_id,
+        name: file.name,
+        link: file.link
+      })) : [];
+      
+      // Return a properly formatted PackingSpec object
+      return {
+        id: podioId,
+        title,
+        productName,
+        status,
+        customer: customerName,
+        customerItemId: customerItemId || contactId, // Fallback to contactId if itemId not found
+        created,
+        updated,
+        customerApprovalStatus,
+        link,
+        files
+      };
     });
     
-    console.log(`Successfully processed ${specs.length} packing specs`);
-    return specs;
+    return packingSpecs;
   } catch (error) {
     console.error('Error fetching packing specs:', error);
     throw error;
   }
 };
 
-// Get detailed information about a specific packing spec
-export const getPackingSpecDetails = async (specId: number): Promise<PackingSpec | null> => {
+// Get details for a specific packing spec
+export const getPackingSpecDetails = async (specId: number): Promise<any> => {
   try {
-    console.log(`Fetching details for packing spec ID: ${specId}`);
+    console.log(`Fetching packing spec details for ID: ${specId}`);
     
-    if (!hasValidTokens()) {
-      throw new Error('Not authenticated with Podio API');
+    // Call the Podio API to get the item details
+    const response = await callPodioApi(`/item/${specId}`);
+    
+    if (!response) {
+      throw new Error('No response received from Podio API');
     }
     
-    // Call Podio API to get the item
-    const item = await callPodioApi(`item/${specId}`);
+    console.log(`Successfully retrieved packing spec details`);
     
-    if (!item) {
-      console.log(`No packing spec found with ID: ${specId}`);
-      return null;
+    // Process images if needed
+    const images = extractPodioImages(response);
+    if (images.length > 0) {
+      console.log(`Found ${images.length} images in the packing spec`);
     }
     
-    // Transform Podio item into our data structure
-    const spec: PackingSpec = {
-      id: item.item_id,
-      title: item.title,
-      description: item.fields?.description?.value || '',
-      status: mapStatusFromPodio(item),
-      createdAt: item.created_on,
-      details: extractDetailsFromPodioItem(item),
+    return {
+      ...response,
+      images
     };
-    
-    console.log(`Successfully fetched packing spec details`);
-    return spec;
   } catch (error) {
     console.error('Error fetching packing spec details:', error);
     throw error;
   }
 };
 
-// Helper function to map Podio status to our status enum
-const mapStatusFromPodio = (item: any): 'pending-approval' | 'approved-by-customer' | 'changes-requested' => {
-  try {
-    const approvalStatusField = item.fields.find((f: any) => f.external_id === PACKING_SPEC_FIELD_IDS.approvalStatus);
-    
-    if (!approvalStatusField || !approvalStatusField.values || approvalStatusField.values.length === 0) {
-      return 'pending-approval'; // Default status
-    }
-    
-    const statusId = approvalStatusField.values[0].value.id;
-    
-    if (statusId === PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id) {
-      return 'approved-by-customer';
-    } else if (statusId === PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id) {
-      return 'changes-requested';
-    } else {
-      return 'pending-approval';
-    }
-  } catch (error) {
-    console.error('Error mapping status from Podio:', error);
-    return 'pending-approval'; // Default status
-  }
-};
-
-// Helper function to extract details from a Podio item
-const extractDetailsFromPodioItem = (item: any): any => {
-  const details: any = {};
-  
-  // Extract details from item fields
-  if (item.fields) {
-    item.fields.forEach((field: any) => {
-      if (field.label && field.values && field.values.length > 0) {
-        let value;
-        
-        // Handle different field types
-        if (field.type === 'category') {
-          value = field.values[0].value.text;
-        } else if (field.type === 'number') {
-          value = field.values[0].value;
-        } else if (field.type === 'text') {
-          value = field.values[0].value;
-        } else if (field.type === 'date') {
-          value = field.values[0].start_date;
-        } else if (field.type === 'app') {
-          value = field.values[0].value.item_id;
-        } else {
-          value = field.values[0].value;
-        }
-        
-        // Convert field label to camelCase property name
-        const propName = field.label
-          .toLowerCase()
-          .replace(/[^a-zA-Z0-9]+(.)/g, (m: any, chr: string) => chr.toUpperCase());
-        
-        details[propName] = value;
-      }
-    });
-  }
-  
-  return details;
-};
-
-// Update packing spec status in Podio
+// Update the status of a packing spec
 export const updatePackingSpecStatus = async (
   specId: number, 
-  status: 'pending-approval' | 'approved-by-customer' | 'changes-requested', 
-  comments?: string,
-  additionalData?: {
-    approvedByName?: string;
-    signature?: string;
-    status?: string;
-  }
+  status: string, 
+  additionalFields?: any
 ): Promise<boolean> => {
   try {
-    console.log(`Updating packing spec ${specId} to ${status}`, comments ? `with comments: ${comments}` : '');
-    
-    if (!hasValidTokens()) {
-      throw new Error('Not authenticated with Podio API');
-    }
+    console.log(`Updating packing spec ${specId} status to: ${status}`);
     
     // Prepare the fields to update
-    const fieldsToUpdate: any = {};
+    const fields: any = {
+      'customer-approval-status': status
+    };
     
-    // Set the appropriate approval status category
-    if (status === 'approved-by-customer') {
-      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.approvalStatus] = formatCategoryValue(PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id);
-      
-      // If we have approvedByName, add it
-      if (additionalData?.approvedByName) {
-        fieldsToUpdate[PACKING_SPEC_FIELD_IDS.approvedByName] = { value: additionalData.approvedByName };
-      }
-      
-      // If we have signature file ID, add it
-      if (additionalData?.signature) {
-        fieldsToUpdate[PACKING_SPEC_FIELD_IDS.signature] = { value: additionalData.signature };
-      }
-      
-      // Set approval date to now
-      const now = new Date();
-      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.approvalDate] = { 
-        start_date: formatPodioDate(now)
-      };
-    } else if (status === 'changes-requested') {
-      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.approvalStatus] = formatCategoryValue(PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id);
-      
-      // If we have customerRequestedChanges, add them
-      if (comments) {
-        fieldsToUpdate[PACKING_SPEC_FIELD_IDS.customerRequestedChanges] = { value: comments };
-      }
+    // Add any additional fields from the parameters
+    if (additionalFields) {
+      Object.assign(fields, additionalFields);
     }
     
-    // If the user selected a specific status via additionalData
-    if (additionalData?.status) {
-      // Convert additionalData.status to a number if it's a string
-      const statusId = typeof additionalData.status === 'string' 
-        ? parseInt(additionalData.status, 10) 
-        : additionalData.status;
-        
-      fieldsToUpdate[PACKING_SPEC_FIELD_IDS.customerApprovalStatus] = formatCategoryValue(statusId);
-    }
-    
-    // Update the item in Podio
-    await callPodioApi(`item/${specId}`, {
+    // Call the Podio API to update the item
+    const response = await callPodioApi(`/item/${specId}`, {
       method: 'PUT',
-      body: JSON.stringify({ fields: fieldsToUpdate })
+      body: JSON.stringify({ fields })
     });
     
-    // If comments are provided, add them as a comment on the item
-    if (comments) {
-      try {
-        await addCommentToPackingSpec(specId, comments);
-      } catch (commentError) {
-        console.error('Error adding comment:', commentError);
-        // Continue even if comment addition fails
-      }
-    }
-    
-    console.log(`Successfully updated packing spec ${specId} to ${status}`);
+    console.log('Packing spec update response:', response);
     return true;
   } catch (error) {
-    console.error('Error updating packing spec:', error);
-    throw error; // Re-throw the error so we can handle it in the calling component
+    console.error('Error updating packing spec status:', error);
+    throw error;
   }
 };

@@ -2,8 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   authenticateUser, 
-  clearTokens, 
-  hasValidTokens,
+  clearTokens,
   refreshPodioToken,
   isPodioConfigured,
   cacheUserData
@@ -12,12 +11,12 @@ import {
 // User data interface with authentication information
 export interface UserData {
   id: number;
-  podioItemId?: number; // Added PIID
+  podioItemId?: number;
   name: string;
   email: string;
   username: string;
-  logoFileId?: string; // Added logo file ID
-  logoUrl?: string;    // Added logo URL
+  logoFileId?: string;
+  logoUrl?: string;
 }
 
 // Auth context interface
@@ -27,7 +26,7 @@ interface AuthContextType {
   error: any;
   login: (username?: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  checkSession: () => boolean;
+  checkSession: () => Promise<boolean>;
   isAuthenticated: boolean;
   forceReauthenticate: () => Promise<boolean>;
 }
@@ -39,7 +38,7 @@ const AuthContext = createContext<AuthContextType>({
   error: null,
   login: async () => false,
   logout: () => {},
-  checkSession: () => false,
+  checkSession: async () => false,
   isAuthenticated: false,
   forceReauthenticate: async () => false,
 });
@@ -73,13 +72,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userData = JSON.parse(storedUser);
           setUser(userData);
           
-          // Check if tokens are valid
-          if (hasValidTokens()) {
-            setIsAuthenticated(true);
-          } else {
-            // Try to get a new token
-            const success = await refreshPodioToken();
-            setIsAuthenticated(success);
+          // Check if tokens are valid on the server
+          const hasValidSession = await refreshPodioToken();
+          setIsAuthenticated(hasValidSession);
+          
+          if (!hasValidSession) {
+            console.log('No valid session found, clearing local user data');
+            localStorage.removeItem('podio_user_data');
+            setUser(null);
           }
         } else {
           setIsAuthenticated(false);
@@ -107,12 +107,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (process.env.NODE_ENV === 'development' && !username && !password) {
         const dummyUser: UserData = {
           id: 1,
-          podioItemId: 1, // Added PIID for dummy user
+          podioItemId: 1,
           name: "Test Company",
           email: "test@example.com",
           username: "testuser",
-          logoFileId: "", // Added empty logo file ID
-          logoUrl: "",    // Added empty logo URL
+          logoFileId: "",
+          logoUrl: "",
         };
         
         setUser(dummyUser);
@@ -127,8 +127,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Username and password are required');
       }
 
-      // First ensure we have valid access tokens for Podio API
-      await refreshPodioToken();
+      // We still verify token is valid before trying to authenticate
+      const tokenValid = await refreshPodioToken();
+      if (!tokenValid) {
+        console.warn('Failed to get a valid token before user authentication');
+      }
       
       // Now find the user in the contacts app
       const userData = await authenticateUser(username, password);
@@ -180,8 +183,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Check if session is valid
-  const checkSession = useCallback((): boolean => {
-    return hasValidTokens() && Boolean(user);
+  const checkSession = useCallback(async (): Promise<boolean> => {
+    if (!user) return false;
+    return await refreshPodioToken();
   }, [user]);
 
   // Force reauthentication with Podio API
