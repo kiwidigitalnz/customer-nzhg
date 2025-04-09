@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -166,7 +165,6 @@ const Dashboard = () => {
     try {
       await ensurePackingSpecAuth();
       
-      // Make sure we're using the contact Podio Item ID, not just regular ID
       const contactId = user.podioItemId || user.id;
       
       console.log(`Fetching specs for contact ID: ${contactId}`);
@@ -320,7 +318,6 @@ const Dashboard = () => {
                 src={user.logoUrl} 
                 alt={user?.name || 'Company Logo'} 
                 onError={(e) => {
-                  // If image fails to load, clear the src to show fallback
                   e.currentTarget.src = '';
                 }}
               />
@@ -328,23 +325,6 @@ const Dashboard = () => {
             <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
-            
-            {/* Display the PIID as a badge on the avatar */}
-            {user?.podioItemId && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge className="absolute -bottom-2 -right-2 bg-primary text-xs px-2 rounded-full shadow-sm" variant="default">
-                      <Database className="h-3 w-3 mr-1" />
-                      {user.podioItemId}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Podio Item ID</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </Avatar>
           <div>
             <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
