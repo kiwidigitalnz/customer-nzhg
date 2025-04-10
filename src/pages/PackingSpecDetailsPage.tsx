@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { isPodioConfigured } from '../services/podioApi';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { SectionApprovalProvider } from '@/contexts/SectionApprovalContext';
 
 const PackingSpecDetailsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -64,7 +65,9 @@ const PackingSpecDetailsPage = () => {
           </div>
         </div>
       ) : (
-        <PackingSpecDetails />
+        <SectionApprovalProvider>
+          <PackingSpecDetails />
+        </SectionApprovalProvider>
       )}
     </MainLayout>
   );

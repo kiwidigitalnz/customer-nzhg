@@ -30,7 +30,7 @@ import {
 // Import shared approval interface
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
 import { SpecStatus } from './packing-spec/StatusBadge';
-import { SectionApprovalProvider, useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
+import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 
 // Types
 interface PackingSpec {
@@ -70,8 +70,8 @@ const TAB_NAMES: Record<SectionName, string> = {
   'documents': 'Documents'
 };
 
-// Wrap the main component to use the section approval context
-const PackingSpecDetailsContent = () => {
+// Main component that uses the section approval context
+const PackingSpecDetails = () => {
   const { id } = useParams<{ id: string }>();
   const specId = id ? parseInt(id) : 0;
   const { user } = useAuth();
@@ -137,6 +137,113 @@ const PackingSpecDetailsContent = () => {
 
     fetchSpecDetails();
   }, [specId, user, navigate]);
+
+  const handleAddComment = async () => {
+    if (!spec || !newComment.trim()) return;
+    
+    setIsAddingComment(true);
+    
+    try {
+      console.log(`Attempting to add comment to spec ID ${spec.id}`);
+      
+      const companyName = user?.name || "Customer";
+      const formattedComment = `[${companyName}] ${newComment}`;
+      
+      const success = await addCommentToPackingSpec(
+        spec.id, 
+        formattedComment
+      );
+      
+      if (success) {
+        toast({
+          title: 'Comment added successfully',
+          variant: 'default',
+        });
+        
+        setNewComment('');
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to add comment. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
+  const handleOpenApproval = () => {
+    setApprovalDialogOpen(true);
+  };
+
+  const handleSectionApproval = async (section: string): Promise<void> => {
+    if (!spec) return;
+    
+    try {
+      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
+      await addCommentToPackingSpec(
+        spec.id,
+        `[${user?.name || 'Customer'}] Approved section: ${section}`
+      );
+      
+      toast({
+        title: `${section} approved`,
+        description: "This section has been marked as approved.",
+        variant: 'default',
+      });
+      
+      // Navigate to the next section that needs approval
+      setTimeout(() => {
+        navigateToNextTab();
+      }, 500);
+    } catch (error) {
+      console.error(`Error approving section ${section}:`, error);
+      toast({
+        title: 'Error',
+        description: `Failed to approve ${section}. Please try again.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSectionRequestChanges = async (section: string, comments: string): Promise<void> => {
+    if (!spec) return;
+    
+    try {
+      // Save feedback to state for later inclusion in the final rejection
+      setSectionFeedback(prev => ({
+        ...prev,
+        [section]: comments
+      }));
+      
+      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
+      await addCommentToPackingSpec(
+        spec.id,
+        `[${user?.name || 'Customer'}] Requested changes for ${section}: ${comments}`
+      );
+      
+      toast({
+        title: `Changes requested for ${section}`,
+        description: "Your feedback has been submitted.",
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error(`Error requesting changes for section ${section}:`, error);
+      toast({
+        title: 'Error',
+        description: `Failed to submit feedback for ${section}. Please try again.`,
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Find the next tab in the sequence
   const findNextTabInSequence = (currentTab: string): string => {
@@ -293,113 +400,6 @@ const PackingSpecDetailsContent = () => {
         setIsSubmitting(false);
         setIsUpdatingStatus(false);
       }, 300);
-    }
-  };
-
-  const handleAddComment = async () => {
-    if (!spec || !newComment.trim()) return;
-    
-    setIsAddingComment(true);
-    
-    try {
-      console.log(`Attempting to add comment to spec ID ${spec.id}`);
-      
-      const companyName = user?.name || "Customer";
-      const formattedComment = `[${companyName}] ${newComment}`;
-      
-      const success = await addCommentToPackingSpec(
-        spec.id, 
-        formattedComment
-      );
-      
-      if (success) {
-        toast({
-          title: 'Comment added successfully',
-          variant: 'default',
-        });
-        
-        setNewComment('');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to add comment. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsAddingComment(false);
-    }
-  };
-
-  const handleOpenApproval = () => {
-    setApprovalDialogOpen(true);
-  };
-
-  const handleSectionApproval = async (section: string): Promise<void> => {
-    if (!spec) return;
-    
-    try {
-      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
-      await addCommentToPackingSpec(
-        spec.id,
-        `[${user?.name || 'Customer'}] Approved section: ${section}`
-      );
-      
-      toast({
-        title: `${section} approved`,
-        description: "This section has been marked as approved.",
-        variant: 'default',
-      });
-      
-      // Navigate to the next section that needs approval
-      setTimeout(() => {
-        navigateToNextTab();
-      }, 500);
-    } catch (error) {
-      console.error(`Error approving section ${section}:`, error);
-      toast({
-        title: 'Error',
-        description: `Failed to approve ${section}. Please try again.`,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleSectionRequestChanges = async (section: string, comments: string): Promise<void> => {
-    if (!spec) return;
-    
-    try {
-      // Save feedback to state for later inclusion in the final rejection
-      setSectionFeedback(prev => ({
-        ...prev,
-        [section]: comments
-      }));
-      
-      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
-      await addCommentToPackingSpec(
-        spec.id,
-        `[${user?.name || 'Customer'}] Requested changes for ${section}: ${comments}`
-      );
-      
-      toast({
-        title: `Changes requested for ${section}`,
-        description: "Your feedback has been submitted.",
-        variant: 'default',
-      });
-    } catch (error) {
-      console.error(`Error requesting changes for section ${section}:`, error);
-      toast({
-        title: 'Error',
-        description: `Failed to submit feedback for ${section}. Please try again.`,
-        variant: 'destructive',
-      });
     }
   };
 
@@ -601,15 +601,6 @@ const PackingSpecDetailsContent = () => {
         itemPreview={approvalPreview}
       />
     </div>
-  );
-};
-
-// Wrapper component to provide the section approval context
-const PackingSpecDetails = () => {
-  return (
-    <SectionApprovalProvider>
-      <PackingSpecDetailsContent />
-    </SectionApprovalProvider>
   );
 };
 
