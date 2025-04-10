@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -12,14 +13,12 @@ interface RequirementsTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
-  onNavigateToNextTab?: () => void;
 }
 
 const RequirementsTab: React.FC<RequirementsTabProps> = ({ 
   details,
   onApproveSection,
-  onRequestChanges,
-  onNavigateToNextTab
+  onRequestChanges
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.requirements.status;
@@ -42,10 +41,6 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({
       await onApproveSection('requirements');
     }
     updateSectionStatus('requirements', 'approved');
-    
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -53,10 +48,6 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('requirements', 'changes-requested', comments);
-    
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
 
   return (

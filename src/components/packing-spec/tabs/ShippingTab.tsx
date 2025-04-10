@@ -9,14 +9,12 @@ interface ShippingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
-  onNavigateToNextTab?: () => void;
 }
 
 const ShippingTab: React.FC<ShippingTabProps> = ({ 
   details,
   onApproveSection,
-  onRequestChanges,
-  onNavigateToNextTab
+  onRequestChanges
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.shipping.status;
@@ -26,11 +24,6 @@ const ShippingTab: React.FC<ShippingTabProps> = ({
       await onApproveSection('shipping');
     }
     updateSectionStatus('shipping', 'approved');
-    
-    // Navigate to next tab after approval is complete
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -38,11 +31,6 @@ const ShippingTab: React.FC<ShippingTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('shipping', 'changes-requested', comments);
-    
-    // Navigate to next tab after changes are requested
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
 
   return (

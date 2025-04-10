@@ -13,14 +13,12 @@ interface LabelingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
-  onNavigateToNextTab?: () => void;
 }
 
 const LabelingTab: React.FC<LabelingTabProps> = ({ 
   details,
   onApproveSection,
-  onRequestChanges,
-  onNavigateToNextTab
+  onRequestChanges
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.label.status;
@@ -30,11 +28,6 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
       await onApproveSection('Label');
     }
     updateSectionStatus('label', 'approved');
-    
-    // Navigate to next tab after approval is complete
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -42,11 +35,6 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('label', 'changes-requested', comments);
-    
-    // Navigate to next tab after changes are requested
-    if (onNavigateToNextTab) {
-      onNavigateToNextTab();
-    }
   };
 
   // Create image objects for EnhancedImageViewer
