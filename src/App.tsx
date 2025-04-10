@@ -11,6 +11,7 @@ import { supabase } from './integrations/supabase/client';
 import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
 import Index from './pages/Index';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // Root path handler that checks for OAuth callback params
 const RootPathHandler = () => {
@@ -78,7 +79,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>; // Show a loading indicator while checking authentication
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <LoadingSpinner size="md" text="Checking authentication..." />
+      </div>
+    );
   }
 
   return isAuthenticated ? (
