@@ -127,11 +127,12 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       // Log the status being updated
       console.log(`Updating status to: ${type === 'approve' ? 'approved-by-customer' : 'changes-requested'}`);
       
-      // Update the status with the correct Podio status values
+      // Update the status with the correct Podio status values and pass the approver name
       const success = await updatePackingSpecStatus(
         specId,
         type === 'approve' ? 'approved-by-customer' : 'changes-requested',
-        formattedNotes
+        formattedNotes,
+        name // Pass the name for the approver field
       );
 
       if (success) {

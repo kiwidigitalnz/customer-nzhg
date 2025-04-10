@@ -1,3 +1,4 @@
+
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -438,15 +439,45 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
 export const updatePackingSpecStatus = async (
   specId: number, 
   status: string,
-  comments?: string
+  comments?: string,
+  approverName?: string
 ): Promise<boolean> => {
   try {
     console.log(`Updating packing spec ${specId} status to: ${status}`);
+    console.log(`Additional info: approverName=${approverName}, comments length=${comments ? comments.length : 0}`);
     
-    // Prepare the fields to update
-    const fields: any = {
-      [FIELD_EXTERNAL_IDS.customerApprovalStatus]: status
-    };
+    // Prepare the fields to update based on status type
+    const fields: Record<string, any> = {};
+    
+    // Determine the correct field ID and value format for customer approval status
+    // The customerApprovalStatus field requires a category ID instead of text
+    if (status === 'approved-by-customer') {
+      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id;
+      
+      // Also add the approved by name if provided
+      if (approverName) {
+        fields[FIELD_EXTERNAL_IDS.approvedByName] = approverName;
+      }
+      
+      // Add approval date as today
+      fields[FIELD_EXTERNAL_IDS.approvalDate] = {
+        start: new Date().toISOString().split('T')[0]
+      };
+    } else if (status === 'changes-requested') {
+      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id;
+      
+      // Add the requested changes if provided
+      if (comments) {
+        fields[FIELD_EXTERNAL_IDS.customerRequestedChanges] = comments;
+      }
+      
+      // Also add the approver name if provided
+      if (approverName) {
+        fields[FIELD_EXTERNAL_IDS.approvedByName] = approverName;
+      }
+    }
+    
+    console.log('Fields being updated:', fields);
     
     // Call the Podio API to update the item
     const response = await callPodioApi(`/item/${specId}`, {
@@ -456,10 +487,16 @@ export const updatePackingSpecStatus = async (
     
     // Add a comment if provided
     if (comments) {
-      await callPodioApi(`/comment/item/${specId}`, {
-        method: 'POST',
-        body: JSON.stringify({ value: comments })
-      });
+      try {
+        await callPodioApi(`/comment/item/${specId}`, {
+          method: 'POST',
+          body: JSON.stringify({ value: comments })
+        });
+        console.log('Comment added successfully');
+      } catch (commentError) {
+        console.error('Error adding comment:', commentError);
+        // Continue even if comment fails
+      }
     }
     
     console.log('Packing spec update response:', response);
