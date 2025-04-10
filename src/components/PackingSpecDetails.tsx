@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -139,31 +138,22 @@ const PackingSpecDetailsContent = () => {
     fetchSpecDetails();
   }, [specId, user, navigate]);
 
-  // Find the next unapproved section
-  const findNextUnapprovedSection = (): SectionName | null => {
-    for (const section of TAB_ORDER) {
-      if (sectionStates[section].status === 'pending') {
-        return section;
-      }
+  // Find the next tab in the sequence
+  const findNextTabInSequence = (currentTab: string): string => {
+    const tabOrder = [...TAB_ORDER, 'comments'];
+    const currentIndex = tabOrder.indexOf(currentTab as any);
+    
+    if (currentIndex === -1 || currentIndex === tabOrder.length - 1) {
+      return currentTab; // Stay on current tab if not found or already on the last tab
     }
-    return null;
+    
+    return tabOrder[currentIndex + 1];
   };
-
-  // Navigate to the next unapproved section
-  const navigateToNextUnapprovedSection = () => {
-    const nextSection = findNextUnapprovedSection();
-    if (nextSection) {
-      setActiveTab(nextSection);
-      return true;
-    }
-    
-    // If all sections are approved, open the approval dialog
-    if (allSectionsApproved) {
-      setApprovalDialogOpen(true);
-      return true;
-    }
-    
-    return false;
+  
+  // Navigate to the next tab in the sequence
+  const navigateToNextTab = () => {
+    const nextTab = findNextTabInSequence(activeTab);
+    setActiveTab(nextTab);
   };
 
   const handleGoBack = () => {
@@ -370,7 +360,7 @@ const PackingSpecDetailsContent = () => {
       
       // Navigate to the next section that needs approval
       setTimeout(() => {
-        navigateToNextUnapprovedSection();
+        navigateToNextTab();
       }, 500);
     } catch (error) {
       console.error(`Error approving section ${section}:`, error);
@@ -519,6 +509,7 @@ const PackingSpecDetailsContent = () => {
                     details={spec.details} 
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 
@@ -527,6 +518,7 @@ const PackingSpecDetailsContent = () => {
                     details={spec.details} 
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 
@@ -535,6 +527,7 @@ const PackingSpecDetailsContent = () => {
                     details={spec.details} 
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 
@@ -542,7 +535,8 @@ const PackingSpecDetailsContent = () => {
                   <LabelingTab 
                     details={spec.details}
                     onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges} 
+                    onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 
@@ -551,6 +545,7 @@ const PackingSpecDetailsContent = () => {
                     details={spec.details} 
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 
@@ -560,6 +555,7 @@ const PackingSpecDetailsContent = () => {
                     files={spec.files} 
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
+                    onNavigateToNextTab={navigateToNextTab}
                   />
                 </TabsContent>
                 

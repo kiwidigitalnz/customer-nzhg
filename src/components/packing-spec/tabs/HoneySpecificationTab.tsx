@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Package } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
@@ -11,12 +10,14 @@ interface HoneySpecificationTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
+  onNavigateToNextTab?: () => void;
 }
 
 const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ 
   details,
   onApproveSection,
-  onRequestChanges
+  onRequestChanges,
+  onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.overview.status;
@@ -34,6 +35,11 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
       await onApproveSection('overview');
     }
     updateSectionStatus('overview', 'approved');
+    
+    // Navigate to next tab after approval is complete
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -41,6 +47,11 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('overview', 'changes-requested', comments);
+    
+    // Navigate to next tab after changes are requested
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
 
   return (
