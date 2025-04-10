@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileIcon, ExternalLink, FileText, FilePdf, FileSpreadsheet, FileImage } from 'lucide-react';
+import { FileIcon, ExternalLink, FileText, File, FileSpreadsheet, FileImage } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -28,7 +28,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ details, files = [] }) => {
     const mimetype = file.mimetype?.toLowerCase() || '';
     
     if (mimetype.includes('pdf') || name.endsWith('.pdf')) {
-      return <FilePdf className="h-5 w-5 text-red-500" />;
+      return <File className="h-5 w-5 text-red-500" />; // Changed from FilePdf to File with red color
     } else if (mimetype.includes('spreadsheet') || name.endsWith('.xlsx') || name.endsWith('.csv') || name.endsWith('.xls')) {
       return <FileSpreadsheet className="h-5 w-5 text-green-600" />;
     } else if (mimetype.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)) {
