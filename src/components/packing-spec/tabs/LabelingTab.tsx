@@ -14,12 +14,22 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
   const labelImages = details.label ? (Array.isArray(details.label) ? details.label : [details.label]) : [];
   const shipperStickerImages = details.shipperSticker ? (Array.isArray(details.shipperSticker) ? details.shipperSticker : [details.shipperSticker]) : [];
   
+  // Create URL-based image objects if we have valid URLs
+  const labelUrlObj = details.labelUrl ? { url: details.labelUrl, isUrl: true } : null;
+  const shipperStickerUrlObj = details.shipperStickerUrl ? { url: details.shipperStickerUrl, isUrl: true } : null;
+  
+  // Combine direct images with URL-based images
+  const allLabelImages = labelUrlObj ? [...labelImages, labelUrlObj] : labelImages;
+  const allShipperStickerImages = shipperStickerUrlObj ? [...shipperStickerImages, shipperStickerUrlObj] : shipperStickerImages;
+  
   useEffect(() => {
     console.log('LabelingTab loaded with images:', {
-      label: labelImages,
-      shipperSticker: shipperStickerImages
+      label: allLabelImages,
+      labelUrl: details.labelUrl,
+      shipperSticker: allShipperStickerImages,
+      shipperStickerUrl: details.shipperStickerUrl
     });
-  }, [labelImages, shipperStickerImages]);
+  }, [allLabelImages, allShipperStickerImages, details.labelUrl, details.shipperStickerUrl]);
   
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -84,7 +94,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
               <div className="md:col-span-2 mt-4">
                 <h4 className="text-sm font-medium text-muted-foreground mb-3">Label Images</h4>
                 <ImageGallery 
-                  images={labelImages} 
+                  images={allLabelImages} 
                   title="Label" 
                   emptyMessage="No label images available"
                   placeholderText="Label images would be displayed here when available"
@@ -163,7 +173,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({ details }) => {
               <div className="md:col-span-2 mt-4">
                 <h4 className="text-sm font-medium text-muted-foreground mb-3">Shipper Sticker Images</h4>
                 <ImageGallery 
-                  images={shipperStickerImages} 
+                  images={allShipperStickerImages} 
                   title="Shipper Sticker" 
                   emptyMessage="No shipper sticker images available"
                   placeholderText="Shipper sticker images would be displayed here when available"

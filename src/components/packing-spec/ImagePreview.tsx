@@ -20,7 +20,8 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   maxHeight = "max-h-80",
   placeholderText = "No image available"
 }) => {
-  const imageUrl = getImageUrl(image);
+  // Handle both direct URL objects and Podio image objects
+  const imageUrl = image?.isUrl ? image.url : getImageUrl(image);
   
   if (!imageUrl) {
     return (
@@ -31,6 +32,27 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
     );
   }
   
+  // For direct URL-based images, show a simple image
+  if (image?.isUrl) {
+    return (
+      <div className="bg-muted/20 rounded-md p-4 flex justify-center">
+        <a 
+          href={imageUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className={`block ${maxHeight} overflow-hidden`}
+        >
+          <img 
+            src={imageUrl} 
+            alt={alt}
+            className={`object-contain ${maxHeight} max-w-full mx-auto`}
+          />
+        </a>
+      </div>
+    );
+  }
+  
+  // For Podio images, use the EnhancedImageViewer
   return (
     <div className="bg-muted/20 rounded-md p-4 flex justify-center">
       <EnhancedImageViewer image={image} alt={alt} />

@@ -37,13 +37,19 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     
     if (images && images.length > 0) {
       images.forEach((img, idx) => {
-        const url = getImageUrl(img);
+        // Handle URL object and regular Podio image objects
+        const url = img?.isUrl ? img.url : getImageUrl(img);
         loadingState[idx] = !!url; // Set loading to true if URL exists
         
         if (url) {
-          // Generate alternative URLs
-          const alternatives = getPodioImageAlternatives(url);
-          altUrls[idx] = alternatives;
+          // For direct URL objects, we don't need alternatives
+          if (img?.isUrl) {
+            altUrls[idx] = [url];
+          } else {
+            // Generate alternative URLs for Podio images
+            const alternatives = getPodioImageAlternatives(url);
+            altUrls[idx] = alternatives;
+          }
         }
       });
     }
@@ -54,9 +60,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     setCurrentUrlIndices({});
   }, [images, title]);
   
-  // Filter out invalid images - only include those we can get a URL for
+  // Filter out invalid images - only include those we can get a URL for or that have a direct URL
   const validImages = (images && Array.isArray(images)) 
-    ? images.filter(img => getImageUrl(img))
+    ? images.filter(img => img?.isUrl ? img.url : getImageUrl(img))
     : [];
   
   useEffect(() => {
@@ -65,7 +71,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   
   // Get the current URL for a specific image
   const getCurrentUrl = (imageIndex: number) => {
-    const primaryUrl = getImageUrl(validImages[imageIndex]);
+    const img = validImages[imageIndex];
+    
+    // Handle URL object and regular Podio image objects
+    const primaryUrl = img?.isUrl ? img.url : getImageUrl(img);
     const urlIndex = currentUrlIndices[imageIndex] || -1;
     
     if (urlIndex === -1) return primaryUrl;
@@ -155,11 +164,31 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           </div>
         )}
         
-        <EnhancedImageViewer 
-          image={validImages[currentIndex]} 
-          alt={`${title} ${currentIndex + 1}`}
-          title={`${title} (${currentIndex + 1}/${validImages.length})`}
-        />
+        {/* For direct URL-based images, show a simple image */}
+        {validImages[currentIndex]?.isUrl ? (
+          <div className="bg-muted/20 rounded-md p-4 flex justify-center">
+            <a 
+              href={validImages[currentIndex].url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block max-h-80 overflow-hidden"
+            >
+              <img 
+                src={validImages[currentIndex].url} 
+                alt={`${title} ${currentIndex + 1}`}
+                className="object-contain max-h-80 max-w-full mx-auto" 
+                onLoad={() => handleImageLoad(currentIndex)}
+                onError={() => handleImageError(currentIndex)}
+              />
+            </a>
+          </div>
+        ) : (
+          <EnhancedImageViewer 
+            image={validImages[currentIndex]} 
+            alt={`${title} ${currentIndex + 1}`}
+            title={`${title} (${currentIndex + 1}/${validImages.length})`}
+          />
+        )}
         
         {validImages.length > 1 && (
           <>
