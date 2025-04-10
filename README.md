@@ -3,50 +3,42 @@
 
 ## Overview
 
-This is the customer portal application for NZ Honey Group. It allows customers to log in and view their packing specifications, approve products, and communicate with the team.
+A customer portal application for NZ Honey Group that allows customers to log in, view packing specifications, approve products, and communicate with the team.
 
-## Development Setup
+## Development
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
+### Setup
 
-## Production Deployment
+```bash
+# Install dependencies
+npm install
 
-### Environment Variables
-
-For production deployment, you need to configure the Supabase secrets with your Podio API credentials:
-
-```
-PODIO_CLIENT_ID=your_podio_client_id
-PODIO_CLIENT_SECRET=your_podio_client_secret
+# Start development server
+npm run dev
 ```
 
-These secrets will be used by the Supabase Edge Functions for Podio authentication.
+### Production
 
-### Build
+1. Configure Supabase secrets with Podio API credentials:
+   ```
+   PODIO_CLIENT_ID=your_podio_client_id
+   PODIO_CLIENT_SECRET=your_podio_client_secret
+   ```
 
-To build the application for production:
+2. Build the application:
+   ```bash
+   npm run build
+   ```
 
-```
-npm run build
-```
+3. Deploy the contents of the `dist` directory to your web server.
 
-The build output will be in the `dist` directory.
+### Podio Configuration
 
-### Deployment
+- Domain: `customer.nzhg.com`
+- Redirect URI: `https://customer.nzhg.com/api/podio-oauth-callback`
 
-The application is designed to be deployed to the domain `customer.nzhg.com`. Deploy the contents of the `dist` directory to your web server.
+## Notes
 
-### Podio API Configuration
-
-Make sure your Podio API application has the following settings:
-
-1. Domain: `customer.nzhg.com`
-2. Redirect URI: `https://customer.nzhg.com/api/podio-oauth-callback`
-
-## Important Notes
-
-- In production, the application will automatically authenticate with Podio using the OAuth flow.
-- Users will only need to enter their username and password to log in, with no manual Podio setup required.
-- The application is designed to work seamlessly in both development and production environments.
+- Users only need to enter their username and password to log in
+- The application handles Podio authentication automatically
+- Designed to work seamlessly in both development and production environments
