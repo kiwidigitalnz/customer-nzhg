@@ -3,12 +3,11 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ZoomIn, ZoomOut, Search, X, Move, AlertTriangle, ExternalLink, Image, RefreshCw, Maximize, Download } from 'lucide-react';
+import { ZoomIn, ZoomOut, Search, Move, AlertTriangle, ExternalLink, Image, RefreshCw, Maximize, Download } from 'lucide-react';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
 import { extractPodioFileId } from '@/services/imageProxy';
 import { 
@@ -42,7 +41,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [alternativeUrls, setAlternativeUrls] = useState<string[]>([]);
-  const [currentUrlIndex, setCurrentUrlIndex] = useState(-1); // -1 means using the primary URL
+  const [currentUrlIndex, setCurrentUrlIndex] = useState(-1);
   const [isPlaceholder, setIsPlaceholder] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -268,7 +267,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </div>
       </DialogTrigger>
       
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden" onWheel={handleWheel}>
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 gap-0 overflow-hidden" onWheel={handleWheel}>
         <DialogHeader className="p-4 border-b flex flex-row justify-between items-center">
           <DialogTitle>{title || alt}</DialogTitle>
           <div className="flex items-center gap-2">
@@ -278,11 +277,9 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
             <Button variant="outline" size="icon" onClick={downloadImage} title="Download image">
               <Download className="h-4 w-4" />
             </Button>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+              <span className="h-4 w-4">✕</span>
+            </Button>
           </div>
         </DialogHeader>
         
@@ -364,7 +361,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
             <img 
               src={getCurrentUrl() || ''} 
               alt={alt} 
-              className="max-h-[70vh] w-auto mx-auto object-contain transition-transform"
+              className="max-h-[75vh] w-auto mx-auto object-contain transition-transform"
               style={{ 
                 transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
                 transformOrigin: 'center',
