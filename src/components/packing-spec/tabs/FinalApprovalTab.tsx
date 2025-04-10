@@ -1,207 +1,126 @@
 
-import React, { useState, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, AlertTriangle, MessageSquare, PenLine, CheckSquare } from 'lucide-react';
-import { useSectionApproval } from '@/contexts/SectionApprovalContext';
-import EnhancedApprovalDialog from '@/components/approval/EnhancedApprovalDialog';
-import CommentsList from '../CommentsList';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CheckCircle, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import CommentsList from '../CommentsList';
+import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { CommentItem } from '@/services/podio/podioComments';
-import ApprovalChecklist from '@/components/approval/ApprovalChecklist';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { SpecStatus } from '../StatusBadge';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface FinalApprovalTabProps {
   spec: {
     id: number;
     comments?: CommentItem[];
-    status?: SpecStatus;
+    status: string;
   };
   isActive: boolean;
   newComment: string;
   onNewCommentChange: (comment: string) => void;
   onAddComment: () => Promise<void>;
   isAddingComment: boolean;
-  onStatusUpdated: () => void;
+  onStatusUpdated?: () => void;
 }
 
-const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({ 
-  spec, 
-  isActive, 
-  newComment, 
-  onNewCommentChange, 
-  onAddComment, 
+const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
+  spec,
+  isActive,
+  newComment,
+  onNewCommentChange,
+  onAddComment,
   isAddingComment,
   onStatusUpdated
 }) => {
-  const { sectionStates, getSectionFeedback, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
-  const [checklistCompleted, setChecklistCompleted] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('comments');
+  const { toast } = useToast();
   
-  // Check if spec is already approved
-  const isApproved = spec.status === 'approved-by-customer';
+  // Use our enhanced comment polling hook
+  const { 
+    comments, 
+    isLoading: isLoadingComments, 
+    refreshComments,
+    newCommentsCount,
+    newCommentIds
+  } = useCommentPolling(
+    spec.id,
+    spec.comments || [],
+    isActive && activeTab === 'comments',
+    true,  // Enable automatic polling
+    10000  // Poll every 10 seconds
+  );
+
+  // Handle comment submission
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
+    
+    try {
+      await onAddComment();
+      
+      // Immediately refresh comments after successful submission
+      setTimeout(() => {
+        refreshComments();
+      }, 500);
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Ctrl+Enter or Cmd+Enter
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (newComment.trim() && !isAddingComment) {
+        handleSubmitComment();
+      }
+    }
+  };
   
-  // Get all sections that need changes
-  const sectionsWithChanges = useMemo(() => {
-    return Object.entries(sectionStates)
-      .filter(([_, state]) => state.status === 'changes-requested')
-      .map(([section]) => section);
-  }, [sectionStates]);
-  
-  // Get feedback from all sections
-  const allFeedback = getSectionFeedback();
-  const feedbackCount = Object.keys(allFeedback).length;
-  
+  // Show a notification when new comments arrive if we're not on the comments tab
+  useEffect(() => {
+    if (newCommentsCount > 0 && activeTab !== 'comments' && isActive) {
+      toast({
+        title: 'New comments',
+        description: `${newCommentsCount} new comment${newCommentsCount > 1 ? 's' : ''} received`,
+        variant: 'default',
+      });
+    }
+  }, [newCommentsCount, activeTab, isActive, toast]);
+
   return (
-    <div className="space-y-6 animate-in fade-in-50">
+    <div className="space-y-6">
       <Card className="shadow-sm border-muted">
-        <CardHeader className="pb-2 bg-muted/30">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center">
-            {isApproved ? (
-              <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
-            ) : allSectionsApproved ? (
-              <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
-            ) : anySectionsWithChangesRequested ? (
-              <AlertTriangle className="mr-2 h-5 w-5 text-amber-600" />
-            ) : (
-              <CheckSquare className="mr-2 h-5 w-5 text-primary/80" />
-            )}
-            {isApproved 
-              ? "Approved Specification" 
-              : allSectionsApproved 
-                ? "Final Approval" 
-                : anySectionsWithChangesRequested 
-                  ? "Submit Change Requests" 
-                  : "Review Summary"}
+            <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+            Final Review & Approval
           </CardTitle>
           <CardDescription>
-            {isApproved 
-              ? "This specification has been approved by customer." 
-              : allSectionsApproved 
-                ? "All sections have been approved. Please provide your final approval." 
-                : anySectionsWithChangesRequested 
-                  ? "Review your requested changes and submit them." 
-                  : "Please review all sections before proceeding."}
+            Review all sections and provide feedback or approval
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-6">
-            {/* Already approved state */}
-            {isApproved && (
-              <div className="space-y-4">
-                <Alert variant="default" className="bg-green-50 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">Specification Approved</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    This specification has been approved and is now ready for production.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
+        
+        <CardContent>
+          <Tabs defaultValue="comments" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="comments" className="relative">
+                Comments
+                {newCommentsCount > 0 && activeTab !== 'comments' && (
+                  <Badge 
+                    variant="outline" 
+                    className="ml-2 bg-primary text-primary-foreground border-none absolute -top-1 -right-1 px-1.5 py-0 text-xs"
+                  >
+                    {newCommentsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="docs">Documentation</TabsTrigger>
+            </TabsList>
             
-            {/* Conditional UI based on approval state - only show if not already approved */}
-            {!isApproved && anySectionsWithChangesRequested && (
-              <div className="space-y-4">
-                <Alert variant="default" className="bg-amber-50 border-amber-200">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertTitle className="text-amber-800">Changes Requested</AlertTitle>
-                  <AlertDescription className="text-amber-700">
-                    You've requested changes to {feedbackCount} {feedbackCount === 1 ? 'section' : 'sections'}.
-                    Please review your feedback below before submitting.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="space-y-4 rounded-md border p-4">
-                  <h3 className="font-medium">Your Feedback Summary</h3>
-                  
-                  {Object.entries(allFeedback).length > 0 ? (
-                    <div className="space-y-3">
-                      {Object.entries(allFeedback).map(([section, feedback]) => (
-                        <div key={section} className="space-y-1">
-                          <h4 className="text-sm font-medium capitalize">{section.replace('-', ' ')}</h4>
-                          <p className="text-sm bg-muted/30 p-3 rounded-md whitespace-pre-wrap">{feedback}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No detailed feedback has been provided yet.
-                    </p>
-                  )}
-                </div>
-                
-                <div className="flex justify-end">
-                  <EnhancedApprovalDialog
-                    specId={spec.id}
-                    onStatusUpdated={onStatusUpdated}
-                    type="reject"
-                    buttonText="Submit Change Requests"
-                    buttonClassName="bg-amber-600 hover:bg-amber-700 text-white"
-                    prefilledFeedback={Object.entries(allFeedback).map(([section, feedback]) => 
-                      `${section.replace('-', ' ')}: ${feedback}`).join('\n\n')}
-                    specStatus={spec.status}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {!isApproved && allSectionsApproved && (
-              <div className="space-y-4">
-                <Alert variant="default" className="bg-green-50 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">All Sections Approved</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    You've approved all sections of this specification. Please provide your final approval.
-                  </AlertDescription>
-                </Alert>
-                
-                <ApprovalChecklist onComplete={setChecklistCompleted} />
-                
-                <div className="flex justify-end">
-                  <EnhancedApprovalDialog
-                    specId={spec.id}
-                    onStatusUpdated={onStatusUpdated}
-                    type="approve"
-                    buttonText="Submit Final Approval"
-                    buttonClassName="bg-green-600 hover:bg-green-700 text-white"
-                    disabled={!checklistCompleted}
-                    specStatus={spec.status}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {!isApproved && !allSectionsApproved && !anySectionsWithChangesRequested && (
-              <div className="space-y-4">
-                <Alert className="bg-blue-50 border-blue-200">
-                  <CheckSquare className="h-4 w-4 text-blue-600" />
-                  <AlertTitle className="text-blue-800">Review in Progress</AlertTitle>
-                  <AlertDescription className="text-blue-700">
-                    Please review and approve all sections before submitting your final decision.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="col-span-1 sm:col-span-2 flex justify-end space-x-2">
-                    <Button variant="outline" disabled className="opacity-50">
-                      Not all sections have been reviewed
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <Separator className="my-6" />
-            
-            {/* Comments Section - Always visible */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <MessageSquare className="mr-2 h-5 w-4 text-primary/80" />
-                <h3 className="font-medium">Comments & Discussion</h3>
-              </div>
-              
-              <div className="space-y-4">
+            <TabsContent value="comments" className="pt-4">
+              <div className="space-y-6">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground mb-1">
                     You can use markdown to format your comments (e.g. **bold**, *italic*, ## heading)
@@ -210,28 +129,66 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                     placeholder="Add a comment to the discussion..."
                     value={newComment}
                     onChange={(e) => onNewCommentChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     className="flex-grow min-h-[100px] font-mono text-sm"
                   />
                 </div>
                 <div className="flex justify-end">
                   <Button
-                    onClick={onAddComment}
+                    onClick={handleSubmitComment}
                     disabled={!newComment.trim() || isAddingComment}
                     className="flex items-center gap-2"
                   >
-                    <PenLine className="h-4 w-4" />
-                    Add Comment
+                    {isAddingComment ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Adding Comment...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        Add Comment
+                      </>
+                    )}
                   </Button>
                 </div>
+                
+                <CommentsList 
+                  comments={comments} 
+                  specId={spec.id}
+                  isActive={isActive && activeTab === 'comments'}
+                  isLoading={isLoadingComments}
+                  onRefresh={refreshComments}
+                  newCommentIds={newCommentIds}
+                />
               </div>
-              
-              <CommentsList
-                comments={spec.comments || []}
-                specId={spec.id}
-                isActive={isActive}
-              />
-            </div>
-          </div>
+            </TabsContent>
+            
+            <TabsContent value="docs" className="pt-4">
+              <div className="prose prose-sm max-w-none">
+                <h3>Approval Process Documentation</h3>
+                <p>
+                  This section provides guidance on the approval process for packing specifications. 
+                  Please review all sections of the document carefully before providing your final approval.
+                </p>
+                
+                <h4>Key Points to Consider:</h4>
+                <ul>
+                  <li>Verify all product details including name, code, and version</li>
+                  <li>Check that all regulatory requirements are listed correctly</li>
+                  <li>Confirm that packaging specifications match your requirements</li>
+                  <li>Review labeling details, including all required information</li>
+                  <li>Ensure shipping specifications are appropriate for your needs</li>
+                </ul>
+                
+                <h4>What Happens After Approval:</h4>
+                <p>
+                  Once approved, the packing specification will be finalized and used for production.
+                  Any changes after approval will require a new version of the specification to be created.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

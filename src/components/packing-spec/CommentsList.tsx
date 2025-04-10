@@ -17,6 +17,7 @@ interface CommentsListProps {
   isActive?: boolean;
   isLoading?: boolean;
   onRefresh?: () => void;
+  newCommentIds?: Set<number>;
 }
 
 const CommentsList: React.FC<CommentsListProps> = ({ 
@@ -24,7 +25,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
   specId, 
   isActive = true,
   isLoading = false,
-  onRefresh
+  onRefresh,
+  newCommentIds = new Set()
 }) => {
   const { user } = useAuth();
   
@@ -88,6 +90,9 @@ const CommentsList: React.FC<CommentsListProps> = ({
           comment.createdBy === "Customer Portal User" ||
           comment.createdBy.includes(authUsername || '');
         
+        // Check if this is a new comment
+        const isNewComment = newCommentIds.has(comment.id);
+        
         // Initialize variables for display
         let displayName = comment.createdBy;
         let commentText = comment.text;
@@ -114,10 +119,15 @@ const CommentsList: React.FC<CommentsListProps> = ({
         const commentDate = new Date(comment.createdAt);
         const timeString = formatNZTime(comment.createdAt);
         
-        // Determine comment styling based on source
-        const commentClassName = isSystemOrAppComment 
+        // Determine comment styling based on source and newness
+        let commentClassName = isSystemOrAppComment 
           ? "bg-muted/30 rounded-md p-4 border border-muted" 
           : "bg-card rounded-md p-4 border";
+        
+        // Add highlight for new comments
+        if (isNewComment) {
+          commentClassName += " border-primary/50 bg-primary/5 animate-pulse";
+        }
         
         return (
           <div 
@@ -130,6 +140,9 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 <p className="font-medium text-sm">{displayName}</p>
                 {isSystemOrAppComment && (
                   <Badge variant="outline" className="ml-2 text-xs">System</Badge>
+                )}
+                {isNewComment && !isSystemOrAppComment && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-primary/10 text-primary border-primary/20">New</Badge>
                 )}
               </div>
               <div className="flex flex-col items-end text-xs">

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCommentsFromPodio, CommentItem } from '../services/podio/podioComments';
 import { format } from 'date-fns';
 
@@ -53,7 +53,7 @@ export const useCommentPolling = (
   }, [itemId]);
 
   // Function to fetch comments
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     if (!itemId) {
       console.warn('Cannot fetch comments: No item ID provided');
       return;
@@ -102,18 +102,18 @@ export const useCommentPolling = (
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemId, isActive, comments]);
 
   // Manual refresh function for immediate updates and mark all as seen
-  const refreshComments = () => {
+  const refreshComments = useCallback(() => {
     console.log(`Manual refresh of comments triggered for item ID ${itemId}`);
     fetchComments();
     // Mark all as seen when manually refreshed
     markAllAsSeen();
-  };
+  }, [fetchComments, itemId]);
 
   // Mark comments as seen
-  const markAllAsSeen = () => {
+  const markAllAsSeen = useCallback(() => {
     // Clear any existing timeout
     if (newCommentsTimeoutRef.current) {
       window.clearTimeout(newCommentsTimeoutRef.current);
@@ -133,7 +133,7 @@ export const useCommentPolling = (
         setNewCommentIds(new Set());
       }, 5000);
     }
-  };
+  }, [isActive, itemId, comments]);
 
   // Setup polling or fetch comments once when component becomes active
   useEffect(() => {
@@ -174,7 +174,7 @@ export const useCommentPolling = (
         newCommentsTimeoutRef.current = null;
       }
     };
-  }, [itemId, isActive, enableAutomaticPolling, pollingInterval]);
+  }, [itemId, isActive, enableAutomaticPolling, pollingInterval, fetchComments, markAllAsSeen]);
 
   // Update comments if initialComments change
   useEffect(() => {
@@ -195,7 +195,7 @@ export const useCommentPolling = (
       console.log(`Tab became active for item ID ${itemId}, marking comments as seen`);
       markAllAsSeen();
     }
-  }, [isActive, itemId]);
+  }, [isActive, itemId, markAllAsSeen]);
 
   // Clean up timeout on unmount
   useEffect(() => {

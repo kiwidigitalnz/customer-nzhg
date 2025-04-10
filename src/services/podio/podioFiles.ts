@@ -10,6 +10,7 @@ import { callPodioApi, PACKING_SPEC_FIELD_IDS } from './podioAuth';
 export const uploadFileToPodio = async (itemId: number, file: File): Promise<number> => {
   try {
     console.log(`Uploading file to Podio item ${itemId}...`);
+    console.log(`File details: name=${file.name}, size=${file.size}bytes, type=${file.type}`);
     
     // Create FormData for the file upload
     const formData = new FormData();
@@ -25,6 +26,7 @@ export const uploadFileToPodio = async (itemId: number, file: File): Promise<num
     });
     
     if (!uploadResponse || !uploadResponse.file_id) {
+      console.error('Upload response from Podio:', uploadResponse);
       throw new Error('Failed to upload file to Podio');
     }
     

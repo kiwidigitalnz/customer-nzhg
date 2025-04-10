@@ -163,6 +163,24 @@ const PackingSpecDetails = () => {
         });
         
         setNewComment('');
+        
+        // Refresh comments after a successful addition
+        setTimeout(async () => {
+          try {
+            const updatedComments = await getCommentsFromPodio(spec.id);
+            if (updatedComments && spec) {
+              setSpec(prevSpec => {
+                if (!prevSpec) return prevSpec;
+                return {
+                  ...prevSpec,
+                  comments: updatedComments
+                };
+              });
+            }
+          } catch (err) {
+            console.error('Error refreshing comments after adding:', err);
+          }
+        }, 1000);
       } else {
         toast({
           title: 'Error',

@@ -9,6 +9,7 @@ import { CommentItem } from '@/services/podio/podioComments';
 import { getCommentsFromPodio } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCommentPolling } from '@/hooks/useCommentPolling';
 
 interface CommentsTabProps {
   spec: {
@@ -30,55 +31,36 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onAddComment, 
   isAddingComment 
 }) => {
-  const [comments, setComments] = useState<CommentItem[]>(spec.comments || []);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Use our enhanced comment polling hook
+  const { 
+    comments, 
+    isLoading: isLoadingComments, 
+    refreshComments,
+    newCommentsCount
+  } = useCommentPolling(
+    spec.id,
+    spec.comments || [],
+    isActive,
+    true,  // Enable automatic polling
+    10000  // Poll every 10 seconds
+  );
 
-  // Fetch comments when tab becomes active
-  useEffect(() => {
-    console.log(`Comments tab active state changed: ${isActive ? 'active' : 'inactive'} for spec ID: ${spec.id}`);
+  // Handle comment submission
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
     
-    if (isActive) {
-      refreshComments();
-    }
-  }, [isActive, spec.id]);
-
-  // Also refresh comments after a successful comment addition
-  useEffect(() => {
-    if (!isAddingComment && isActive && comments.length > 0) {
-      // This will run after a comment is successfully added (isAddingComment transitions from true to false)
-      const timer = setTimeout(() => {
-        refreshComments();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAddingComment, isActive]);
-
-  const refreshComments = async () => {
-    if (!spec.id) return;
-    
-    setIsLoadingComments(true);
     try {
-      console.log(`Manually fetching comments for spec ID: ${spec.id}`);
-      const fetchedComments = await getCommentsFromPodio(spec.id);
+      await onAddComment();
       
-      if (fetchedComments && fetchedComments.length > 0) {
-        console.log(`Retrieved ${fetchedComments.length} comments for spec ID: ${spec.id}`);
-        setComments(fetchedComments);
-      } else {
-        console.log(`No comments found for spec ID: ${spec.id}`);
-      }
+      // Immediately refresh comments after successful submission
+      setTimeout(() => {
+        refreshComments();
+      }, 500);
     } catch (error) {
-      console.error('Error fetching comments:', error);
-      toast({
-        title: 'Error loading comments',
-        description: 'Failed to load comments. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoadingComments(false);
+      console.error('Error submitting comment:', error);
     }
   };
 
@@ -89,23 +71,6 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
       if (newComment.trim() && !isAddingComment) {
         handleSubmitComment();
       }
-    }
-  };
-  
-  const handleSubmitComment = async () => {
-    if (!newComment.trim()) return;
-    
-    try {
-      // Don't format the comment for display yet - we want the raw input 
-      // from the user for the textarea
-      await onAddComment();
-      
-      // After successful submission, refresh to get the updated comment list
-      setTimeout(() => {
-        refreshComments();
-      }, 1000);
-    } catch (error) {
-      console.error('Error submitting comment:', error);
     }
   };
 
@@ -158,6 +123,11 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
             <div className="flex justify-between items-center mb-4">
               <p className="text-sm text-muted-foreground">
                 {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+                {newCommentsCount > 0 && (
+                  <span className="ml-2 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    {newCommentsCount} new
+                  </span>
+                )}
               </p>
               <Button
                 variant="ghost"
