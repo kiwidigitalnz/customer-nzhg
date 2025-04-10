@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,6 +60,17 @@ interface CommentItem {
   createdAt: string;
 }
 
+// Order of tabs for navigation
+const TAB_ORDER: SectionName[] = ['overview', 'requirements', 'packaging', 'label', 'shipping', 'documents'];
+const TAB_NAMES: Record<SectionName, string> = {
+  'overview': 'Honey Specification',
+  'requirements': 'Requirements',
+  'packaging': 'Packaging',
+  'label': 'Labeling',
+  'shipping': 'Shipping',
+  'documents': 'Documents'
+};
+
 // Wrap the main component to use the section approval context
 const PackingSpecDetailsContent = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,7 +89,8 @@ const PackingSpecDetailsContent = () => {
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [isApprovalPending, setIsApprovalPending] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const { allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
+  const { sectionStates, updateSectionStatus, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
+  const [sectionFeedback, setSectionFeedback] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) {
@@ -126,12 +139,51 @@ const PackingSpecDetailsContent = () => {
     fetchSpecDetails();
   }, [specId, user, navigate]);
 
+  // Find the next unapproved section
+  const findNextUnapprovedSection = (): SectionName | null => {
+    for (const section of TAB_ORDER) {
+      if (sectionStates[section].status === 'pending') {
+        return section;
+      }
+    }
+    return null;
+  };
+
+  // Navigate to the next unapproved section
+  const navigateToNextUnapprovedSection = () => {
+    const nextSection = findNextUnapprovedSection();
+    if (nextSection) {
+      setActiveTab(nextSection);
+      return true;
+    }
+    
+    // If all sections are approved, open the approval dialog
+    if (allSectionsApproved) {
+      setApprovalDialogOpen(true);
+      return true;
+    }
+    
+    return false;
+  };
+
   const handleGoBack = () => {
     navigate('/dashboard', { replace: true });
   };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+  };
+
+  const collectAllSectionFeedback = () => {
+    let combinedFeedback = "";
+    
+    Object.entries(sectionFeedback).forEach(([section, feedback]) => {
+      if (feedback && feedback.trim()) {
+        combinedFeedback += `\n\n== ${section} ==\n${feedback}`;
+      }
+    });
+    
+    return combinedFeedback.trim();
   };
 
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
@@ -201,10 +253,18 @@ const PackingSpecDetailsContent = () => {
     setIsUpdatingStatus(true);
     
     try {
+      // Combine all section feedback with the final rejection comments
+      let fullFeedback = data.customerRequestedChanges;
+      const allSectionFeedback = collectAllSectionFeedback();
+      
+      if (allSectionFeedback) {
+        fullFeedback = `${data.customerRequestedChanges}\n\n=== Section-specific feedback ===\n${allSectionFeedback}`;
+      }
+      
       const success = await updatePackingSpecStatus(
         spec.id, 
         'changes-requested',
-        data.customerRequestedChanges
+        fullFeedback
       );
       
       if (success) {
@@ -220,7 +280,7 @@ const PackingSpecDetailsContent = () => {
             status: 'changes-requested',
             details: {
               ...prev.details,
-              customerRequestedChanges: data.customerRequestedChanges
+              customerRequestedChanges: fullFeedback
             }
           } : null);
         }, 300);
@@ -307,6 +367,11 @@ const PackingSpecDetailsContent = () => {
         description: "This section has been marked as approved.",
         variant: 'default',
       });
+      
+      // Navigate to the next section that needs approval
+      setTimeout(() => {
+        navigateToNextUnapprovedSection();
+      }, 500);
     } catch (error) {
       console.error(`Error approving section ${section}:`, error);
       toast({
@@ -321,6 +386,12 @@ const PackingSpecDetailsContent = () => {
     if (!spec) return;
     
     try {
+      // Save feedback to state for later inclusion in the final rejection
+      setSectionFeedback(prev => ({
+        ...prev,
+        [section]: comments
+      }));
+      
       const sectionName = section.toLowerCase().replace(/\s+/g, '-');
       await addCommentToPackingSpec(
         spec.id,
@@ -440,7 +511,7 @@ const PackingSpecDetailsContent = () => {
               status={spec.status}
             />
             <CardContent>
-              <Tabs defaultValue="overview" className="w-full" onValueChange={handleTabChange}>
+              <Tabs value={activeTab} className="w-full" onValueChange={handleTabChange}>
                 <TabsNavigation newCommentsCount={newCommentsCount} />
                 
                 <TabsContent value="overview">
@@ -469,7 +540,9 @@ const PackingSpecDetailsContent = () => {
                 
                 <TabsContent value="label">
                   <LabelingTab 
-                    details={spec.details} 
+                    details={spec.details}
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges} 
                   />
                 </TabsContent>
                 

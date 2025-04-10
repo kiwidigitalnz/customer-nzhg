@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,7 +28,7 @@ const defaultItems: ChecklistItem[] = [
 ];
 
 const ApprovalChecklist: React.FC<ApprovalChecklistProps> = ({ onComplete }) => {
-  const { sectionStates, allSectionsApproved } = useSectionApproval();
+  const { sectionStates, updateSectionStatus, allSectionsApproved } = useSectionApproval();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [showChecklist, setShowChecklist] = useState<boolean>(true);
   
@@ -50,6 +51,18 @@ const ApprovalChecklist: React.FC<ApprovalChecklistProps> = ({ onComplete }) => 
   }, [sectionStates, allSectionsApproved, onComplete]);
   
   const handleItemCheck = (id: string, checked: boolean) => {
+    // Find the item
+    const item = defaultItems.find(i => i.id === id);
+    if (!item) return;
+    
+    // Update the section status based on the checkbox
+    if (checked) {
+      updateSectionStatus(item.section, 'approved');
+    } else {
+      updateSectionStatus(item.section, 'pending');
+    }
+    
+    // Update local state
     setCheckedItems(prev => ({
       ...prev,
       [id]: checked

@@ -5,6 +5,8 @@ import { FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import EnhancedImageViewer from '../EnhancedImageViewer';
+import ImagePreview from '../ImagePreview';
 
 interface LabelingTabProps {
   details: Record<string, any>;
@@ -22,7 +24,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
   
   const handleApprove = async () => {
     if (onApproveSection) {
-      await onApproveSection('label');
+      await onApproveSection('Label');
     }
     updateSectionStatus('label', 'approved');
   };
@@ -33,6 +35,15 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
     }
     updateSectionStatus('label', 'changes-requested', comments);
   };
+
+  // Create image objects for EnhancedImageViewer
+  const labelImage = details.labelUrl || details.labelLink 
+    ? { isUrl: true, url: details.labelUrl || details.labelLink } 
+    : null;
+    
+  const shipperStickerImage = details.shipperStickerUrl 
+    ? { isUrl: true, url: details.shipperStickerUrl } 
+    : null;
 
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -80,16 +91,13 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Preview</h4>
-                {details.labelUrl || details.labelLink ? (
+                {labelImage ? (
                   <div className="mt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.open(details.labelUrl || details.labelLink, '_blank')}
-                      className="flex items-center gap-1"
-                    >
-                      View Label <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                    </Button>
+                    <ImagePreview 
+                      image={labelImage}
+                      alt="Label Preview" 
+                      maxHeight="max-h-60"
+                    />
                   </div>
                 ) : (
                   <p className="text-muted-foreground italic">No label preview available</p>
@@ -132,16 +140,13 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Sticker Preview</h4>
-                {details.shipperStickerUrl ? (
+                {shipperStickerImage ? (
                   <div className="mt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.open(details.shipperStickerUrl, '_blank')}
-                      className="flex items-center gap-1"
-                    >
-                      View Sticker <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                    </Button>
+                    <ImagePreview 
+                      image={shipperStickerImage}
+                      alt="Shipper Sticker Preview" 
+                      maxHeight="max-h-60"
+                    />
                   </div>
                 ) : (
                   <p className="text-muted-foreground italic">No sticker preview available</p>
