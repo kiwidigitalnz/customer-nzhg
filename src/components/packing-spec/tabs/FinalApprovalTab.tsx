@@ -11,11 +11,13 @@ import { CommentItem } from '@/services/podio/podioComments';
 import ApprovalChecklist from '@/components/approval/ApprovalChecklist';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { SpecStatus } from '../StatusBadge';
 
 interface FinalApprovalTabProps {
   spec: {
     id: number;
     comments?: CommentItem[];
+    status?: SpecStatus;
   };
   isActive: boolean;
   newComment: string;
@@ -37,6 +39,9 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
   const { sectionStates, getSectionFeedback, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
   const [checklistCompleted, setChecklistCompleted] = useState(false);
   
+  // Check if spec is already approved
+  const isApproved = spec.status === 'approved-by-customer';
+  
   // Get all sections that need changes
   const sectionsWithChanges = useMemo(() => {
     return Object.entries(sectionStates)
@@ -53,31 +58,50 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
       <Card className="shadow-sm border-muted">
         <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
-            {allSectionsApproved ? (
+            {isApproved ? (
+              <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
+            ) : allSectionsApproved ? (
               <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />
             ) : anySectionsWithChangesRequested ? (
               <AlertTriangle className="mr-2 h-5 w-5 text-amber-600" />
             ) : (
               <CheckSquare className="mr-2 h-5 w-5 text-primary/80" />
             )}
-            {allSectionsApproved 
-              ? "Final Approval" 
-              : anySectionsWithChangesRequested 
-                ? "Submit Change Requests" 
-                : "Review Summary"}
+            {isApproved 
+              ? "Approved Specification" 
+              : allSectionsApproved 
+                ? "Final Approval" 
+                : anySectionsWithChangesRequested 
+                  ? "Submit Change Requests" 
+                  : "Review Summary"}
           </CardTitle>
           <CardDescription>
-            {allSectionsApproved 
-              ? "All sections have been approved. Please provide your final approval." 
-              : anySectionsWithChangesRequested 
-                ? "Review your requested changes and submit them." 
-                : "Please review all sections before proceeding."}
+            {isApproved 
+              ? "This specification has been approved by customer." 
+              : allSectionsApproved 
+                ? "All sections have been approved. Please provide your final approval." 
+                : anySectionsWithChangesRequested 
+                  ? "Review your requested changes and submit them." 
+                  : "Please review all sections before proceeding."}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-6">
-            {/* Conditional UI based on approval state */}
-            {anySectionsWithChangesRequested && (
+            {/* Already approved state */}
+            {isApproved && (
+              <div className="space-y-4">
+                <Alert variant="default" className="bg-green-50 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-green-800">Specification Approved</AlertTitle>
+                  <AlertDescription className="text-green-700">
+                    This specification has been approved and is now ready for production.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+            
+            {/* Conditional UI based on approval state - only show if not already approved */}
+            {!isApproved && anySectionsWithChangesRequested && (
               <div className="space-y-4">
                 <Alert variant="default" className="bg-amber-50 border-amber-200">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -116,12 +140,13 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                     buttonClassName="bg-amber-600 hover:bg-amber-700 text-white"
                     prefilledFeedback={Object.entries(allFeedback).map(([section, feedback]) => 
                       `${section.replace('-', ' ')}: ${feedback}`).join('\n\n')}
+                    specStatus={spec.status}
                   />
                 </div>
               </div>
             )}
             
-            {allSectionsApproved && (
+            {!isApproved && allSectionsApproved && (
               <div className="space-y-4">
                 <Alert variant="default" className="bg-green-50 border-green-200">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -141,12 +166,13 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                     buttonText="Submit Final Approval"
                     buttonClassName="bg-green-600 hover:bg-green-700 text-white"
                     disabled={!checklistCompleted}
+                    specStatus={spec.status}
                   />
                 </div>
               </div>
             )}
             
-            {!allSectionsApproved && !anySectionsWithChangesRequested && (
+            {!isApproved && !allSectionsApproved && !anySectionsWithChangesRequested && (
               <div className="space-y-4">
                 <Alert className="bg-blue-50 border-blue-200">
                   <CheckSquare className="h-4 w-4 text-blue-600" />

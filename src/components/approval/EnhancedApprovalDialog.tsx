@@ -31,6 +31,7 @@ interface EnhancedApprovalDialogProps {
   buttonClassName?: string;
   disabled?: boolean;
   prefilledFeedback?: string;
+  specStatus?: SpecStatus;
 }
 
 const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
@@ -40,8 +41,15 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   buttonText,
   buttonClassName = '',
   disabled = false,
-  prefilledFeedback = ''
+  prefilledFeedback = '',
+  specStatus = 'pending-approval'
 }) => {
+  // If the specification is already approved, don't allow further approval/rejection
+  const isAlreadyApproved = specStatus === 'approved-by-customer';
+  
+  // If already approved, override the disabled prop
+  const isDisabled = disabled || isAlreadyApproved;
+  
   const [open, setOpen] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,6 +76,16 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   };
 
   const handleSubmit = async () => {
+    // Prevent approval/rejection if already approved
+    if (isAlreadyApproved) {
+      toast({
+        title: "Already Approved",
+        description: "This specification has already been approved and cannot be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setError(null);
     
     if (type === 'approve' && (!name || !signature)) {
@@ -187,6 +205,16 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   const handleOpenChange = (isOpen: boolean) => {
     if (loading) return;
     
+    // Prevent opening if already approved
+    if (isOpen && isAlreadyApproved) {
+      toast({
+        title: "Already Approved",
+        description: "This specification has already been approved and cannot be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setInternalOpen(isOpen);
     setOpen(isOpen);
     
@@ -207,13 +235,30 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     }
   }, [prefilledFeedback]);
 
+  // If already approved and this is an approval button, show a disabled button with explanation
+  if (isAlreadyApproved && type === 'approve') {
+    return (
+      <Button 
+        className="bg-gray-200 text-gray-600 cursor-not-allowed"
+        disabled={true}
+      >
+        Already Approved
+      </Button>
+    );
+  }
+  
+  // If already approved and this is a reject button, don't show it at all
+  if (isAlreadyApproved && type === 'reject') {
+    return null;
+  }
+
   return (
     <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button 
           className={buttonClassName}
           variant={type === 'approve' ? 'default' : 'outline'}
-          disabled={disabled}
+          disabled={isDisabled}
         >
           {buttonText}
         </Button>

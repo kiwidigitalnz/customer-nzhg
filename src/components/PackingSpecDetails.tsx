@@ -189,6 +189,16 @@ const PackingSpecDetails = () => {
   const handleSectionApproval = async (section: string): Promise<void> => {
     if (!spec) return;
     
+    // Don't allow section approval if the spec is already approved
+    if (spec.status === 'approved-by-customer') {
+      toast({
+        title: "Already Approved",
+        description: "This specification has already been approved and cannot be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const sectionName = section.toLowerCase().replace(/\s+/g, '-');
       
@@ -218,6 +228,16 @@ const PackingSpecDetails = () => {
   const handleSectionRequestChanges = async (section: string, comments: string): Promise<void> => {
     if (!spec) return;
     
+    // Don't allow section change requests if the spec is already approved
+    if (spec.status === 'approved-by-customer') {
+      toast({
+        title: "Already Approved",
+        description: "This specification has already been approved and cannot be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       // Save feedback to state for later inclusion in the final rejection
       setSectionFeedback(prev => ({
@@ -245,7 +265,6 @@ const PackingSpecDetails = () => {
     }
   };
 
-  // Find the next tab in the sequence
   const findNextTabInSequence = (currentTab: string): string => {
     const tabOrder = [...TAB_ORDER, 'final-approval'];
     const currentIndex = tabOrder.indexOf(currentTab as any);
@@ -257,7 +276,6 @@ const PackingSpecDetails = () => {
     return tabOrder[currentIndex + 1];
   };
   
-  // Navigate to the next tab in the sequence
   const navigateToNextTab = () => {
     const nextTab = findNextTabInSequence(activeTab);
     setActiveTab(nextTab);
@@ -342,7 +360,6 @@ const PackingSpecDetails = () => {
     }
   };
 
-  // Update the handleReject function to include all section feedback
   const handleReject = async (data: z.infer<typeof rejectionFormSchema>) => {
     if (!spec) return;
     console.log('Rejecting with data:', data);
@@ -526,6 +543,7 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
@@ -535,6 +553,7 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
@@ -544,6 +563,7 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
@@ -553,6 +573,7 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
@@ -562,6 +583,7 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
@@ -572,12 +594,17 @@ const PackingSpecDetails = () => {
                     onApproveSection={handleSectionApproval}
                     onRequestChanges={handleSectionRequestChanges}
                     onNavigateToNextTab={navigateToNextTab}
+                    specStatus={spec.status}
                   />
                 </TabsContent>
                 
                 <TabsContent value="final-approval">
                   <FinalApprovalTab 
-                    spec={spec}
+                    spec={{
+                      id: spec.id,
+                      comments: spec.comments,
+                      status: spec.status
+                    }}
                     isActive={activeTab === 'final-approval'}
                     newComment={newComment}
                     onNewCommentChange={setNewComment}

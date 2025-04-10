@@ -14,6 +14,7 @@ interface SectionApprovalProps {
   onApproveSection: (section: string) => Promise<void>;
   onRequestChanges: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: string;
 }
 
 const SectionApproval: React.FC<SectionApprovalProps> = ({
@@ -21,6 +22,7 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
   onApproveSection,
   onRequestChanges,
   onNavigateToNextTab,
+  specStatus = 'pending-approval'
 }) => {
   const [comments, setComments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +56,16 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
       setIsSubmitting(false);
     }
   };
+  
+  // If the overall spec is already approved, display a read-only status
+  if (specStatus === 'approved-by-customer') {
+    return (
+      <div className="flex items-center space-x-2 text-green-600 mt-2">
+        <Check className="h-5 w-5" />
+        <span className="text-sm font-medium">Approved</span>
+      </div>
+    );
+  }
   
   if (isApproved) {
     return (
