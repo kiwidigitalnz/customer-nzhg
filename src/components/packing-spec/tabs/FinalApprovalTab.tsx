@@ -76,7 +76,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
             {/* Conditional UI based on approval state */}
             {anySectionsWithChangesRequested && (
               <div className="space-y-4">
-                <Alert variant="warning" className="bg-amber-50 border-amber-200">
+                <Alert variant="default" className="bg-amber-50 border-amber-200">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertTitle className="text-amber-800">Changes Requested</AlertTitle>
                   <AlertDescription className="text-amber-700">
