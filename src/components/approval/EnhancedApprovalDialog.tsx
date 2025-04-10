@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
-import { updatePackingSpecStatus, PODIO_CATEGORIES, uploadFileToPodio } from '@/services/podioApi';
+import { updatePackingSpecStatus, uploadFileToPodio } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
@@ -124,13 +124,16 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         await addCommentToPackingSpec(specId, formattedNotes);
       }
 
+      // Map type to the correct status value for updatePackingSpecStatus
+      const statusValue = type === 'approve' ? 'approved-by-customer' : 'changes-requested';
+      
       // Log the status being updated
-      console.log(`Updating status to: ${type === 'approve' ? 'approved-by-customer' : 'changes-requested'}`);
+      console.log(`Updating status to: ${statusValue}, with name: ${name}`);
       
       // Update the status with the correct Podio status values and pass the approver name
       const success = await updatePackingSpecStatus(
         specId,
-        type === 'approve' ? 'approved-by-customer' : 'changes-requested',
+        statusValue,
         formattedNotes,
         name // Pass the name for the approver field
       );

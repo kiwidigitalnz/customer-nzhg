@@ -56,6 +56,10 @@ export const PODIO_CATEGORIES = {
   APPROVAL_STATUS: {
     APPROVED_BY_CUSTOMER: { id: 1, text: "Approved by Customer" },
     CHANGES_REQUESTED: { id: 2, text: "Changes Requested" }
+  },
+  CUSTOMER_APPROVAL_STATUS: {
+    APPROVE_SPECIFICATION: { id: 1, text: "Approve Specification" },
+    REQUEST_CHANGES: { id: 2, text: "Request Changes" }
   }
 };
 
@@ -449,10 +453,10 @@ export const updatePackingSpecStatus = async (
     // Prepare the fields to update based on status type
     const fields: Record<string, any> = {};
     
-    // Determine the correct field ID and value format for customer approval status
-    // The customerApprovalStatus field requires a category ID instead of text
+    // Map the status to the correct customer approval status ID
     if (status === 'approved-by-customer') {
-      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id;
+      // Use the customer approval status field with the "Approve Specification" option
+      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id;
       
       // Also add the approved by name if provided
       if (approverName) {
@@ -464,7 +468,8 @@ export const updatePackingSpecStatus = async (
         start: new Date().toISOString().split('T')[0]
       };
     } else if (status === 'changes-requested') {
-      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id;
+      // Use the customer approval status field with the "Request Changes" option
+      fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
       
       // Add the requested changes if provided
       if (comments) {
