@@ -10,6 +10,14 @@ interface HoneySpecificationTabProps {
 }
 
 const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }) => {
+  // Helper function to display values, showing "N/A" as a single value
+  const displayValue = (value: any) => {
+    if (!value || value === "N/A") {
+      return <span className="text-muted-foreground italic">N/A</span>;
+    }
+    return value;
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       <Card className="shadow-sm border-muted">
@@ -24,11 +32,11 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Type</h4>
-                <p className="font-medium">{details.honeyType || "N/A"}</p>
+                <p className="font-medium">{displayValue(details.honeyType)}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">UMF/MGO</h4>
-                <p className="font-medium">{details.umfMgo || "N/A"}</p>
+                <p className="font-medium">{displayValue(details.umfMgo)}</p>
               </div>
             </div>
             <div className="space-y-4">

@@ -3,7 +3,6 @@ import React from 'react';
 import { FileIcon, ExternalLink, FileText, File, FileSpreadsheet, FileImage } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface DocumentFile {
@@ -94,17 +93,6 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ details, files = [] }) => {
             No documents are currently associated with this specification.
           </AlertDescription>
         </Alert>
-      )}
-
-      {/* Additional documentation sections from other fields */}
-      {details.palletDocuments && (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium mb-2">Pallet Documentation</h3>
-          <Separator className="mb-4" />
-          <div className="prose max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: details.palletDocuments }} />
-          </div>
-        </div>
       )}
     </div>
   );
