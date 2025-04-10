@@ -107,8 +107,13 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
           
           const signatureFile = new File([blob], `signature-${specId}-${Date.now()}.png`, { type: 'image/png' });
           
-          await uploadFileToPodio(specId, signatureFile);
-          console.log('Signature uploaded successfully');
+          try {
+            await uploadFileToPodio(specId, signatureFile);
+            console.log('Signature uploaded successfully');
+          } catch (uploadError) {
+            console.error('Error uploading signature:', uploadError);
+            // Continue with approval process even if signature upload fails
+          }
         } catch (uploadError) {
           console.error('Error uploading signature:', uploadError);
         }
@@ -116,39 +121,49 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
 
       const formattedNotes = `Submitted by: ${name}\n\n${notes}`;
 
-      if (notes) {
-        await addCommentToPackingSpec(specId, formattedNotes);
+      try {
+        if (notes) {
+          await addCommentToPackingSpec(specId, formattedNotes);
+        }
+      } catch (commentError) {
+        console.error('Error adding comment:', commentError);
+        // Continue with the process even if comment fails
       }
 
       const statusValue = type === 'approve' ? 'approved-by-customer' : 'changes-requested';
       
       console.log(`Updating status to: ${statusValue}, with name: ${name}`);
       
-      const success = await updatePackingSpecStatus(
-        specId,
-        statusValue,
-        formattedNotes,
-        name
-      );
+      try {
+        const success = await updatePackingSpecStatus(
+          specId,
+          statusValue,
+          formattedNotes,
+          name
+        );
 
-      if (success) {
-        setSuccess(true);
-        
-        toast({
-          title: type === 'approve' ? "Specification Approved" : "Changes Requested",
-          description: type === 'approve' 
-            ? "You have successfully approved this specification." 
-            : "Your change request has been submitted.",
-        });
+        if (success) {
+          setSuccess(true);
+          
+          toast({
+            title: type === 'approve' ? "Specification Approved" : "Changes Requested",
+            description: type === 'approve' 
+              ? "You have successfully approved this specification." 
+              : "Your change request has been submitted.",
+          });
 
-        onStatusUpdated();
-        
-        // Don't close the dialog immediately, show success state first
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 3000);
-      } else {
-        throw new Error(`Failed to ${type === 'approve' ? 'approve' : 'request changes for'} specification`);
+          onStatusUpdated();
+          
+          // Don't close the dialog immediately, show success state first
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 3000);
+        } else {
+          throw new Error(`Failed to ${type === 'approve' ? 'approve' : 'request changes for'} specification`);
+        }
+      } catch (statusError) {
+        console.error(`Error updating status:`, statusError);
+        throw statusError;
       }
     } catch (error) {
       console.error(`Error ${type === 'approve' ? 'approving' : 'rejecting'} specification:`, error);

@@ -1,3 +1,4 @@
+
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -466,10 +467,14 @@ export const updatePackingSpecStatus = async (
         console.log(`Setting approved by name to: ${approverName}`);
       }
       
-      // Add approval date as today
+      // Add approval date as today with proper datetime format
+      const today = new Date();
+      const formattedDate = today.toISOString().replace('T', ' ').substring(0, 19); // Format: YYYY-MM-DD HH:MM:SS
       fields[FIELD_EXTERNAL_IDS.approvalDate] = {
-        start: new Date().toISOString().split('T')[0]
+        start: formattedDate
       };
+      console.log(`Setting approval date to: ${formattedDate}`);
+      
     } else if (status === 'changes-requested') {
       // Use the customer approval status field with the "Request Changes" option (ID: 3)
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
