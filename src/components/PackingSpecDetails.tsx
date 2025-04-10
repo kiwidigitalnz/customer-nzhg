@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getPackingSpecDetails, updatePackingSpecStatus, addCommentToPackingSpec, getCommentsFromPodio } from '../services/podioApi';
+import { getPackingSpecDetails, updatePackingSpecStatus } from '../services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { formatTextContent } from '@/utils/formatters';
 import * as z from 'zod';
@@ -32,6 +32,7 @@ import FinalApprovalTab from './packing-spec/tabs/FinalApprovalTab';
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
+import { addCommentToPackingSpec, getCommentsFromPodio } from '../services/podioApi';
 
 // Types
 interface PackingSpec {
@@ -190,10 +191,9 @@ const PackingSpecDetails = () => {
     
     try {
       const sectionName = section.toLowerCase().replace(/\s+/g, '-');
-      await addCommentToPackingSpec(
-        spec.id,
-        `[${user?.name || 'Customer'}] Approved section: ${section}`
-      );
+      
+      // We're no longer adding a comment here, just updating the section status
+      updateSectionStatus(sectionName as SectionName, 'approved');
       
       toast({
         title: `${section} approved`,
@@ -226,21 +226,20 @@ const PackingSpecDetails = () => {
       }));
       
       const sectionName = section.toLowerCase().replace(/\s+/g, '-');
-      await addCommentToPackingSpec(
-        spec.id,
-        `[${user?.name || 'Customer'}] Requested changes for ${section}: ${comments}`
-      );
+      
+      // Update section status in context without adding a comment
+      updateSectionStatus(sectionName as SectionName, 'changes-requested');
       
       toast({
         title: `Changes requested for ${section}`,
-        description: "Your feedback has been submitted.",
+        description: "Your feedback has been saved and will be submitted with final changes.",
         variant: 'default',
       });
     } catch (error) {
       console.error(`Error requesting changes for section ${section}:`, error);
       toast({
         title: 'Error',
-        description: `Failed to submit feedback for ${section}. Please try again.`,
+        description: `Failed to save feedback for ${section}. Please try again.`,
         variant: 'destructive',
       });
     }
@@ -343,6 +342,7 @@ const PackingSpecDetails = () => {
     }
   };
 
+  // Update the handleReject function to include all section feedback
   const handleReject = async (data: z.infer<typeof rejectionFormSchema>) => {
     if (!spec) return;
     console.log('Rejecting with data:', data);
