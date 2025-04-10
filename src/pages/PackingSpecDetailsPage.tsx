@@ -33,7 +33,7 @@ const PackingSpecDetailsPage = () => {
   // Function to handle navigating back to dashboard
   const handleBackToDashboard = () => {
     // Force a refresh of the dashboard when going back
-    navigate('/', { replace: true });
+    navigate('/dashboard', { replace: true });
   };
   
   return (

@@ -1,4 +1,3 @@
-
 // Import only what's needed
 import { callPodioApi, PACKING_SPEC_FIELD_IDS, PODIO_PACKING_SPEC_APP_ID } from './podioAuth';
 import { getFieldValueByExternalId, extractPodioImages, mapPodioStatusToAppStatus } from './podioFieldHelpers';
@@ -469,7 +468,6 @@ export const updatePackingSpecStatus = async (
       };
     } else if (status === 'changes-requested') {
       // Use the customer approval status field with the "Request Changes" option
-      // The crucial fix here - make sure we're using the REQUEST_CHANGES id
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
       
       // Add the requested changes if provided
@@ -483,7 +481,7 @@ export const updatePackingSpecStatus = async (
       }
     }
     
-    console.log('Fields being updated:', fields);
+    console.log('Fields being updated:', JSON.stringify(fields, null, 2));
     
     // Call the Podio API to update the item
     const response = await callPodioApi(`/item/${specId}`, {

@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { SectionStatus } from '@/components/packing-spec/SectionApproval';
+
+export type SectionStatus = 'pending' | 'approved' | 'changes-requested';
 
 export type SectionName = 'overview' | 'requirements' | 'packaging' | 'label' | 'shipping' | 'documents';
 
