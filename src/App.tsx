@@ -10,6 +10,7 @@ import PodioCallbackPage from './pages/PodioCallbackPage';
 import { supabase } from './integrations/supabase/client';
 import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
+import Index from './pages/Index';
 
 // Root path handler that checks for OAuth callback params
 const RootPathHandler = () => {
@@ -92,7 +93,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<RootPathHandler />} />
+          <Route path="/" element={<Index />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
           <Route path="/podio-callback" element={<PodioCallbackPage />} />

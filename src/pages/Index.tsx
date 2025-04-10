@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isPodioConfigured } from '../services/podioAuth';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import LandingPage from './LandingPage';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -27,8 +28,8 @@ const Index = () => {
     return <Navigate to="/dashboard" replace />;
   }
   
-  // If not authenticated, redirect to login
-  return <Navigate to="/login" replace />;
+  // If not authenticated, show the landing page
+  return <LandingPage />;
 };
 
 export default Index;

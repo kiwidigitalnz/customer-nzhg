@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   clearTokens,
@@ -159,12 +158,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Logout method
+  // Logout method - updated to navigate to landing page
   const logout = useCallback(() => {
     clearTokens();
     localStorage.removeItem('podio_user_data');
     setUser(null);
     setIsAuthenticated(false);
+    
+    // Redirect to index/landing page after logout
+    window.location.href = '/';
   }, []);
 
   // Force reauthentication with Podio API - simplified to just return true if already authenticated
@@ -209,4 +211,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
-
