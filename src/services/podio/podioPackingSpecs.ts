@@ -53,11 +53,11 @@ export const PODIO_CATEGORIES = {
   NEEDS_CHANGES: "Needs Changes",
   DRAFT: "Draft",
   APPROVAL_STATUS: {
-    APPROVED_BY_CUSTOMER: { id: 2, text: "Approved by Customer" },
+    APPROVED_BY_CUSTOMER: { id: 3, text: "Approved by Customer" },
     CHANGES_REQUESTED: { id: 1, text: "Changes Requested" }
   },
   CUSTOMER_APPROVAL_STATUS: {
-    APPROVE_SPECIFICATION: { id: 2, text: "Approve Specification" },
+    APPROVE_SPECIFICATION: { id: 3, text: "Approve Specification" },
     REQUEST_CHANGES: { id: 1, text: "Request Changes" }
   }
 };
