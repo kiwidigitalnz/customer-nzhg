@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -352,7 +353,7 @@ const PackingSpecDetails = () => {
         <div className="lg:col-span-2 space-y-6">
           <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
             <HeaderSection
-              title={spec.title}
+              title={spec.details.product || spec.title} // Use product name instead of title
               productCode={spec.details.productCode}
               versionNumber={spec.details.versionNumber}
               dateReviewed={spec.details.dateReviewed}
