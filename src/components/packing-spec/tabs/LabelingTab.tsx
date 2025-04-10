@@ -7,6 +7,7 @@ import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 import EnhancedImageViewer from '../EnhancedImageViewer';
 import ImagePreview from '../ImagePreview';
+import { formatTextContent } from '@/utils/formatters';
 
 interface LabelingTabProps {
   details: Record<string, any>;
@@ -45,6 +46,9 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
     ? { isUrl: true, url: details.shipperStickerUrl } 
     : null;
 
+  // Format specification text to remove HTML tags
+  const labelSpecification = formatTextContent(details.labelSpecification);
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       <Card className="shadow-sm border-muted">
@@ -59,34 +63,34 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Code</h4>
-                <p className="font-medium">{details.labelCode || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.labelCode) || "N/A"}</p>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Specification</h4>
-                <p className="font-medium">{details.labelSpecification || "N/A"}</p>
+                <p className="font-medium whitespace-pre-line">{labelSpecification || "N/A"}</p>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Information Location</h4>
-                <p className="font-medium">{details.printingInfoLocation || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.printingInfoLocation) || "N/A"}</p>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Printing Color</h4>
-                <p className="font-medium">{details.printingColor || details.printingColour || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.printingColor || details.printingColour) || "N/A"}</p>
               </div>
             </div>
             
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Required Best Before Date</h4>
-                <p className="font-medium">{details.requiredBestBeforeDate || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.requiredBestBeforeDate) || "N/A"}</p>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Date Formatting</h4>
-                <p className="font-medium">{details.dateFormatting || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.dateFormatting) || "N/A"}</p>
               </div>
               
               <div>
@@ -130,12 +134,12 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Sticker</h4>
-                <p className="font-medium">{details.shipperSticker || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.shipperSticker) || "N/A"}</p>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Number of Shipper Stickers on Carton</h4>
-                <p className="font-medium">{details.shipperStickerCount || "N/A"}</p>
+                <p className="font-medium">{formatTextContent(details.shipperStickerCount) || "N/A"}</p>
               </div>
             </div>
             

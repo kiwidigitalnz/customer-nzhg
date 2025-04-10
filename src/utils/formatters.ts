@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 import { extractPodioFileId, createProxyImageUrl } from '../services/imageProxy';
 
@@ -14,13 +15,35 @@ export const formatDate = (dateString?: string) => {
 };
 
 /**
- * Safely formats text content by removing HTML tags
+ * Safely formats text content by removing HTML tags while preserving line breaks
  */
-export const formatTextContent = (content?: string) => {
+export const formatTextContent = (content?: string | null): string => {
   if (!content) return '';
   
-  // Remove HTML tags if present
-  return content.replace(/<[^>]*>/g, ' ').trim();
+  // Replace <br>, <p>, and other common tags with newlines first
+  let processed = content
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p>/gi, '\n\n')
+    .replace(/<\/div>\s*<div>/gi, '\n')
+    .replace(/<\/li>\s*<li>/gi, '\n• ');
+  
+  // Remove the remaining HTML tags
+  processed = processed.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  processed = processed
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Normalize whitespace (collapse multiple spaces but preserve line breaks)
+  processed = processed.replace(/[ \t]+/g, ' ');
+  
+  // Trim leading/trailing whitespace
+  return processed.trim();
 };
 
 /**
@@ -179,9 +202,6 @@ export const getPodioImageAlternatives = (primaryUrl: string | null): string[] =
 export const formatMultilineText = (text?: string): string => {
   if (!text) return '';
   
-  // First remove HTML tags
-  const cleanText = formatTextContent(text);
-  
-  // Replace newlines with <br> for JSX
-  return cleanText.replace(/\n/g, '\n');
+  // Use our formatTextContent function
+  return formatTextContent(text);
 };

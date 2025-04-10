@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { hasValue } from '@/utils/formatters';
+import { hasValue, formatTextContent } from '@/utils/formatters';
 import CategoryDisplay from './CategoryDisplay';
 import { CountryFlagsList } from './CountryFlag';
 
@@ -42,12 +42,12 @@ const SpecSection: React.FC<SpecSectionProps> = ({
     
     // Handle array of objects with title property (app references from Podio)
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0].title) {
-      return value.map(item => item.title).join(', ');
+      return value.map(item => formatTextContent(item.title)).join(', ');
     }
     
     // Handle single object with title property
     if (typeof value === 'object' && !Array.isArray(value) && value.title) {
-      return value.title;
+      return formatTextContent(value.title);
     }
     
     switch (fieldType) {
@@ -55,8 +55,13 @@ const SpecSection: React.FC<SpecSectionProps> = ({
         return <CategoryDisplay categories={value} />;
       case 'country':
         return <CountryFlagsList countries={value} />;
+      case 'html':
+      case 'text':
+        return typeof value === 'string' ? (
+          <span className="whitespace-pre-line">{formatTextContent(value)}</span>
+        ) : formatTextContent(JSON.stringify(value));
       default:
-        return typeof value === 'string' ? value : JSON.stringify(value);
+        return typeof value === 'string' ? formatTextContent(value) : formatTextContent(JSON.stringify(value));
     }
   };
   
