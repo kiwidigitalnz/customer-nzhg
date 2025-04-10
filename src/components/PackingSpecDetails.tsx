@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,6 +27,7 @@ import {
   DocumentsTab,
   CommentsTab
 } from './packing-spec/tabs';
+import FinalApprovalTab from './packing-spec/tabs/FinalApprovalTab';
 
 // Import shared approval interface
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
@@ -247,7 +249,7 @@ const PackingSpecDetails = () => {
 
   // Find the next tab in the sequence
   const findNextTabInSequence = (currentTab: string): string => {
-    const tabOrder = [...TAB_ORDER, 'comments'];
+    const tabOrder = [...TAB_ORDER, 'final-approval'];
     const currentIndex = tabOrder.indexOf(currentTab as any);
     
     if (currentIndex === -1 || currentIndex === tabOrder.length - 1) {
@@ -400,6 +402,17 @@ const PackingSpecDetails = () => {
         setIsSubmitting(false);
         setIsUpdatingStatus(false);
       }, 300);
+    }
+  };
+
+  const handleStatusUpdated = () => {
+    // Refresh spec data
+    if (specId) {
+      getPackingSpecDetails(specId).then(data => {
+        if (data) {
+          setSpec(data);
+        }
+      });
     }
   };
 
@@ -559,14 +572,15 @@ const PackingSpecDetails = () => {
                   />
                 </TabsContent>
                 
-                <TabsContent value="comments">
-                  <CommentsTab 
+                <TabsContent value="final-approval">
+                  <FinalApprovalTab 
                     spec={spec}
-                    isActive={activeTab === 'comments'}
+                    isActive={activeTab === 'final-approval'}
                     newComment={newComment}
                     onNewCommentChange={setNewComment}
                     onAddComment={handleAddComment}
                     isAddingComment={isAddingComment}
+                    onStatusUpdated={handleStatusUpdated}
                   />
                 </TabsContent>
               </Tabs>

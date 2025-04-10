@@ -4,7 +4,7 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
-  FileIcon, MessageSquare, CheckCircle2, AlertTriangle 
+  FileIcon, CheckSquare, CheckCircle2, AlertTriangle 
 } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   onTabClick,
   currentTabValue
 }) => {
-  const { sectionStates } = useSectionApproval();
+  const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
   
   const getSectionIndicator = (section: SectionName) => {
     const status = sectionStates[section]?.status;
@@ -54,6 +54,27 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     if (onTabClick) {
       onTabClick(value);
     }
+  };
+
+  // Determine the final tab icon based on approval status
+  const getFinalTabIcon = () => {
+    if (allSectionsApproved) {
+      return <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-600" />;
+    } else if (anySectionsWithChangesRequested) {
+      return <AlertTriangle className="mr-1.5 h-4 w-4 text-amber-600" />;
+    } else {
+      return <CheckSquare className="mr-1.5 h-4 w-4" />;
+    }
+  };
+
+  // Determine final tab class based on approval status
+  const getFinalTabClass = () => {
+    if (allSectionsApproved) {
+      return "border-l-2 border-l-green-500 bg-green-50/50";
+    } else if (anySectionsWithChangesRequested) {
+      return "border-l-2 border-l-amber-500 bg-amber-50/50";
+    }
+    return "";
   };
   
   return (
@@ -119,13 +140,13 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         {getSectionIndicator('documents')}
       </TabsTrigger>
       <TabsTrigger 
-        value="comments" 
-        className="flex items-center relative"
-        data-state={currentTabValue === 'comments' ? 'active' : ''}
-        onClick={() => handleTabClick('comments')}
+        value="final-approval" 
+        className={cn("flex items-center relative", getFinalTabClass())}
+        data-state={currentTabValue === 'final-approval' ? 'active' : ''}
+        onClick={() => handleTabClick('final-approval')}
       >
-        <MessageSquare className="mr-1.5 h-4 w-4" />
-        <span>Comments</span>
+        {getFinalTabIcon()}
+        <span>Final Approval</span>
         {newCommentsCount > 0 && (
           <Badge variant="secondary" className="ml-2 bg-primary text-primary-foreground">{newCommentsCount}</Badge>
         )}

@@ -6,6 +6,7 @@ import LabelingTab from './LabelingTab';
 import ShippingTab from './ShippingTab';
 import DocumentsTab from './DocumentsTab';
 import CommentsTab from './CommentsTab';
+import FinalApprovalTab from './FinalApprovalTab';
 
 export {
   HoneySpecificationTab,
@@ -14,5 +15,6 @@ export {
   LabelingTab,
   ShippingTab,
   DocumentsTab,
-  CommentsTab
+  CommentsTab,
+  FinalApprovalTab
 };

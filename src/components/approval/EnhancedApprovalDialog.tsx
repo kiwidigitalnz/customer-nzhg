@@ -28,6 +28,7 @@ interface EnhancedApprovalDialogProps {
   type: 'approve' | 'reject';
   buttonText: string;
   buttonClassName?: string;
+  disabled?: boolean;
 }
 
 const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
@@ -36,6 +37,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   type,
   buttonText,
   buttonClassName = '',
+  disabled = false
 }) => {
   const [open, setOpen] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
@@ -187,6 +189,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         <Button 
           className={buttonClassName}
           variant={type === 'approve' ? 'default' : 'outline'}
+          disabled={disabled}
         >
           {buttonText}
         </Button>
