@@ -123,13 +123,16 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-6">
-            <div className="flex gap-3">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground mb-1">
+                You can use markdown to format your comments (e.g. **bold**, *italic*, ## heading)
+              </p>
               <Textarea
                 placeholder="Add a comment to the discussion..."
                 value={newComment}
                 onChange={(e) => onNewCommentChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="flex-grow min-h-[100px]"
+                className="flex-grow min-h-[100px] font-mono text-sm"
               />
             </div>
             <div className="flex justify-end">

@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CommentItem } from '@/services/podio/podioComments';
+import ReactMarkdown from 'react-markdown';
 
 interface CommentsListProps {
   comments: CommentItem[];
@@ -153,13 +154,15 @@ const CommentsList: React.FC<CommentsListProps> = ({
             </div>
             
             {isSystemOrAppComment ? (
-              // For system messages, preserve any markdown-like formatting
-              <div className="mt-2 text-sm text-muted-foreground whitespace-pre-line break-words">
-                {commentText}
+              // For system messages, render with markdown
+              <div className="mt-2 text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert">
+                <ReactMarkdown>{commentText}</ReactMarkdown>
               </div>
             ) : (
-              // Regular comment text
-              <p className="mt-2 whitespace-pre-line break-words">{commentText}</p>
+              // Regular comment text with markdown
+              <div className="mt-2 prose prose-sm max-w-none dark:prose-invert break-words">
+                <ReactMarkdown>{commentText}</ReactMarkdown>
+              </div>
             )}
           </div>
         );
