@@ -35,7 +35,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   // For all image types, use the EnhancedImageViewer for consistent experience
   return (
     <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-      <EnhancedImageViewer image={image} alt={alt} title={alt} />
+      <EnhancedImageViewer 
+        image={image} 
+        alt={alt} 
+        title={alt} 
+        maxHeight={maxHeight}
+        className="w-full"
+      />
     </div>
   );
 };

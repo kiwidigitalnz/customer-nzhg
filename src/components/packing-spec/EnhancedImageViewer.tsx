@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
@@ -22,12 +21,16 @@ interface EnhancedImageViewerProps {
   image: any;
   alt: string;
   title?: string;
+  maxHeight?: string;
+  className?: string;
 }
 
 const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({ 
   image, 
   alt,
-  title
+  title,
+  maxHeight = "max-h-64",
+  className = ""
 }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
@@ -45,7 +48,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const [fullscreen, setFullscreen] = useState(false);
   
   useEffect(() => {
-    const url = getImageUrl(image);
+    const url = image?.isUrl ? image.url : getImageUrl(image);
     setImageUrl(url);
     setIsLoading(!!url);
     
@@ -222,52 +225,47 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          className="p-0 h-auto w-full hover:bg-transparent block rounded-lg overflow-hidden border border-input"
-        >
-          <div className="relative group">
-            {isLoading && !imgError && !isPlaceholder && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-                <div className="flex flex-col items-center">
-                  <RefreshCw className="h-8 w-8 text-primary/60 animate-spin" />
-                  <p className="text-xs text-muted-foreground mt-2">Loading image...</p>
-                </div>
+        <div className={`relative group cursor-pointer hover:opacity-95 ${className}`}>
+          {isLoading && !imgError && !isPlaceholder && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+              <div className="flex flex-col items-center">
+                <RefreshCw className="h-8 w-8 text-primary/60 animate-spin" />
+                <p className="text-xs text-muted-foreground mt-2">Loading image...</p>
               </div>
-            )}
-            
-            <img 
-              src={getCurrentUrl() || ''} 
-              alt={alt} 
-              className="w-full object-contain max-h-64 transition-all rounded-lg" 
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-              ref={imgRef}
-              style={{ display: isLoading || imgError || isPlaceholder ? 'none' : 'block' }}
-            />
-            
-            {imgError && (
-              <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center text-red-500 p-4">
-                <AlertTriangle className="h-8 w-8 mb-2" />
-                <p className="text-xs text-center">Failed to load image</p>
-                {fileId && (
-                  <p className="text-xs text-center mt-1 font-mono">File ID: {fileId}</p>
-                )}
-              </div>
-            )}
-            
-            {isPlaceholder && (
-              <div className="w-full h-64 flex flex-col items-center justify-center bg-muted/30 p-4">
-                <Image className="h-16 w-16 text-muted-foreground/40 mb-2" />
-                <p className="text-muted-foreground text-center text-sm">Placeholder image</p>
-              </div>
-            )}
-            
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-              <Search className="h-8 w-8 text-white drop-shadow-md" />
             </div>
+          )}
+          
+          <img 
+            src={getCurrentUrl() || ''} 
+            alt={alt} 
+            className={`w-full object-contain rounded-lg ${maxHeight} transition-all`}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            ref={imgRef}
+            style={{ display: isLoading || imgError || isPlaceholder ? 'none' : 'block' }}
+          />
+          
+          {imgError && (
+            <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center text-red-500 p-4">
+              <AlertTriangle className="h-8 w-8 mb-2" />
+              <p className="text-xs text-center">Failed to load image</p>
+              {fileId && (
+                <p className="text-xs text-center mt-1 font-mono">File ID: {fileId}</p>
+              )}
+            </div>
+          )}
+          
+          {isPlaceholder && (
+            <div className="w-full h-64 flex flex-col items-center justify-center bg-muted/30 p-4">
+              <Image className="h-16 w-16 text-muted-foreground/40 mb-2" />
+              <p className="text-muted-foreground text-center text-sm">Placeholder image</p>
+            </div>
+          )}
+          
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <Search className="h-8 w-8 text-white drop-shadow-md" />
           </div>
-        </Button>
+        </div>
       </DialogTrigger>
       
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden" onWheel={handleWheel}>

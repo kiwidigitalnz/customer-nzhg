@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
 import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import EnhancedImageViewer from './EnhancedImageViewer';
@@ -164,31 +163,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           </div>
         )}
         
-        {/* For direct URL-based images, show a simple image */}
-        {validImages[currentIndex]?.isUrl ? (
-          <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-            <a 
-              href={validImages[currentIndex].url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block max-h-80 overflow-hidden"
-            >
-              <img 
-                src={validImages[currentIndex].url} 
-                alt={`${title} ${currentIndex + 1}`}
-                className="object-contain max-h-80 max-w-full mx-auto" 
-                onLoad={() => handleImageLoad(currentIndex)}
-                onError={() => handleImageError(currentIndex)}
-              />
-            </a>
-          </div>
-        ) : (
-          <EnhancedImageViewer 
-            image={validImages[currentIndex]} 
-            alt={`${title} ${currentIndex + 1}`}
-            title={`${title} (${currentIndex + 1}/${validImages.length})`}
-          />
-        )}
+        {/* Use EnhancedImageViewer for all image types */}
+        <EnhancedImageViewer 
+          image={validImages[currentIndex]}
+          alt={`${title} ${currentIndex + 1}`}
+          title={`${title} (${currentIndex + 1}/${validImages.length})`}
+          maxHeight="max-h-80"
+          className="bg-muted/20 rounded-md"
+        />
         
         {validImages.length > 1 && (
           <>
