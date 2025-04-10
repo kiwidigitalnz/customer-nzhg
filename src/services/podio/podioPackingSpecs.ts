@@ -469,6 +469,7 @@ export const updatePackingSpecStatus = async (
       };
     } else if (status === 'changes-requested') {
       // Use the customer approval status field with the "Request Changes" option
+      // The crucial fix here - make sure we're using the REQUEST_CHANGES id
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
       
       // Add the requested changes if provided

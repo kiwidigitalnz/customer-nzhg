@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -64,7 +63,6 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Reset any previous errors
     setError(null);
     
     if (type === 'approve' && (!name || !signature)) {
@@ -97,45 +95,35 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     setLoading(true);
 
     try {
-      // Upload signature if approving
       if (type === 'approve' && signature) {
         try {
-          // Convert data URL to blob for upload
           const res = await fetch(signature);
           const blob = await res.blob();
           
-          // Create a File object from the blob
           const signatureFile = new File([blob], `signature-${specId}-${Date.now()}.png`, { type: 'image/png' });
           
-          // Upload signature to Podio
           await uploadFileToPodio(specId, signatureFile);
           console.log('Signature uploaded successfully');
         } catch (uploadError) {
           console.error('Error uploading signature:', uploadError);
-          // We'll continue even if signature upload fails
         }
       }
 
-      // Format the notes to include the name of the person submitting
       const formattedNotes = `Submitted by: ${name}\n\n${notes}`;
 
-      // Add comment first if notes are provided
       if (notes) {
         await addCommentToPackingSpec(specId, formattedNotes);
       }
 
-      // Map type to the correct status value for updatePackingSpecStatus
       const statusValue = type === 'approve' ? 'approved-by-customer' : 'changes-requested';
       
-      // Log the status being updated
       console.log(`Updating status to: ${statusValue}, with name: ${name}`);
       
-      // Update the status with the correct Podio status values and pass the approver name
       const success = await updatePackingSpecStatus(
         specId,
         statusValue,
         formattedNotes,
-        name // Pass the name for the approver field
+        name
       );
 
       if (success) {
@@ -146,15 +134,12 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
             : "Your change request has been submitted.",
         });
 
-        // First call onStatusUpdated to refresh the parent component
         onStatusUpdated();
         
-        // Then close the dialog and reset form with a slight delay to avoid state conflicts
         setTimeout(() => {
           setInternalOpen(false);
           setOpen(false);
           
-          // Reset form after another delay to ensure UI updates cleanly
           setTimeout(() => {
             resetForm();
           }, 100);
@@ -165,7 +150,6 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     } catch (error) {
       console.error(`Error ${type === 'approve' ? 'approving' : 'rejecting'} specification:`, error);
       
-      // Set a more user-friendly error message
       const errorMessage = error instanceof Error 
         ? error.message 
         : `Failed to ${type === 'approve' ? 'approve' : 'request changes for'} this specification.`;
@@ -183,25 +167,22 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   };
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (loading) return; // Don't allow closing during loading
+    if (loading) return;
     
     setInternalOpen(isOpen);
     setOpen(isOpen);
     
     if (!isOpen) {
-      // Use a timeout to ensure all state updates have processed
       setTimeout(() => {
         resetForm();
       }, 100);
     }
   };
 
-  // Sync internal state with open prop
   React.useEffect(() => {
     setInternalOpen(open);
   }, [open]);
 
-  // Update notes when prefilledFeedback changes
   React.useEffect(() => {
     if (!notes || notes === prefilledFeedback) {
       setNotes(prefilledFeedback);

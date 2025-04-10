@@ -1,153 +1,125 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
-
-export type SectionStatus = 'pending' | 'approved' | 'changes-requested';
+import { AlertTriangle, Check, ThumbsUp } from 'lucide-react';
+import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 
 interface SectionApprovalProps {
   sectionName: string;
-  status: SectionStatus;
-  onApprove: (section: string) => Promise<void>;
+  onApproveSection: (section: string) => Promise<void>;
   onRequestChanges: (section: string, comments: string) => Promise<void>;
-  className?: string;
+  onNavigateToNextTab?: () => void;
 }
 
 const SectionApproval: React.FC<SectionApprovalProps> = ({
   sectionName,
-  status,
-  onApprove,
+  onApproveSection,
   onRequestChanges,
-  className,
+  onNavigateToNextTab,
 }) => {
-  const [changeDialogOpen, setChangeDialogOpen] = useState(false);
   const [comments, setComments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  
+  const normalizedSectionName = sectionName.toLowerCase().replace(/\s+/g, '-') as SectionName;
+  const sectionState = sectionStates[normalizedSectionName];
+  const isApproved = sectionState?.status === 'approved';
+  const hasChangesRequested = sectionState?.status === 'changes-requested';
   
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      await onApprove(sectionName);
+      await onApproveSection(sectionName);
+      if (onNavigateToNextTab) {
+        onNavigateToNextTab();
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
   
   const handleRequestChanges = async () => {
-    if (!comments.trim()) return;
-    
     setIsSubmitting(true);
     try {
       await onRequestChanges(sectionName, comments);
+      setOpen(false);
       setComments('');
-      setChangeDialogOpen(false);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (status === 'approved') {
+  
+  if (isApproved) {
     return (
-      <div className={`flex items-center text-green-700 ${className}`}>
-        <CheckCircle2 className="mr-2 h-4 w-4" />
-        <span className="text-sm">Approved</span>
+      <div className="flex items-center space-x-2 text-green-600 mt-2">
+        <Check className="h-5 w-5" />
+        <span className="text-sm font-medium">Approved</span>
       </div>
     );
   }
   
-  if (status === 'changes-requested') {
+  if (hasChangesRequested) {
     return (
-      <div className={`flex items-center text-amber-700 ${className}`}>
-        <AlertTriangle className="mr-2 h-4 w-4" />
-        <span className="text-sm">Changes Requested</span>
+      <div className="flex items-center space-x-2 text-amber-600 mt-2">
+        <AlertTriangle className="h-5 w-5" />
+        <span className="text-sm font-medium">Changes Requested</span>
       </div>
     );
   }
   
   return (
-    <>
-      <div className={`flex flex-wrap gap-2 ${className}`}>
-        <Button 
-          size="sm" 
-          variant="outline"
-          className="text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800"
-          onClick={handleApprove}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-          )}
-          Approve
-        </Button>
-        <Button 
-          size="sm" 
-          variant="outline"
-          className="text-amber-700 border-amber-200 hover:bg-amber-50 hover:text-amber-800"
-          onClick={() => setChangeDialogOpen(true)}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          ) : (
-            <AlertTriangle className="h-3 w-3 mr-1" />
-          )}
-          Request Changes
-        </Button>
-      </div>
-      
-      <Dialog open={changeDialogOpen} onOpenChange={setChangeDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+    <div className="flex space-x-2 mt-4">
+      {/* Request Changes button - Now positioned first */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="border-amber-200 hover:bg-amber-50" size="sm">
+            Request Changes
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request Changes for {sectionName}</DialogTitle>
+            <DialogTitle>Request Changes to {sectionName}</DialogTitle>
             <DialogDescription>
-              Please provide details about what changes are needed for this section.
+              Please provide details about what changes are needed.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="py-4">
             <Textarea
-              placeholder="Please specify what changes are needed..."
+              placeholder="Describe the changes needed..."
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              className="min-h-[120px]"
+              className="min-h-32"
             />
           </div>
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setChangeDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isSubmitting}>Cancel</Button>
+            </DialogClose>
+            <Button
               onClick={handleRequestChanges}
-              disabled={!comments.trim() || isSubmitting}
               className="bg-amber-600 hover:bg-amber-700"
+              disabled={isSubmitting || !comments.trim()}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : "Submit Feedback"}
+              {isSubmitting ? 'Submitting...' : 'Submit Change Request'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+      
+      {/* Approve button - Now positioned second */}
+      <Button
+        onClick={handleApprove}
+        className="bg-green-600 hover:bg-green-700 text-white"
+        size="sm"
+        disabled={isSubmitting}
+      >
+        <ThumbsUp className="mr-1 h-4 w-4" />
+        Approve {sectionName}
+      </Button>
+    </div>
   );
 };
 
