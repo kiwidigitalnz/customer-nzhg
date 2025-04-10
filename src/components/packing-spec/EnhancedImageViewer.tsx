@@ -1,9 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -11,10 +13,11 @@ import { ZoomIn, ZoomOut, Search, Move, AlertTriangle, ExternalLink, Image, Refr
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
 import { extractPodioFileId } from '@/services/imageProxy';
 import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  TooltipProvider, 
+  Tooltip, 
+  TooltipTrigger, 
+  TooltipContent 
+} from '@/components/ui/tooltip';
 
 interface EnhancedImageViewerProps {
   image: any;
@@ -24,20 +27,30 @@ interface EnhancedImageViewerProps {
   className?: string;
 }
 
-const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({ 
-  image, 
+// Define position interface for pan functionality
+interface Position {
+  x: number;
+  y: number;
+}
+
+// Helper to determine if a URL is from Podio
+const isPodioUrl = (url: string): boolean => {
+  return url.includes('podio.com') || url.includes('d2slcw3kip6qmk.cloudfront.net');
+};
+
+const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
+  image,
   alt,
   title,
-  maxHeight = "max-h-64",
+  maxHeight = "max-h-80",
   className = ""
 }) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  // State for the image viewer
   const [open, setOpen] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [alternativeUrls, setAlternativeUrls] = useState<string[]>([]);
@@ -46,69 +59,174 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   
+  // Get the image URL, handling both direct URL objects and Podio image objects
+  const imageUrl = image?.isUrl ? image.url : getImageUrl(image);
+  
+  // Get alternative URLs for Podio images
   useEffect(() => {
-    const url = image?.isUrl ? image.url : getImageUrl(image);
-    setImageUrl(url);
-    setIsLoading(!!url);
-    
-    console.log('EnhancedImageViewer received image:', image);
-    console.log('Generated primary image URL:', url);
-    
-    if (typeof image === 'object') {
-      console.log('Image object properties:', Object.keys(image));
-      if (image.file_id) {
-        console.log('File ID from image:', image.file_id);
+    if (image && !image.isUrl && imageUrl) {
+      // Check if this is a Podio image by examining the URL
+      if (isPodioUrl(imageUrl)) {
+        try {
+          // Extract alternatives from the image object
+          const alternatives = getPodioImageAlternatives(image);
+          setAlternativeUrls(alternatives);
+        } catch (e) {
+          console.error('Error extracting alternative URLs:', e);
+          setAlternativeUrls([]);
+        }
       }
     }
-    
-    if (url) {
-      const alternatives = getPodioImageAlternatives(url);
-      setAlternativeUrls(alternatives);
-      console.log('Generated alternative URLs:', alternatives);
-    }
-  }, [image]);
+  }, [image, imageUrl]);
   
-  const resetView = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-    setImgError(false);
-    setCurrentUrlIndex(-1);
+  // Function to get the current URL to display
+  const getCurrentUrl = (): string => {
+    if (currentUrlIndex >= 0 && currentUrlIndex < alternativeUrls.length) {
+      return alternativeUrls[currentUrlIndex];
+    }
+    return imageUrl || '';
+  };
+  
+  // Function to cycle through available URLs
+  const cycleUrl = () => {
+    if (alternativeUrls.length > 0) {
+      setCurrentUrlIndex((prev) => {
+        const next = (prev + 1) % (alternativeUrls.length + 1);
+        return next === alternativeUrls.length ? -1 : next;
+      });
+      // Reset zoom and position when changing URLs
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    }
+  };
+  
+  // Reset image when dialog opens or closes
+  useEffect(() => {
+    if (!open) {
+      // Reset zoom and position when closing
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+      setCurrentUrlIndex(-1); // Reset to primary URL
+    }
+  }, [open]);
+  
+  // Handle image loading states
+  const handleImageLoad = () => {
+    setIsLoading(false);
     setIsPlaceholder(false);
   };
   
-  const getCurrentUrl = () => {
-    if (currentUrlIndex === -1) return imageUrl;
-    return alternativeUrls[currentUrlIndex];
+  const handleImageError = () => {
+    setIsLoading(false);
+    setIsPlaceholder(true);
   };
   
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.25, 5));
+  // Zoom functions
+  const zoomIn = () => {
+    setScale((prevScale) => Math.min(prevScale + 0.25, 5));
   };
   
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev - 0.25, 0.5));
+  const zoomOut = () => {
+    setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
   };
   
-  const handleZoomSlider = (value: number[]) => {
-    setScale(value[0]);
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
   };
   
+  // Download function
+  const downloadImage = () => {
+    const url = getCurrentUrl();
+    if (!url) return;
+    
+    // Create an anchor and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = extractFilenameFromUrl(url);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+  
+  // Helper to extract filename from URL
+  const extractFilenameFromUrl = (url: string): string => {
+    try {
+      // Try to get filename from URL
+      const parts = url.split('/');
+      let filename = parts[parts.length - 1];
+      
+      // Remove query parameters if any
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+      
+      // If extraction failed, use a default name
+      if (!filename || filename.trim() === '') {
+        filename = `image-${Date.now()}.jpg`;
+      }
+      
+      return filename;
+    } catch (e) {
+      return `image-${Date.now()}.jpg`;
+    }
+  };
+  
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    
+    if (!fullscreen) {
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+    
+    setFullscreen(!fullscreen);
+  };
+  
+  // Effect to listen for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+  
+  // Wheel event handler for zooming
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        zoomIn();
+      } else {
+        zoomOut();
+      }
+    }
+  };
+  
+  // Mouse handlers for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if (scale > 1) {
       setIsDragging(true);
-      setDragStart({ 
-        x: e.clientX - position.x, 
-        y: e.clientY - position.y 
-      });
+      setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
   
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && scale > 1) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
   
@@ -116,154 +234,39 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
     setIsDragging(false);
   };
   
-  const handleDialogChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-      resetView();
-      setFullscreen(false);
+  // Handle keyboard for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case '+':
+      case '=':
+        zoomIn();
+        break;
+      case '-':
+        zoomOut();
+        break;
+      case '0':
+        resetZoom();
+        break;
+      case 'Escape':
+        setOpen(false);
+        break;
+      default:
+        break;
     }
   };
   
-  const handleImageError = () => {
-    const currentUrl = getCurrentUrl();
-    console.error('Image failed to load:', currentUrl);
-    
-    if (currentUrlIndex < alternativeUrls.length - 1) {
-      setCurrentUrlIndex(prevIndex => prevIndex + 1);
-      console.log('Trying alternative URL:', alternativeUrls[currentUrlIndex + 1]);
-    } else {
-      console.log('All alternative URLs failed. Showing error state.');
-      setImgError(true);
-    }
-    
-    setIsLoading(false);
-  };
-  
-  const handleImageLoad = () => {
-    setIsLoading(false);
-    setImgError(false);
-  };
-  
-  const tryRefreshImage = () => {
-    setImgError(false);
-    setIsLoading(true);
-    setCurrentUrlIndex(-1);
-    
-    if (imageUrl && imageUrl.includes('/api/podio-image/')) {
-      const refreshedUrl = `${imageUrl}?t=${Date.now()}`;
-      setImageUrl(refreshedUrl);
-    }
-  };
-  
-  const tryPlaceholder = () => {
-    setIsPlaceholder(true);
-    setImgError(false);
-    setIsLoading(false);
-  };
-  
-  const handleWheel = (e: React.WheelEvent) => {
-    if (open) {
-      e.preventDefault();
-      const delta = e.deltaY * -0.01;
-      const newScale = Math.max(0.5, Math.min(5, scale + delta));
-      setScale(newScale);
-    }
-  };
-  
-  const toggleFullscreen = () => {
-    if (containerRef.current) {
-      setFullscreen(!fullscreen);
-      
-      if (!fullscreen) {
-        if (containerRef.current.requestFullscreen) {
-          containerRef.current.requestFullscreen();
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
-    }
-  };
-  
-  const downloadImage = () => {
-    const url = getCurrentUrl();
-    if (url) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${alt || 'image'}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-  
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setFullscreen(!!document.fullscreenElement);
-    };
-    
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-  
-  if (!imageUrl) {
-    return (
-      <div className="bg-muted/20 rounded-md p-8 flex flex-col items-center justify-center text-muted-foreground">
-        <Image className="h-12 w-12 mb-2 opacity-30" />
-        <p>No image available</p>
-      </div>
-    );
-  }
-  
-  const fileId = imageUrl ? extractPodioFileId(imageUrl) : null;
-  
+  // Main render
   return (
-    <Dialog open={open} onOpenChange={handleDialogChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className={`relative group cursor-pointer hover:opacity-95 ${className}`}>
-          {isLoading && !imgError && !isPlaceholder && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-              <div className="flex flex-col items-center">
-                <RefreshCw className="h-8 w-8 text-primary/60 animate-spin" />
-                <p className="text-xs text-muted-foreground mt-2">Loading image...</p>
-              </div>
-            </div>
-          )}
-          
+        <div className={`cursor-pointer ${className}`} onClick={() => setOpen(true)}>
           <img 
-            src={getCurrentUrl() || ''} 
-            alt={alt} 
-            className={`w-full object-contain rounded-lg ${maxHeight} transition-all`}
-            onError={handleImageError}
+            src={imageUrl} 
+            alt={alt}
+            className={`w-auto mx-auto ${maxHeight} object-contain rounded-md`}
             onLoad={handleImageLoad}
-            ref={imgRef}
-            style={{ display: isLoading || imgError || isPlaceholder ? 'none' : 'block' }}
+            onError={handleImageError}
           />
-          
-          {imgError && (
-            <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center text-red-500 p-4">
-              <AlertTriangle className="h-8 w-8 mb-2" />
-              <p className="text-xs text-center">Failed to load image</p>
-              {fileId && (
-                <p className="text-xs text-center mt-1 font-mono">File ID: {fileId}</p>
-              )}
-            </div>
-          )}
-          
-          {isPlaceholder && (
-            <div className="w-full h-64 flex flex-col items-center justify-center bg-muted/30 p-4">
-              <Image className="h-16 w-16 text-muted-foreground/40 mb-2" />
-              <p className="text-muted-foreground text-center text-sm">Placeholder image</p>
-            </div>
-          )}
-          
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <Search className="h-8 w-8 text-white drop-shadow-md" />
-          </div>
         </div>
       </DialogTrigger>
       
@@ -284,163 +287,121 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </DialogHeader>
         
         <div 
-          className="flex-1 overflow-hidden relative bg-black/5"
+          className="flex-1 overflow-hidden relative" 
+          ref={containerRef}
           onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onMouseMove={handleMouseMove}
-          ref={containerRef}
-          style={{ cursor: isDragging ? 'grabbing' : scale > 1 ? 'grab' : 'default' }}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
         >
-          {isLoading && !imgError && !isPlaceholder && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center">
-                <RefreshCw className="h-16 w-16 text-primary/60 animate-spin" />
-                <p className="text-muted-foreground mt-4">Loading image...</p>
+          {/* Render placeholder for loading or error states */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/10">
+              <div className="text-center">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p className="text-sm text-muted-foreground">Loading image...</p>
               </div>
             </div>
           )}
           
-          {isPlaceholder ? (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 p-12">
-              <Image className="h-32 w-32 text-muted-foreground/40 mb-4" />
-              <p className="text-muted-foreground text-center">Placeholder image</p>
-            </div>
-          ) : imgError ? (
-            <div className="w-full h-full flex flex-col items-center justify-center text-red-500 p-8">
-              <AlertTriangle className="h-16 w-16 mb-4" />
-              <p className="text-lg font-medium">Failed to load image</p>
-              <div className="mt-4 p-4 bg-gray-100 rounded-md w-full max-w-md overflow-auto">
-                <p className="text-xs font-mono break-all">Current URL: {getCurrentUrl()}</p>
-                {fileId && (
-                  <div className="mt-2 text-xs">
-                    <p>File ID: {fileId}</p>
-                  </div>
+          {isPlaceholder && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/10">
+              <div className="text-center p-4">
+                <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
+                <p className="text-muted-foreground mb-2">Unable to load image</p>
+                {alternativeUrls.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={cycleUrl}>
+                    Try alternative format
+                  </Button>
                 )}
-                
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm mb-2">Options:</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={tryRefreshImage}
-                    className="mb-2 w-full flex items-center justify-center"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry loading image
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={tryPlaceholder}
-                    className="mb-2 w-full"
-                  >
-                    Show placeholder image
-                  </Button>
-                  
-                  {alternativeUrls.length > 0 && alternativeUrls.map((url, idx) => (
-                    <Button 
-                      key={idx}
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => {
-                        setCurrentUrlIndex(idx);
-                        setImgError(false);
-                        setIsLoading(true);
-                      }}
-                      className="mb-2 w-full text-xs"
-                    >
-                      Try alternative format {idx + 1}
-                    </Button>
-                  ))}
-                </div>
               </div>
             </div>
-          ) : (
-            <img 
-              src={getCurrentUrl() || ''} 
-              alt={alt} 
-              className="max-h-[75vh] w-auto mx-auto object-contain transition-transform"
-              style={{ 
-                transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-                transformOrigin: 'center',
-                willChange: 'transform',
-                display: isLoading ? 'none' : 'block'
-              }}
-              draggable="false"
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-            />
           )}
+          
+          {/* The actual image */}
+          <img 
+            ref={imgRef}
+            src={getCurrentUrl() || ''} 
+            alt={alt} 
+            className="max-h-[75vh] w-auto mx-auto object-contain transition-transform"
+            style={{ 
+              transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+              transformOrigin: 'center',
+              cursor: scale > 1 ? 'move' : 'default',
+              opacity: isPlaceholder ? 0 : 1,
+              display: isLoading ? 'none' : 'block',
+            }}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
         </div>
         
-        <div className="p-3 border-t flex justify-between items-center gap-2 bg-muted/20">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={scale <= 0.5 || imgError || isPlaceholder || isLoading}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            
-            <div className="w-40 hidden md:block">
-              <Slider
-                defaultValue={[1]}
-                min={0.5}
-                max={5}
-                step={0.1}
-                value={[scale]}
-                onValueChange={handleZoomSlider}
-                disabled={imgError || isPlaceholder || isLoading}
-              />
+        {/* Toolbar at the bottom */}
+        <div className="p-3 border-t bg-muted/10">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={zoomOut} disabled={scale <= 0.5}>
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Zoom out</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <div className="w-24 md:w-48">
+                <Slider 
+                  value={[scale]} 
+                  min={0.5} 
+                  max={5} 
+                  step={0.1} 
+                  onValueChange={(vals) => setScale(vals[0])}
+                />
+              </div>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={zoomIn} disabled={scale >= 5}>
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Zoom in</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <span className="text-sm text-muted-foreground hidden md:inline-block ml-2">
+                {Math.round(scale * 100)}%
+              </span>
             </div>
             
-            <span className="px-2 text-sm">{Math.round(scale * 100)}%</span>
-            
-            <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={scale >= 5 || imgError || isPlaceholder || isLoading}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center">
-            {scale > 1 && !imgError && !isPlaceholder && !isLoading && (
-              <span className="hidden md:flex items-center text-xs text-muted-foreground mr-2">
-                <Move className="h-3 w-3 mr-1" />
-                Drag to move
-              </span>
-            )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="hidden md:flex">
-                  <ExternalLink className="h-3 w-3 mr-2" />
-                  Open
+            <div className="flex items-center gap-2">
+              {alternativeUrls.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={cycleUrl}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Switch Format
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-60 p-3">
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Image options</h3>
-                  <a 
-                    href={getCurrentUrl() || ''}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center text-sm text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-2" />
-                    Open in new tab
-                  </a>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={downloadImage}
-                    className="w-full text-sm justify-start"
-                  >
-                    <Download className="h-3 w-3 mr-2" />
-                    Download image
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button variant="secondary" size="sm" onClick={resetView} disabled={(scale === 1 && position.x === 0 && position.y === 0 && !imgError && !isPlaceholder)}>
-              Reset View
-            </Button>
+              )}
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetZoom}
+                className="text-xs"
+                disabled={scale === 1 && position.x === 0 && position.y === 0}
+              >
+                Reset
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

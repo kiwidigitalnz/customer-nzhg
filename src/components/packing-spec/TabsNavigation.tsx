@@ -4,7 +4,7 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
-  MessageSquare 
+  FileIcon, MessageSquare 
 } from 'lucide-react';
 
 interface TabsNavigationProps {
@@ -35,6 +35,10 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger value="shipping" className="flex items-center">
         <Truck className="mr-1.5 h-4 w-4" />
         <span>Shipping</span>
+      </TabsTrigger>
+      <TabsTrigger value="documents" className="flex items-center">
+        <FileIcon className="mr-1.5 h-4 w-4" />
+        <span>Documents</span>
       </TabsTrigger>
       <TabsTrigger value="comments" className="flex items-center relative">
         <MessageSquare className="mr-1.5 h-4 w-4" />

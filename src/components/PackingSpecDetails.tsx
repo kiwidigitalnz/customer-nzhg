@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ import {
   PackagingTab,
   LabelingTab,
   ShippingTab,
+  DocumentsTab,
   CommentsTab
 } from './packing-spec/tabs';
 
@@ -40,6 +42,13 @@ interface PackingSpec {
     [key: string]: any;
   };
   comments?: CommentItem[];
+  files?: {
+    id: number;
+    name: string;
+    link: string;
+    size?: string;
+    mimetype?: string;
+  }[];
 }
 
 interface CommentItem {
@@ -374,6 +383,10 @@ const PackingSpecDetails = () => {
                 
                 <TabsContent value="shipping">
                   <ShippingTab details={spec.details} />
+                </TabsContent>
+                
+                <TabsContent value="documents">
+                  <DocumentsTab details={spec.details} files={spec.files} />
                 </TabsContent>
                 
                 <TabsContent value="comments">
