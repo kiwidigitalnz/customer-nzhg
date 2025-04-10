@@ -15,6 +15,7 @@ interface SectionApprovalContextType {
   updateSectionStatus: (section: SectionName, status: SectionStatus, comments?: string) => void;
   allSectionsApproved: boolean;
   anySectionsWithChangesRequested: boolean;
+  getSectionFeedback: () => Record<string, string>;
 }
 
 const SectionApprovalContext = createContext<SectionApprovalContextType | undefined>(undefined);
@@ -30,11 +31,13 @@ export const useSectionApproval = () => {
 interface SectionApprovalProviderProps {
   children: ReactNode;
   initialStates?: Partial<Record<SectionName, SectionState>>;
+  onSectionStatusChange?: (section: SectionName, status: SectionStatus, comments?: string) => void;
 }
 
 export const SectionApprovalProvider: React.FC<SectionApprovalProviderProps> = ({ 
   children,
-  initialStates = {}
+  initialStates = {},
+  onSectionStatusChange
 }) => {
   const [sectionStates, setSectionStates] = useState<Record<SectionName, SectionState>>({
     overview: { status: 'pending' },
@@ -55,6 +58,11 @@ export const SectionApprovalProvider: React.FC<SectionApprovalProviderProps> = (
         approvedAt: status === 'approved' ? new Date().toISOString() : prev[section]?.approvedAt
       }
     }));
+    
+    // Call the optional callback if provided
+    if (onSectionStatusChange) {
+      onSectionStatusChange(section, status, comments);
+    }
   };
   
   const allSectionsApproved = Object.values(sectionStates).every(
@@ -65,12 +73,26 @@ export const SectionApprovalProvider: React.FC<SectionApprovalProviderProps> = (
     section => section.status === 'changes-requested'
   );
   
+  // Helper function to get all section feedback for consolidation
+  const getSectionFeedback = (): Record<string, string> => {
+    const feedback: Record<string, string> = {};
+    
+    Object.entries(sectionStates).forEach(([section, state]) => {
+      if (state.status === 'changes-requested' && state.comments) {
+        feedback[section] = state.comments;
+      }
+    });
+    
+    return feedback;
+  };
+  
   return (
     <SectionApprovalContext.Provider value={{ 
       sectionStates, 
       updateSectionStatus,
       allSectionsApproved,
-      anySectionsWithChangesRequested
+      anySectionsWithChangesRequested,
+      getSectionFeedback
     }}>
       {children}
     </SectionApprovalContext.Provider>

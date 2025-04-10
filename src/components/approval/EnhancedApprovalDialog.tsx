@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
-import { updatePackingSpecStatus, PODIO_CATEGORIES } from '@/services/podioApi';
+import { updatePackingSpecStatus, PODIO_CATEGORIES, uploadFileToPodio } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
 import { addCommentToPackingSpec } from '@/services/podioApi';
@@ -83,6 +84,25 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     setLoading(true);
 
     try {
+      // Upload signature if approving
+      if (type === 'approve' && signature) {
+        try {
+          // Convert data URL to blob for upload
+          const res = await fetch(signature);
+          const blob = await res.blob();
+          
+          // Create a File object from the blob
+          const signatureFile = new File([blob], `signature-${specId}-${Date.now()}.png`, { type: 'image/png' });
+          
+          // Upload signature to Podio
+          await uploadFileToPodio(specId, signatureFile);
+          console.log('Signature uploaded successfully');
+        } catch (uploadError) {
+          console.error('Error uploading signature:', uploadError);
+          // We'll continue even if signature upload fails
+        }
+      }
+
       // Add comment first if notes are provided
       if (notes) {
         await addCommentToPackingSpec(specId, notes);

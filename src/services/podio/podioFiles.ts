@@ -1,33 +1,68 @@
 
-import { callPodioApi } from './podioAuth';
+import { callPodioApi, PACKING_SPEC_FIELD_IDS } from './podioAuth';
 
 /**
- * Uploads a file to Podio and attaches it to a specific item field
+ * Uploads a file to a Podio item, specifically for the packing spec
+ * @param itemId The Podio item ID to attach the file to
  * @param file The file to upload
- * @param itemId The ID of the item to attach the file to
- * @param fieldId The ID of the field to attach the file to
- * @returns The uploaded file information or null if upload failed
+ * @returns The file ID of the uploaded file
  */
-export const uploadFileToPodio = async (file: File, itemId: number, fieldId: number) => {
-  console.log('Uploading file to Podio', { filename: file.name, itemId, fieldId });
-  
+export const uploadFileToPodio = async (itemId: number, file: File): Promise<number> => {
   try {
-    // In a real implementation, this would use FormData to upload the file
-    // But for our serverless approach, we would need to use the Edge Function
-    // This is a placeholder - in production you'd implement file uploads via the Edge Function
+    console.log(`Uploading file to Podio item ${itemId}...`);
     
-    console.warn('File upload to Podio is not fully implemented');
-    return { fileId: 12345, name: file.name };
+    // Create FormData for the file upload
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // First step: Upload the file to Podio's general file storage
+    const uploadResponse = await callPodioApi('/file', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Don't set Content-Type; browser will set with boundary for FormData
+      },
+    });
+    
+    if (!uploadResponse || !uploadResponse.file_id) {
+      throw new Error('Failed to upload file to Podio');
+    }
+    
+    const fileId = uploadResponse.file_id;
+    console.log(`File uploaded successfully to Podio with file ID: ${fileId}`);
+    
+    // Second step: Attach the file to the item's signature field
+    // Find the correct field ID for signature
+    const signatureFieldId = PACKING_SPEC_FIELD_IDS?.signature;
+    
+    if (!signatureFieldId) {
+      console.error('Signature field ID not found in configuration');
+      return fileId; // Return the file ID even if we can't attach it to the specific field
+    }
+    
+    // Attach the file to the specific field
+    const attachResponse = await callPodioApi(`/item/${itemId}/value/${signatureFieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        value: fileId
+      })
+    });
+    
+    console.log('File attached to signature field successfully:', attachResponse);
+    
+    return fileId;
   } catch (error) {
     console.error('Error uploading file to Podio:', error);
-    return null;
+    throw error;
   }
 };
 
 /**
- * Determines whether to proceed without a signature
- * This is a helper function that can be configured based on app requirements
+ * Determines if we should proceed with approval if the signature upload fails
+ * @returns boolean indicating if we should proceed without a signature
  */
 export const shouldProceedWithoutSignature = (): boolean => {
-  return false;
+  // For now, always return true to avoid blocking the approval process
+  // This can be enhanced with config options in the future
+  return true;
 };

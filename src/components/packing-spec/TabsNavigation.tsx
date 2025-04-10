@@ -11,10 +11,14 @@ import { cn } from '@/lib/utils';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
+  onTabClick?: (tab: string) => void;
+  currentTabValue?: string;
 }
 
 const TabsNavigation: React.FC<TabsNavigationProps> = ({ 
-  newCommentsCount = 0
+  newCommentsCount = 0,
+  onTabClick,
+  currentTabValue
 }) => {
   const { sectionStates } = useSectionApproval();
   
@@ -46,11 +50,19 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     return "";
   };
   
+  const handleTabClick = (value: string) => {
+    if (onTabClick) {
+      onTabClick(value);
+    }
+  };
+  
   return (
     <TabsList className="mb-6 w-full flex overflow-x-auto justify-start p-1 bg-muted/70 rounded-md">
       <TabsTrigger 
         value="overview" 
         className={cn("flex items-center", getTabClassName('overview'))}
+        data-state={currentTabValue === 'overview' ? 'active' : ''}
+        onClick={() => handleTabClick('overview')}
       >
         <Info className="mr-1.5 h-4 w-4" />
         <span>Honey Specification</span>
@@ -59,6 +71,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger 
         value="requirements" 
         className={cn("flex items-center", getTabClassName('requirements'))}
+        data-state={currentTabValue === 'requirements' ? 'active' : ''}
+        onClick={() => handleTabClick('requirements')}
       >
         <ShieldCheck className="mr-1.5 h-4 w-4" />
         <span>Requirements</span>
@@ -67,6 +81,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger 
         value="packaging" 
         className={cn("flex items-center", getTabClassName('packaging'))}
+        data-state={currentTabValue === 'packaging' ? 'active' : ''}
+        onClick={() => handleTabClick('packaging')}
       >
         <Package className="mr-1.5 h-4 w-4" />
         <span>Packaging</span>
@@ -75,6 +91,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger 
         value="label" 
         className={cn("flex items-center", getTabClassName('label'))}
+        data-state={currentTabValue === 'label' ? 'active' : ''}
+        onClick={() => handleTabClick('label')}
       >
         <FileText className="mr-1.5 h-4 w-4" />
         <span>Labeling</span>
@@ -83,6 +101,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger 
         value="shipping" 
         className={cn("flex items-center", getTabClassName('shipping'))}
+        data-state={currentTabValue === 'shipping' ? 'active' : ''}
+        onClick={() => handleTabClick('shipping')}
       >
         <Truck className="mr-1.5 h-4 w-4" />
         <span>Shipping</span>
@@ -91,12 +111,19 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       <TabsTrigger 
         value="documents" 
         className={cn("flex items-center", getTabClassName('documents'))}
+        data-state={currentTabValue === 'documents' ? 'active' : ''}
+        onClick={() => handleTabClick('documents')}
       >
         <FileIcon className="mr-1.5 h-4 w-4" />
         <span>Documents</span>
         {getSectionIndicator('documents')}
       </TabsTrigger>
-      <TabsTrigger value="comments" className="flex items-center relative">
+      <TabsTrigger 
+        value="comments" 
+        className="flex items-center relative"
+        data-state={currentTabValue === 'comments' ? 'active' : ''}
+        onClick={() => handleTabClick('comments')}
+      >
         <MessageSquare className="mr-1.5 h-4 w-4" />
         <span>Comments</span>
         {newCommentsCount > 0 && (
