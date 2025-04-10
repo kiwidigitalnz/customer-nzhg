@@ -1,3 +1,4 @@
+
 import { refreshPodioToken, isPodioConfigured } from '../podioApi';
 import { toast } from '@/hooks/use-toast';
 
@@ -63,10 +64,7 @@ export const ensureValidToken = async (): Promise<boolean> => {
   if (willTokenExpireSoon()) {
     refreshInProgress = true;
     refreshPromise = refreshPodioToken()
-      .catch(error => {
-        if (import.meta.env.DEV) {
-          console.error('Failed to refresh token:', error);
-        }
+      .catch(() => {
         return false;
       })
       .finally(() => {
@@ -115,14 +113,6 @@ export const createAuthError = (
 
 // Handle auth errors with standardized handling
 export const handleAuthError = (error: AuthError): void => {
-  // Critical error: should log it even in production
-  console.error(`Auth error (${error.type}):`, error.message);
-  
-  // Log detailed error only in development
-  if (import.meta.env.DEV) {
-    console.error('Authentication error details:', error);
-  }
-  
   // Different handling based on error type
   switch (error.type) {
     case AuthErrorType.NETWORK:
@@ -134,19 +124,11 @@ export const handleAuthError = (error: AuthError): void => {
       break;
       
     case AuthErrorType.CONFIGURATION:
-      if (import.meta.env.DEV) {
-        toast({
-          title: 'Configuration Error',
-          description: 'Podio is not configured correctly. Please check your settings.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Service Temporarily Unavailable',
-          description: 'Please try again later or contact support.',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Service Temporarily Unavailable',
+        description: 'Please try again later or contact support.',
+        variant: 'destructive',
+      });
       break;
       
     case AuthErrorType.AUTHENTICATION:
@@ -262,6 +244,5 @@ export const initAuthMonitoring = (): void => {
   };
   
   // For environments where a cleanup function is expected (like testing)
-  // We can expose the cleanup function as a property
   (initAuthMonitoring as any).cleanup = cleanup;
 };

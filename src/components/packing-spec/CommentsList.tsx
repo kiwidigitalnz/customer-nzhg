@@ -28,19 +28,11 @@ const CommentsList: React.FC<CommentsListProps> = ({
 }) => {
   const { user } = useAuth();
   
-  console.log('CommentsList rendered with:', { 
-    specId, 
-    isActive, 
-    commentsCount: comments?.length || 0,
-    isLoading
-  });
-  
   const formatNZTime = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
       return format(date, 'h:mm a');
     } catch (err) {
-      console.error('Error formatting time:', err);
       return '';
     }
   };
@@ -77,8 +69,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
   const sortedComments = [...comments].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
-  
-  console.log('Sorted comments:', sortedComments.map(c => ({ id: c.id, text: c.text.substring(0, 20) })));
   
   const companyName = user?.name || "Unknown Company";
   const authUsername = user?.username || null;

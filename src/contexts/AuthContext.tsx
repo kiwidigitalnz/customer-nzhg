@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   clearTokens,
@@ -21,7 +22,7 @@ interface AuthContextType {
   user: UserData | null;
   loading: boolean;
   error: any;
-  login: (username?: string, password?: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
   forceReauthenticate: () => Promise<boolean>;
@@ -63,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       } catch (err) {
-        console.error('Auth check error:', err);
         setError(err);
         setIsAuthenticated(false);
       } finally {
@@ -74,32 +74,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  // Login method - simplified to reduce token verification
-  const login = useCallback(async (username?: string, password?: string): Promise<boolean> => {
+  // Login method
+  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
     
     try {
-      // For development only, allow login without credentials
-      if (process.env.NODE_ENV === 'development' && !username && !password) {
-        const dummyUser: UserData = {
-          id: 1,
-          podioItemId: 1, // Set a dummy podioItemId for development
-          name: "Test Company",
-          email: "test@example.com",
-          username: "testuser",
-          logoFileId: "",
-          logoUrl: "",
-        };
-        
-        setUser(dummyUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('podio_user_data', JSON.stringify(dummyUser));
-        setLoading(false);
-        return true;
-      }
-      
-      // Normal authentication flow
       if (!username || !password) {
         throw new Error('Username and password are required');
       }
@@ -114,17 +94,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
-        console.error('User authentication failed:', error);
         throw new Error(error.message || 'Authentication failed');
       }
       
       if (!data) {
-        console.error('Empty response from user authentication');
         throw new Error('Empty response from authentication service');
       }
       
       if (data.error) {
-        console.error('Authentication error:', data.error);
         throw new Error(data.error);
       }
       
@@ -148,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return true;
     } catch (err) {
-      console.error('Login error:', err);
       setError(err);
       setIsAuthenticated(false);
       
@@ -169,15 +145,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = '/';
   }, []);
 
-  // Force reauthentication with Podio API - simplified to just return true if already authenticated
+  // Force reauthentication with Podio API
   const forceReauthenticate = useCallback(async (): Promise<boolean> => {
-    // If we're already authenticated, return true immediately
     if (isAuthenticated) {
       return true;
     }
     
     try {
-      // Only refresh token if not authenticated
       const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
         method: 'POST'
       });
@@ -188,13 +162,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return true;
     } catch (err) {
-      console.error('Force reauthentication error:', err);
       setError(err);
       return false;
     }
   }, [isAuthenticated]);
 
-  // Combine auth context value
   const authContextValue: AuthContextType = {
     user,
     loading,

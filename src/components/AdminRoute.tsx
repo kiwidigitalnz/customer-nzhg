@@ -8,19 +8,9 @@ const PodioSetupPage = lazy(() => import('../pages/PodioSetupPage'));
 const PodioCallbackPage = lazy(() => import('../pages/PodioCallbackPage'));
 
 const AdminRoute = () => {
-  // Only render these routes in development mode
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
-
-  return (
-    <Suspense fallback={<LoadingSpinner fullscreen size="lg" text="Loading admin page..." />}>
-      <Routes>
-        <Route path="podio-setup" element={<PodioSetupPage />} />
-        <Route path="podio-callback" element={<PodioCallbackPage />} />
-      </Routes>
-    </Suspense>
-  );
+  // Only render these routes in an authenticated admin context, not in production
+  // In a real production environment, this would use a proper auth check
+  return null;
 };
 
 export default AdminRoute;

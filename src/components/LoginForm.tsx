@@ -61,7 +61,6 @@ const LoginForm = () => {
     
     // Prevent duplicate login attempts
     if (loginAttemptInProgress.current || authenticating) {
-      console.log('Login attempt already in progress, preventing duplicate submission');
       return;
     }
     

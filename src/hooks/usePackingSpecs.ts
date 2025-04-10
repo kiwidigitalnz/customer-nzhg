@@ -24,47 +24,20 @@ export function usePackingSpecs() {
   const { toast } = useToast();
   const fetchInProgressRef = useRef(false);
 
-  // Mock data for development and fallback
-  const mockSpecs: PackingSpec[] = [
-    {
-      id: 1,
-      title: 'Sample Packing Specification',
-      productName: 'Premium Honey',
-      status: 'pending-approval' as SpecStatus,
-      customer: 'Test Customer',
-      customerItemId: 1234,
-      created: new Date().toISOString(),
-      updated: new Date().toISOString(),
-      customerApprovalStatus: 'Pending',
-      link: '#',
-      description: 'Sample packing specification',
-      createdAt: new Date().toISOString(),
-      details: {
-        product: 'Premium Honey',
-        productCode: 'PH-001',
-        umfMgo: 'UMF 10+',
-        honeyType: 'Manuka'
-      }
-    }
-  ];
-
   // Fetch function with debouncing and error handling
   const fetchSpecs = useCallback(async (forceRefresh = false) => {
     if (!isAuthenticated) {
-      console.log('No authenticated user, skipping fetch');
       return;
     }
     
     // Prevent duplicate calls
     if (fetchInProgressRef.current && !forceRefresh) {
-      console.log('API call already in progress, skipping duplicate call');
       return;
     }
     
     // Get the user's podioItemId if available
     const contactId = user?.podioItemId;
     
-    console.log(`Performing fetch of packing specs for contact ID: ${contactId || 'none (showing all)'}`);
     fetchInProgressRef.current = true;
     setLoading(true);
     
@@ -83,20 +56,11 @@ export function usePackingSpecs() {
         const cachedData = localStorage.getItem('cached_packing_specs');
         if (cachedData) {
           setSpecs(JSON.parse(cachedData));
-          console.log('Using cached packing specs data');
         } else {
-          // Default to mock data in development
-          if (process.env.NODE_ENV === 'development') {
-            setSpecs(mockSpecs);
-            console.log('Using mock packing specs data for development');
-          } else {
-            setSpecs([]);
-          }
+          setSpecs([]);
         }
       }
     } catch (error) {
-      console.error('Error fetching specs:', error);
-      
       if (error instanceof Error) {
         setError(error.message);
         
@@ -113,9 +77,6 @@ export function usePackingSpecs() {
           const cachedData = localStorage.getItem('cached_packing_specs');
           if (cachedData) {
             setSpecs(JSON.parse(cachedData));
-            console.log('Using cached packing specs data due to rate limiting');
-          } else if (process.env.NODE_ENV === 'development') {
-            setSpecs(mockSpecs);
           }
         } else {
           // General error
@@ -134,12 +95,10 @@ export function usePackingSpecs() {
         });
       }
       
-      // Fallback to cached or mock data
+      // Fallback to cached data
       const cachedData = localStorage.getItem('cached_packing_specs');
       if (cachedData) {
         setSpecs(JSON.parse(cachedData));
-      } else if (process.env.NODE_ENV === 'development') {
-        setSpecs(mockSpecs);
       }
     } finally {
       setLoading(false);
@@ -152,11 +111,6 @@ export function usePackingSpecs() {
     if (isAuthenticated) {
       fetchSpecs();
     }
-    
-    // Cleanup function
-    return () => {
-      // Any cleanup if needed
-    };
   }, [isAuthenticated, fetchSpecs]);
 
   // Process specs into categories

@@ -25,8 +25,6 @@ const RootPathHandler = () => {
     const state = searchParams.get('state');
     
     if (code && state) {
-      console.log('Detected Podio OAuth callback parameters at root URL');
-      
       // Call the Edge Function manually to handle the token exchange
       const handleOAuthCallback = async () => {
         try {
@@ -36,7 +34,6 @@ const RootPathHandler = () => {
           });
           
           if (error) {
-            console.error('Error processing OAuth callback:', error);
             toast({
               title: "Authentication Failed",
               description: error.message || "Failed to complete Podio authentication",
@@ -56,7 +53,6 @@ const RootPathHandler = () => {
             navigate(`/podio-setup?error=${data.error || 'unknown'}`);
           }
         } catch (err) {
-          console.error('Error handling OAuth callback:', err);
           toast({
             title: "Authentication Error",
             description: "An unexpected error occurred during authentication",

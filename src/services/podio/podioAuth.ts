@@ -1,5 +1,5 @@
+
 // Core authentication service for Podio integration
-import { getFieldValueByExternalId } from './podioFieldHelpers';
 import { supabase } from '@/integrations/supabase/client';
 
 // Constants
@@ -84,8 +84,6 @@ const RATE_LIMIT_DURATION = 10 * 60 * 1000;
 
 // Clear auth tokens (now a no-op since we don't store tokens locally)
 export const clearTokens = (): void => {
-  console.log('Token management now handled by server - no local tokens to clear');
-  // We could clear user data here if needed
   localStorage.removeItem('podio_user_data');
 };
 
@@ -107,7 +105,6 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('Failed to get Podio OAuth token:', error);
     return false;
   }
 };
@@ -115,8 +112,6 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   try {
-    console.log(`Authenticating user: ${username}`);
-    
     // Call the Edge Function to find the user in the Contacts app
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
@@ -127,23 +122,19 @@ export const authenticateUser = async (username: string, password: string): Prom
     });
     
     if (error) {
-      console.error('User authentication failed:', error);
       throw new Error(error.message || 'Authentication failed');
     }
     
     if (!data) {
-      console.error('Empty response from user authentication');
       throw new Error('Empty response from authentication service');
     }
     
     if (data.error) {
-      console.error('Authentication error:', data.error);
       throw new Error(data.error);
     }
     
     return data;
   } catch (error) {
-    console.error('Authentication error:', error);
     throw error;
   }
 };
@@ -152,15 +143,12 @@ export const authenticateUser = async (username: string, password: string): Prom
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
-    console.log('API call prevented due to rate limiting');
     throw new Error('Rate limit reached. Please try again later.');
   }
   
   try {
     // Normalize endpoint (ensure it starts with a slash)
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    
-    console.log(`Making Podio API call to endpoint: ${normalizedEndpoint}`);
     
     // Prepare the request payload - no token verification
     const payload = {
@@ -170,18 +158,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
         body: options.body
       }
     };
-    
-    console.log(`API call details: method=${options.method || 'GET'}`);
-    
-    // For debug purposes, log the request body if available
-    if (options.body) {
-      try {
-        const parsedBody = JSON.parse(options.body as string);
-        console.log('Request body:', parsedBody);
-      } catch (e) {
-        console.log('Request body (raw):', options.body);
-      }
-    }
     
     // Call the Edge Function
     const response = await supabase.functions.invoke('podio-proxy', {
@@ -193,11 +169,8 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     
     // Enhanced error handling with detailed logging
     if (error) {
-      console.error('Podio API error:', error);
-      
       // Handle rate limiting - check for 429 in error or message
       if (error.message?.includes('429') || response.error?.status === 429) {
-        console.error('API call rate limited:', error);
         setRateLimit(endpoint);
         throw new Error('Rate limit reached. Please try again later.');
       }
@@ -208,7 +181,6 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Return data
     return data;
   } catch (error) {
-    console.error('Podio API call failed:', error);
     throw error;
   }
 };
@@ -274,7 +246,7 @@ export const cacheUserData = (key: string, data: any): void => {
     localStorage.setItem(`podio_cache_${key}`, JSON.stringify(data));
     localStorage.setItem(`podio_cache_${key}_timestamp`, Date.now().toString());
   } catch (error) {
-    console.error('Failed to cache user data:', error);
+    // Silent catch in production
   }
 };
 
@@ -285,12 +257,11 @@ export const getCachedUserData = (key: string): any => {
     
     return JSON.parse(cachedData);
   } catch (error) {
-    console.error('Failed to get cached user data:', error);
     return null;
   }
 };
 
-// Remove unused functions
+// Simple authorization check functions
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   return true; // Simplified since we're relying on server-side auth
 };
