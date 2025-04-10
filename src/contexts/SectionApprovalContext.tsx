@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { SectionStatus } from '@/components/packing-spec/SectionApproval';
 
@@ -83,10 +82,7 @@ export const SectionApprovalProvider: React.FC<SectionApprovalProviderProps> = (
       }
     });
     
-    return feedback;
-  };
-  
-  return (
+    return (
     <SectionApprovalContext.Provider value={{ 
       sectionStates, 
       updateSectionStatus,

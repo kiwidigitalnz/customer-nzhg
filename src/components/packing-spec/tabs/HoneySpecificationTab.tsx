@@ -21,7 +21,6 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.overview.status;
   
   // Helper function to display values, showing "N/A" as a single value
   const displayValue = (value: any) => {
@@ -111,9 +110,9 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
         <CardFooter className="border-t pt-4 flex justify-end">
           <SectionApproval
             sectionName="Honey Specification"
-            status={sectionStatus}
-            onApprove={handleApprove}
+            onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
+            onNavigateToNextTab={onNavigateToNextTab}
           />
         </CardFooter>
       </Card>

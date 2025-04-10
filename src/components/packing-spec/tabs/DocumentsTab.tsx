@@ -32,7 +32,6 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.documents.status;
   
   const getFileIcon = (file: DocumentFile) => {
     const name = file.name.toLowerCase();
@@ -122,9 +121,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <CardFooter className="border-t pt-4 flex justify-end">
             <SectionApproval
               sectionName="Documents"
-              status={sectionStatus}
-              onApprove={handleApprove}
+              onApproveSection={handleApprove}
               onRequestChanges={handleRequestChanges}
+              onNavigateToNextTab={onNavigateToNextTab}
             />
           </CardFooter>
         </Card>
@@ -138,9 +137,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <div className="mt-4 flex justify-end">
             <SectionApproval
               sectionName="Documents"
-              status={sectionStatus}
-              onApprove={handleApprove}
+              onApproveSection={handleApprove}
               onRequestChanges={handleRequestChanges}
+              onNavigateToNextTab={onNavigateToNextTab}
             />
           </div>
         </div>

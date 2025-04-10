@@ -19,7 +19,6 @@ const ShippingTab: React.FC<ShippingTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.shipping.status;
   
   const handleApprove = async () => {
     if (onApproveSection) {
@@ -86,9 +85,9 @@ const ShippingTab: React.FC<ShippingTabProps> = ({
         <CardFooter className="border-t pt-4 flex justify-end">
           <SectionApproval
             sectionName="Shipping"
-            status={sectionStatus}
-            onApprove={handleApprove}
+            onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
+            onNavigateToNextTab={onNavigateToNextTab}
           />
         </CardFooter>
       </Card>

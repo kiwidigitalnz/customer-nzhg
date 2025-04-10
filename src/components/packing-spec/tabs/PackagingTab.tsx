@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Package, Box, Container } from 'lucide-react';
@@ -19,7 +20,6 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.packaging.status;
   
   const getFieldValue = (fieldKey: string, alternateKeys: string[] = []) => {
     if (details[fieldKey]) return details[fieldKey];
@@ -163,9 +163,9 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
         <CardFooter className="border-t pt-4 flex justify-end">
           <SectionApproval
             sectionName="Packaging"
-            status={sectionStatus}
-            onApprove={handleApprove}
+            onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
+            onNavigateToNextTab={onNavigateToNextTab}
           />
         </CardFooter>
       </Card>

@@ -6,6 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertTriangle, Check, ThumbsUp } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 
+// Export the type for use in other components
+export type SectionStatus = 'pending' | 'approved' | 'changes-requested';
+
 interface SectionApprovalProps {
   sectionName: string;
   onApproveSection: (section: string) => Promise<void>;

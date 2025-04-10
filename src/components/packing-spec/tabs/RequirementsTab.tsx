@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +23,6 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.requirements.status;
   
   const normalizeArrayValue = (value: any) => {
     if (!value) return null;
@@ -167,9 +167,9 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({
         <CardFooter className="border-t pt-4 flex justify-end">
           <SectionApproval
             sectionName="Requirements"
-            status={sectionStatus}
-            onApprove={handleApprove}
+            onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
+            onNavigateToNextTab={onNavigateToNextTab}
           />
         </CardFooter>
       </Card>

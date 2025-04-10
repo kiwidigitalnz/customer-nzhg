@@ -23,7 +23,6 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
   onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
-  const sectionStatus = sectionStates.label.status;
   
   const handleApprove = async () => {
     if (onApproveSection) {
@@ -170,9 +169,9 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
         <CardFooter className="border-t pt-4 flex justify-end">
           <SectionApproval
             sectionName="Labeling"
-            status={sectionStatus}
-            onApprove={handleApprove}
+            onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
+            onNavigateToNextTab={onNavigateToNextTab}
           />
         </CardFooter>
       </Card>
