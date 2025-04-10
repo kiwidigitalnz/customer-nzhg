@@ -8,19 +8,22 @@ import CategoryDisplay from '../CategoryDisplay';
 import { CountryFlagsList } from '../CountryFlag';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from '../StatusBadge';
 
 interface RequirementsTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const RequirementsTab: React.FC<RequirementsTabProps> = ({ 
   details,
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -170,6 +173,7 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({
             onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
             onNavigateToNextTab={onNavigateToNextTab}
+            specStatus={specStatus}
           />
         </CardFooter>
       </Card>

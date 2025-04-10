@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { AlertTriangle, Check, ThumbsUp } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from './StatusBadge';
 
 // Export the type for use in other components
 export type SectionStatus = 'pending' | 'approved' | 'changes-requested';
@@ -14,7 +15,7 @@ interface SectionApprovalProps {
   onApproveSection: (section: string) => Promise<void>;
   onRequestChanges: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
-  specStatus?: string;
+  specStatus?: SpecStatus;
 }
 
 const SectionApproval: React.FC<SectionApprovalProps> = ({

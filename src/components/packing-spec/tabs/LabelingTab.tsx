@@ -8,19 +8,22 @@ import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 import EnhancedImageViewer from '../EnhancedImageViewer';
 import ImagePreview from '../ImagePreview';
 import { formatTextContent } from '@/utils/formatters';
+import { SpecStatus } from '../StatusBadge';
 
 interface LabelingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const LabelingTab: React.FC<LabelingTabProps> = ({ 
   details,
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -172,6 +175,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
             onNavigateToNextTab={onNavigateToNextTab}
+            specStatus={specStatus}
           />
         </CardFooter>
       </Card>

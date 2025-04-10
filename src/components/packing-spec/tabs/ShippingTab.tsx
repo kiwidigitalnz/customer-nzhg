@@ -4,19 +4,22 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Truck, Layers, FileText } from 'lucide-react';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from '../StatusBadge';
 
 interface ShippingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const ShippingTab: React.FC<ShippingTabProps> = ({ 
   details,
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -88,6 +91,7 @@ const ShippingTab: React.FC<ShippingTabProps> = ({
             onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
             onNavigateToNextTab={onNavigateToNextTab}
+            specStatus={specStatus}
           />
         </CardFooter>
       </Card>

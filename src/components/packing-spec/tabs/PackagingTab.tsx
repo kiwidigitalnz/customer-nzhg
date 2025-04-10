@@ -5,19 +5,22 @@ import { Package, Box, Container } from 'lucide-react';
 import { formatTextContent } from '@/utils/formatters';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from '../StatusBadge';
 
 interface PackagingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const PackagingTab: React.FC<PackagingTabProps> = ({ 
   details,
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -166,6 +169,7 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
             onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
             onNavigateToNextTab={onNavigateToNextTab}
+            specStatus={specStatus}
           />
         </CardFooter>
       </Card>

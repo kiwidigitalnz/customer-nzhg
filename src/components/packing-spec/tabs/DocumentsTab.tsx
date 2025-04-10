@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FileIcon, ExternalLink, FileText, File, FileSpreadsheet, FileImage } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from '../StatusBadge';
 
 interface DocumentFile {
   id: number;
@@ -22,6 +24,7 @@ interface DocumentsTabProps {
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const DocumentsTab: React.FC<DocumentsTabProps> = ({ 
@@ -29,7 +32,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
   files = [],
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -124,6 +128,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
               onApproveSection={handleApprove}
               onRequestChanges={handleRequestChanges}
               onNavigateToNextTab={onNavigateToNextTab}
+              specStatus={specStatus}
             />
           </CardFooter>
         </Card>
@@ -140,6 +145,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
               onApproveSection={handleApprove}
               onRequestChanges={handleRequestChanges}
               onNavigateToNextTab={onNavigateToNextTab}
+              specStatus={specStatus}
             />
           </div>
         </div>

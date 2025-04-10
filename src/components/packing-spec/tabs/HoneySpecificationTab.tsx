@@ -6,19 +6,22 @@ import CategoryDisplay from '../CategoryDisplay';
 import { formatTextContent } from '@/utils/formatters';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { SpecStatus } from '../StatusBadge';
 
 interface HoneySpecificationTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
   onNavigateToNextTab?: () => void;
+  specStatus?: SpecStatus;
 }
 
 const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ 
   details,
   onApproveSection,
   onRequestChanges,
-  onNavigateToNextTab
+  onNavigateToNextTab,
+  specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   
@@ -113,6 +116,7 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
             onApproveSection={handleApprove}
             onRequestChanges={handleRequestChanges}
             onNavigateToNextTab={onNavigateToNextTab}
+            specStatus={specStatus}
           />
         </CardFooter>
       </Card>
