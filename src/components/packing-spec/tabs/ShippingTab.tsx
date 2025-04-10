@@ -1,13 +1,38 @@
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Truck, Layers, FileText } from 'lucide-react';
+import SectionApproval from '../SectionApproval';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface ShippingTabProps {
   details: Record<string, any>;
+  onApproveSection?: (section: string) => Promise<void>;
+  onRequestChanges?: (section: string, comments: string) => Promise<void>;
 }
 
-const ShippingTab: React.FC<ShippingTabProps> = ({ details }) => {
+const ShippingTab: React.FC<ShippingTabProps> = ({ 
+  details,
+  onApproveSection,
+  onRequestChanges
+}) => {
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates.shipping.status;
+  
+  const handleApprove = async () => {
+    if (onApproveSection) {
+      await onApproveSection('shipping');
+    }
+    updateSectionStatus('shipping', 'approved');
+  };
+  
+  const handleRequestChanges = async (section: string, comments: string) => {
+    if (onRequestChanges) {
+      await onRequestChanges(section, comments);
+    }
+    updateSectionStatus('shipping', 'changes-requested', comments);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       {/* Pallet Information */}
@@ -46,6 +71,14 @@ const ShippingTab: React.FC<ShippingTabProps> = ({ details }) => {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <SectionApproval
+            sectionName="Shipping"
+            status={sectionStatus}
+            onApprove={handleApprove}
+            onRequestChanges={handleRequestChanges}
+          />
+        </CardFooter>
       </Card>
     </div>
   );

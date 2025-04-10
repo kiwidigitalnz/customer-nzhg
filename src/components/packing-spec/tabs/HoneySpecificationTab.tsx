@@ -1,21 +1,46 @@
 
 import React from 'react';
 import { Package } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import CategoryDisplay from '../CategoryDisplay';
 import { formatTextContent } from '@/utils/formatters';
+import SectionApproval from '../SectionApproval';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface HoneySpecificationTabProps {
   details: Record<string, any>;
+  onApproveSection?: (section: string) => Promise<void>;
+  onRequestChanges?: (section: string, comments: string) => Promise<void>;
 }
 
-const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }) => {
+const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ 
+  details,
+  onApproveSection,
+  onRequestChanges
+}) => {
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates.overview.status;
+  
   // Helper function to display values, showing "N/A" as a single value
   const displayValue = (value: any) => {
     if (!value || value === "N/A") {
       return <span className="text-muted-foreground italic">N/A</span>;
     }
     return value;
+  };
+
+  const handleApprove = async () => {
+    if (onApproveSection) {
+      await onApproveSection('overview');
+    }
+    updateSectionStatus('overview', 'approved');
+  };
+  
+  const handleRequestChanges = async (section: string, comments: string) => {
+    if (onRequestChanges) {
+      await onRequestChanges(section, comments);
+    }
+    updateSectionStatus('overview', 'changes-requested', comments);
   };
 
   return (
@@ -71,6 +96,14 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({ details }
             </div>
           </div>
         </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <SectionApproval
+            sectionName="Honey Specification"
+            status={sectionStatus}
+            onApprove={handleApprove}
+            onRequestChanges={handleRequestChanges}
+          />
+        </CardFooter>
       </Card>
     </div>
   );

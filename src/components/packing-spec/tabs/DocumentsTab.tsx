@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { FileIcon, ExternalLink, FileText, File, FileSpreadsheet, FileImage } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import SectionApproval from '../SectionApproval';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface DocumentFile {
   id: number;
@@ -18,9 +20,19 @@ interface DocumentsTabProps {
     [key: string]: any;
   };
   files?: DocumentFile[];
+  onApproveSection?: (section: string) => Promise<void>;
+  onRequestChanges?: (section: string, comments: string) => Promise<void>;
 }
 
-const DocumentsTab: React.FC<DocumentsTabProps> = ({ details, files = [] }) => {
+const DocumentsTab: React.FC<DocumentsTabProps> = ({ 
+  details, 
+  files = [],
+  onApproveSection,
+  onRequestChanges
+}) => {
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates.documents.status;
+  
   // Helper function to get appropriate icon based on file mimetype/name
   const getFileIcon = (file: DocumentFile) => {
     const name = file.name.toLowerCase();
@@ -55,6 +67,20 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ details, files = [] }) => {
     }
   };
 
+  const handleApprove = async () => {
+    if (onApproveSection) {
+      await onApproveSection('documents');
+    }
+    updateSectionStatus('documents', 'approved');
+  };
+  
+  const handleRequestChanges = async (section: string, comments: string) => {
+    if (onRequestChanges) {
+      await onRequestChanges(section, comments);
+    }
+    updateSectionStatus('documents', 'changes-requested', comments);
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Documents</h2>
@@ -86,13 +112,31 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ details, files = [] }) => {
               ))}
             </ul>
           </CardContent>
+          <CardFooter className="border-t pt-4 flex justify-end">
+            <SectionApproval
+              sectionName="Documents"
+              status={sectionStatus}
+              onApprove={handleApprove}
+              onRequestChanges={handleRequestChanges}
+            />
+          </CardFooter>
         </Card>
       ) : (
-        <Alert>
-          <AlertDescription>
-            No documents are currently associated with this specification.
-          </AlertDescription>
-        </Alert>
+        <div>
+          <Alert>
+            <AlertDescription>
+              No documents are currently associated with this specification.
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4 flex justify-end">
+            <SectionApproval
+              sectionName="Documents"
+              status={sectionStatus}
+              onApprove={handleApprove}
+              onRequestChanges={handleRequestChanges}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

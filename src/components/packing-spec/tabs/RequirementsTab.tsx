@@ -1,16 +1,28 @@
+
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Clipboard, Globe, ShieldCheck } from 'lucide-react';
 import { formatTextContent } from '@/utils/formatters';
 import CategoryDisplay from '../CategoryDisplay';
 import { CountryFlagsList } from '../CountryFlag';
+import SectionApproval from '../SectionApproval';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface RequirementsTabProps {
   details: Record<string, any>;
+  onApproveSection?: (section: string) => Promise<void>;
+  onRequestChanges?: (section: string, comments: string) => Promise<void>;
 }
 
-const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
+const RequirementsTab: React.FC<RequirementsTabProps> = ({ 
+  details,
+  onApproveSection,
+  onRequestChanges
+}) => {
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates.requirements.status;
+  
   const normalizeArrayValue = (value: any) => {
     if (!value) return null;
     
@@ -23,6 +35,20 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
 
   const testingRequirements = normalizeArrayValue(details.testingRequirements);
   const regulatoryRequirements = normalizeArrayValue(details.regulatoryRequirements);
+
+  const handleApprove = async () => {
+    if (onApproveSection) {
+      await onApproveSection('requirements');
+    }
+    updateSectionStatus('requirements', 'approved');
+  };
+  
+  const handleRequestChanges = async (section: string, comments: string) => {
+    if (onRequestChanges) {
+      await onRequestChanges(section, comments);
+    }
+    updateSectionStatus('requirements', 'changes-requested', comments);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -129,6 +155,14 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <SectionApproval
+            sectionName="Requirements"
+            status={sectionStatus}
+            onApprove={handleApprove}
+            onRequestChanges={handleRequestChanges}
+          />
+        </CardFooter>
       </Card>
     </div>
   );

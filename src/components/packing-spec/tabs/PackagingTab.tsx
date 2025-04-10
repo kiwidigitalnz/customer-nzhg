@@ -1,14 +1,25 @@
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Package, Box, Container } from 'lucide-react';
 import { formatTextContent } from '@/utils/formatters';
+import SectionApproval from '../SectionApproval';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface PackagingTabProps {
   details: Record<string, any>;
+  onApproveSection?: (section: string) => Promise<void>;
+  onRequestChanges?: (section: string, comments: string) => Promise<void>;
 }
 
-const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
+const PackagingTab: React.FC<PackagingTabProps> = ({ 
+  details,
+  onApproveSection,
+  onRequestChanges
+}) => {
+  const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates.packaging.status;
+  
   // Function to normalize field values, accounting for different property naming conventions
   const getFieldValue = (fieldKey: string, alternateKeys: string[] = []) => {
     // Try the main key first
@@ -24,6 +35,20 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
   
   // Get lid color using both possible field names
   const lidColour = getFieldValue('lidColour', ['lidColor']);
+
+  const handleApprove = async () => {
+    if (onApproveSection) {
+      await onApproveSection('packaging');
+    }
+    updateSectionStatus('packaging', 'approved');
+  };
+  
+  const handleRequestChanges = async (section: string, comments: string) => {
+    if (onRequestChanges) {
+      await onRequestChanges(section, comments);
+    }
+    updateSectionStatus('packaging', 'changes-requested', comments);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -130,6 +155,14 @@ const PackagingTab: React.FC<PackagingTabProps> = ({ details }) => {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <SectionApproval
+            sectionName="Packaging"
+            status={sectionStatus}
+            onApprove={handleApprove}
+            onRequestChanges={handleRequestChanges}
+          />
+        </CardFooter>
       </Card>
     </div>
   );

@@ -31,6 +31,7 @@ import {
 // Import shared approval interface
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
 import { SpecStatus } from './packing-spec/StatusBadge';
+import { SectionApprovalProvider, useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 
 // Types
 interface PackingSpec {
@@ -59,7 +60,8 @@ interface CommentItem {
   createdAt: string;
 }
 
-const PackingSpecDetails = () => {
+// Wrap the main component to use the section approval context
+const PackingSpecDetailsContent = () => {
   const { id } = useParams<{ id: string }>();
   const specId = id ? parseInt(id) : 0;
   const { user } = useAuth();
@@ -76,6 +78,7 @@ const PackingSpecDetails = () => {
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [isApprovalPending, setIsApprovalPending] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const { allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
 
   useEffect(() => {
     if (!user) {
@@ -290,6 +293,62 @@ const PackingSpecDetails = () => {
     setApprovalDialogOpen(true);
   };
 
+  const handleSectionApproval = async (section: string) => {
+    if (!spec) return;
+    
+    try {
+      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
+      await addCommentToPackingSpec(
+        spec.id,
+        `[${user?.name || 'Customer'}] Approved section: ${section}`
+      );
+      
+      toast({
+        title: `${section} approved`,
+        description: "This section has been marked as approved.",
+        variant: 'default',
+      });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error approving section ${section}:`, error);
+      toast({
+        title: 'Error',
+        description: `Failed to approve ${section}. Please try again.`,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const handleSectionRequestChanges = async (section: string, comments: string) => {
+    if (!spec) return;
+    
+    try {
+      const sectionName = section.toLowerCase().replace(/\s+/g, '-');
+      await addCommentToPackingSpec(
+        spec.id,
+        `[${user?.name || 'Customer'}] Requested changes for ${section}: ${comments}`
+      );
+      
+      toast({
+        title: `Changes requested for ${section}`,
+        description: "Your feedback has been submitted.",
+        variant: 'default',
+      });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error requesting changes for section ${section}:`, error);
+      toast({
+        title: 'Error',
+        description: `Failed to submit feedback for ${section}. Please try again.`,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center">
@@ -348,6 +407,34 @@ const PackingSpecDetails = () => {
           </div>
         </div>
       )}
+
+      {allSectionsApproved && spec.status !== 'approved-by-customer' && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-green-800">All sections approved</h3>
+              <p className="text-green-700 text-sm mt-1">
+                You have approved all sections. You can now provide final approval for the entire specification.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {anySectionsWithChangesRequested && spec.status !== 'changes-requested' && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-800">Changes requested</h3>
+              <p className="text-amber-700 text-sm mt-1">
+                You have requested changes for some sections. You may still review other sections or submit your final feedback.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -364,27 +451,50 @@ const PackingSpecDetails = () => {
                 <TabsNavigation newCommentsCount={newCommentsCount} />
                 
                 <TabsContent value="overview">
-                  <HoneySpecificationTab details={spec.details} />
+                  <HoneySpecificationTab 
+                    details={spec.details} 
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="requirements">
-                  <RequirementsTab details={spec.details} />
+                  <RequirementsTab 
+                    details={spec.details} 
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="packaging">
-                  <PackagingTab details={spec.details} />
+                  <PackagingTab 
+                    details={spec.details} 
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="label">
-                  <LabelingTab details={spec.details} />
+                  <LabelingTab 
+                    details={spec.details} 
+                  />
                 </TabsContent>
                 
                 <TabsContent value="shipping">
-                  <ShippingTab details={spec.details} />
+                  <ShippingTab 
+                    details={spec.details} 
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="documents">
-                  <DocumentsTab details={spec.details} files={spec.files} />
+                  <DocumentsTab 
+                    details={spec.details} 
+                    files={spec.files} 
+                    onApproveSection={handleSectionApproval}
+                    onRequestChanges={handleSectionRequestChanges}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="comments">
@@ -429,6 +539,15 @@ const PackingSpecDetails = () => {
         itemPreview={approvalPreview}
       />
     </div>
+  );
+};
+
+// Wrapper component to provide the section approval context
+const PackingSpecDetails = () => {
+  return (
+    <SectionApprovalProvider>
+      <PackingSpecDetailsContent />
+    </SectionApprovalProvider>
   );
 };
 
