@@ -20,6 +20,7 @@ interface OverviewSidebarProps {
   onReject?: any;
   isSubmitting?: boolean;
   onOpenApproval?: () => void;
+  onNavigateToFinalTab?: () => void;
 }
 
 const OverviewSidebar: React.FC<OverviewSidebarProps> = ({ 
@@ -29,7 +30,7 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
   spec,
   user,
   isSubmitting = false,
-  onOpenApproval
+  onNavigateToFinalTab
 }) => {
   // Format version to have only 1 decimal place
   const formatVersion = (version: string | undefined) => {
@@ -147,12 +148,12 @@ const OverviewSidebar: React.FC<OverviewSidebarProps> = ({
       </Card>
       
       {/* Show approval actions or approved/rejected status cards */}
-      {spec && user && spec.status === 'pending-approval' && onOpenApproval && (
+      {spec && user && spec.status === 'pending-approval' && onNavigateToFinalTab && (
         <Card className="shadow-sm mt-6">
           <CardContent className="pt-4 pb-4">
             <h3 className="text-sm font-medium mb-3">Specification Approval</h3>
             <Button 
-              onClick={onOpenApproval}
+              onClick={onNavigateToFinalTab}
               className="w-full"
               disabled={isSubmitting}
             >

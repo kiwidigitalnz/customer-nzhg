@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -416,6 +415,10 @@ const PackingSpecDetails = () => {
     }
   };
 
+  const navigateToFinalApprovalTab = () => {
+    setActiveTab('final-approval');
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center">
@@ -507,7 +510,7 @@ const PackingSpecDetails = () => {
         <div className="lg:col-span-2 space-y-6">
           <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
             <HeaderSection
-              title={spec.details.product || spec.title} // Use product name instead of title
+              title={spec.details.product || spec.title}
               productCode={spec.details.productCode}
               versionNumber={spec.details.versionNumber}
               dateReviewed={spec.details.dateReviewed}
@@ -598,7 +601,7 @@ const PackingSpecDetails = () => {
             onApprove={handleApprove}
             onReject={handleReject}
             isSubmitting={isSubmitting || isUpdatingStatus}
-            onOpenApproval={handleOpenApproval}
+            onNavigateToFinalTab={navigateToFinalApprovalTab}
           />
         </div>
       </div>
