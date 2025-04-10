@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +10,7 @@ import * as z from 'zod';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // Custom Components
@@ -293,7 +292,7 @@ const PackingSpecDetailsContent = () => {
     setApprovalDialogOpen(true);
   };
 
-  const handleSectionApproval = async (section: string) => {
+  const handleSectionApproval = async (section: string): Promise<void> => {
     if (!spec) return;
     
     try {
@@ -308,8 +307,6 @@ const PackingSpecDetailsContent = () => {
         description: "This section has been marked as approved.",
         variant: 'default',
       });
-      
-      return true;
     } catch (error) {
       console.error(`Error approving section ${section}:`, error);
       toast({
@@ -317,11 +314,10 @@ const PackingSpecDetailsContent = () => {
         description: `Failed to approve ${section}. Please try again.`,
         variant: 'destructive',
       });
-      return false;
     }
   };
 
-  const handleSectionRequestChanges = async (section: string, comments: string) => {
+  const handleSectionRequestChanges = async (section: string, comments: string): Promise<void> => {
     if (!spec) return;
     
     try {
@@ -336,8 +332,6 @@ const PackingSpecDetailsContent = () => {
         description: "Your feedback has been submitted.",
         variant: 'default',
       });
-      
-      return true;
     } catch (error) {
       console.error(`Error requesting changes for section ${section}:`, error);
       toast({
@@ -345,7 +339,6 @@ const PackingSpecDetailsContent = () => {
         description: `Failed to submit feedback for ${section}. Please try again.`,
         variant: 'destructive',
       });
-      return false;
     }
   };
 

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Label, ExternalLink } from 'lucide-react';
+import { FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
@@ -39,7 +39,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
       <Card className="shadow-sm border-muted">
         <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
-            <Label className="mr-2 h-5 w-5 text-primary/80" />
+            <FileText className="mr-2 h-5 w-5 text-primary/80" />
             Label Information
           </CardTitle>
         </CardHeader>
@@ -111,7 +111,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
       <Card className="shadow-sm border-muted">
         <CardHeader className="pb-2 bg-muted/30">
           <CardTitle className="text-lg flex items-center">
-            <Label className="mr-2 h-5 w-5 text-primary/80" />
+            <FileText className="mr-2 h-5 w-5 text-primary/80" />
             Shipper Sticker Information
           </CardTitle>
         </CardHeader>
