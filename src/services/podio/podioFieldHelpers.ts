@@ -1,4 +1,3 @@
-
 // This module provides helper functions for dealing with Podio fields
 
 // Improved helper function to safely access field values by external_id
@@ -16,15 +15,16 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
   
   // Different field types have different value structures
   if (field.type === 'category' && field.values[0].value) {
-    // For single-value category fields
-    if (typeof field.values[0].value === 'object' && field.values[0].value.text) {
-      return field.values[0].value.text;
-    }
-    
-    // For multi-value category fields or arrays of categories
-    if (Array.isArray(field.values)) {
+    // For multi-value category fields
+    if (Array.isArray(field.values) && field.values.length > 0) {
+      // Extract all category values from the array
       const categoryValues = field.values
-        .map((val: any) => val.value && val.value.text ? val.value.text : null)
+        .map((val: any) => {
+          if (val.value && val.value.text) {
+            return val.value.text;
+          }
+          return null;
+        })
         .filter(Boolean);
       
       if (categoryValues.length === 1) {
@@ -34,8 +34,13 @@ export const getFieldValueByExternalId = (item: any, externalId: string): string
       }
     }
     
+    // For single-value category fields
+    if (typeof field.values[0].value === 'object' && field.values[0].value.text) {
+      return field.values[0].value.text;
+    }
+    
     // Fallback to what's available
-    return field.values[0].value.text || null;
+    return field.values[0].value && field.values[0].value.text ? field.values[0].value.text : null;
   }
   
   // Handle app reference fields (like customer)

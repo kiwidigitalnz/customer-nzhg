@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -12,6 +11,19 @@ interface RequirementsTabProps {
 }
 
 const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
+  const normalizeArrayValue = (value: any) => {
+    if (!value) return null;
+    
+    if (Array.isArray(value)) return value;
+    
+    if (typeof value === 'string') return [value];
+    
+    return null;
+  };
+
+  const testingRequirements = normalizeArrayValue(details.testingRequirements);
+  const regulatoryRequirements = normalizeArrayValue(details.regulatoryRequirements);
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       <Card className="shadow-sm border-muted">
@@ -82,10 +94,10 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
                 Testing Requirements
               </h4>
               <div className="bg-muted/20 p-3 rounded-md">
-                {details.testingRequirements ? (
+                {testingRequirements ? (
                   <div className="mt-1">
                     <CategoryDisplay 
-                      categories={details.testingRequirements} 
+                      categories={testingRequirements} 
                       variant="secondary"
                       bgColor="bg-violet-50"
                     />
@@ -102,10 +114,10 @@ const RequirementsTab: React.FC<RequirementsTabProps> = ({ details }) => {
                 Regulatory Requirements
               </h4>
               <div className="bg-muted/20 p-3 rounded-md">
-                {details.regulatoryRequirements ? (
+                {regulatoryRequirements ? (
                   <div className="mt-1">
                     <CategoryDisplay 
-                      categories={details.regulatoryRequirements} 
+                      categories={regulatoryRequirements} 
                       variant="secondary"
                       bgColor="bg-amber-50"
                     />
