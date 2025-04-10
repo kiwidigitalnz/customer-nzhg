@@ -40,6 +40,8 @@ export const uploadFileToPodio = async (itemId: number, file: File): Promise<num
       return fileId; // Return the file ID even if we can't attach it to the specific field
     }
     
+    console.log(`Attaching file ID ${fileId} to signature field ID ${signatureFieldId}`);
+    
     // Attach the file to the specific field
     const attachResponse = await callPodioApi(`/item/${itemId}/value/${signatureFieldId}`, {
       method: 'PUT',
