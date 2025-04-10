@@ -112,14 +112,6 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t pt-4 flex justify-end">
-          <SectionApproval
-            sectionName="Labeling"
-            status={sectionStatus}
-            onApprove={handleApprove}
-            onRequestChanges={handleRequestChanges}
-          />
-        </CardFooter>
       </Card>
       
       <Card className="shadow-sm border-muted">
@@ -163,6 +155,14 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
             </div>
           </div>
         </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <SectionApproval
+            sectionName="Labeling"
+            status={sectionStatus}
+            onApprove={handleApprove}
+            onRequestChanges={handleRequestChanges}
+          />
+        </CardFooter>
       </Card>
     </div>
   );

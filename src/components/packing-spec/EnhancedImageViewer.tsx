@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
@@ -35,6 +36,7 @@ interface Position {
 
 // Helper to determine if a URL is from Podio
 const isPodioUrl = (url: string): boolean => {
+  if (!url || typeof url !== 'string') return false;
   return url.includes('podio.com') || url.includes('d2slcw3kip6qmk.cloudfront.net');
 };
 
@@ -60,16 +62,19 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const [fullscreen, setFullscreen] = useState(false);
   
   // Get the image URL, handling both direct URL objects and Podio image objects
-  const imageUrl = image?.isUrl ? image.url : getImageUrl(image);
+  const imageUrl = React.useMemo(() => {
+    if (!image) return null;
+    return image?.isUrl ? image.url : getImageUrl(image);
+  }, [image]);
   
   // Get alternative URLs for Podio images
   useEffect(() => {
     if (image && !image.isUrl && imageUrl) {
       // Check if this is a Podio image by examining the URL
-      if (isPodioUrl(imageUrl)) {
+      if (typeof imageUrl === 'string' && isPodioUrl(imageUrl)) {
         try {
           // Extract alternatives from the image object
-          const alternatives = getPodioImageAlternatives(image);
+          const alternatives = getPodioImageAlternatives(imageUrl);
           setAlternativeUrls(alternatives);
         } catch (e) {
           console.error('Error extracting alternative URLs:', e);
@@ -107,6 +112,10 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
       setScale(1);
       setPosition({ x: 0, y: 0 });
       setCurrentUrlIndex(-1); // Reset to primary URL
+    } else {
+      // Reset loading state when opening
+      setIsLoading(true);
+      setIsPlaceholder(false);
     }
   }, [open]);
   
@@ -119,6 +128,11 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const handleImageError = () => {
     setIsLoading(false);
     setIsPlaceholder(true);
+    
+    // Try alternative URL if available
+    if (alternativeUrls.length > 0 && currentUrlIndex === -1) {
+      setCurrentUrlIndex(0);
+    }
   };
   
   // Zoom functions
@@ -179,14 +193,20 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
     if (!fullscreen) {
       if (containerRef.current.requestFullscreen) {
         containerRef.current.requestFullscreen();
+      } else if ((containerRef.current as any).webkitRequestFullscreen) {
+        (containerRef.current as any).webkitRequestFullscreen(); // Safari support
+      } else if ((containerRef.current as any).msRequestFullscreen) {
+        (containerRef.current as any).msRequestFullscreen(); // IE/Edge support
       }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen(); // Safari support
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen(); // IE/Edge support
       }
     }
-    
-    setFullscreen(!fullscreen);
   };
   
   // Effect to listen for fullscreen change events
@@ -196,8 +216,13 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
     };
     
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange); // IE/Edge
+    
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
   
@@ -211,6 +236,66 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         zoomOut();
       }
     }
+  };
+  
+  // Touch event handling for mobile devices
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Two-finger gesture - prepare for pinch/zoom
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      setLastTouchDistance(distance);
+    } else if (e.touches.length === 1 && scale > 1) {
+      // Single finger - prepare for panning when zoomed in
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+    }
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default to stop browser gestures
+    
+    if (e.touches.length === 2 && lastTouchDistance !== null) {
+      // Handle pinch gesture for zoom
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      
+      const delta = distance - lastTouchDistance;
+      if (Math.abs(delta) > 5) { // Threshold to avoid jittery zooming
+        if (delta > 0) {
+          setScale(prev => Math.min(prev + 0.05, 5));
+        } else {
+          setScale(prev => Math.max(prev - 0.05, 0.5));
+        }
+        setLastTouchDistance(distance);
+      }
+    } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      // Handle single finger panning when zoomed in
+      const touch = e.touches[0];
+      const dx = touch.clientX - dragStart.x;
+      const dy = touch.clientY - dragStart.y;
+      
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setLastTouchDistance(null);
   };
   
   // Mouse handlers for dragging
@@ -259,19 +344,28 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className={`cursor-pointer ${className}`} onClick={() => setOpen(true)}>
-          <img 
-            src={imageUrl} 
-            alt={alt}
-            className={`w-auto mx-auto ${maxHeight} object-contain rounded-md`}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
+        <div 
+          className={`cursor-pointer ${className}`} 
+          onClick={() => setOpen(true)}
+        >
+          {imageUrl ? (
+            <img 
+              src={imageUrl} 
+              alt={alt}
+              className={`w-auto mx-auto ${maxHeight} object-contain rounded-md`}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          ) : (
+            <div className="flex items-center justify-center bg-muted h-40 rounded-md">
+              <Image className="h-12 w-12 text-muted-foreground opacity-40" />
+            </div>
+          )}
         </div>
       </DialogTrigger>
       
       <DialogContent 
-        className="max-w-5xl max-h-[90vh] w-[90vw] flex flex-col p-0 gap-0 overflow-hidden" 
+        className="max-w-6xl max-h-[95vh] w-[95vw] flex flex-col p-0 gap-0 overflow-hidden" 
         onWheel={handleWheel}
         hideCloseButton={true}
       >
@@ -294,12 +388,15 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </DialogHeader>
         
         <div 
-          className="flex-1 overflow-hidden relative" 
+          className="flex-1 overflow-hidden relative bg-black/5 dark:bg-white/5" 
           ref={containerRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onKeyDown={handleKeyDown}
           tabIndex={0}
         >
@@ -330,9 +427,9 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
           {/* The actual image */}
           <img 
             ref={imgRef}
-            src={getCurrentUrl() || ''} 
+            src={getCurrentUrl()} 
             alt={alt} 
-            className="max-h-[70vh] w-auto mx-auto object-contain transition-transform"
+            className="w-auto h-auto max-h-[75vh] mx-auto my-auto object-contain transition-transform"
             style={{ 
               transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
               transformOrigin: 'center',
@@ -342,6 +439,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
             }}
             onLoad={handleImageLoad}
             onError={handleImageError}
+            draggable="false"
           />
         </div>
         
