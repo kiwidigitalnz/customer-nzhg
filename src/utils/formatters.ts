@@ -20,6 +20,27 @@ export const formatDate = (dateString?: string) => {
 export const formatTextContent = (content?: string | null): string => {
   if (!content) return '';
   
+  // Ensure content is a string before attempting to use string methods
+  if (typeof content !== 'string') {
+    // If it's an object, try to convert it to a string
+    if (typeof content === 'object') {
+      try {
+        return formatTextContent(JSON.stringify(content));
+      } catch (e) {
+        console.warn('Failed to stringify object in formatTextContent:', e);
+        return '';
+      }
+    }
+    // Try to convert other types to string
+    try {
+      return String(content);
+    } catch (e) {
+      console.warn('Failed to convert content to string in formatTextContent:', e);
+      return '';
+    }
+  }
+  
+  // Now we can safely use string methods
   // Replace <br>, <p>, and other common tags with newlines first
   let processed = content
     .replace(/<br\s*\/?>/gi, '\n')

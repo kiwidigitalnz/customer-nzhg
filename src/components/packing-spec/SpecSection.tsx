@@ -57,11 +57,13 @@ const SpecSection: React.FC<SpecSectionProps> = ({
         return <CountryFlagsList countries={value} />;
       case 'html':
       case 'text':
-        return typeof value === 'string' ? (
+        return (
           <span className="whitespace-pre-line">{formatTextContent(value)}</span>
-        ) : formatTextContent(JSON.stringify(value));
+        );
       default:
-        return typeof value === 'string' ? formatTextContent(value) : formatTextContent(JSON.stringify(value));
+        return typeof value === 'string' ? 
+          formatTextContent(value) : 
+          formatTextContent(JSON.stringify(value));
     }
   };
   

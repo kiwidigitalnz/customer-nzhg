@@ -46,7 +46,7 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
     ? { isUrl: true, url: details.shipperStickerUrl } 
     : null;
 
-  // Format specification text to remove HTML tags
+  // Safely format specification text - ensure we're passing values that can be converted to strings
   const labelSpecification = formatTextContent(details.labelSpecification);
 
   return (
