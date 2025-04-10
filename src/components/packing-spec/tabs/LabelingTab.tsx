@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { FileText, ExternalLink } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
@@ -93,10 +93,12 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Label Preview</h4>
                 {labelImage ? (
                   <div className="mt-2">
-                    <ImagePreview 
+                    <EnhancedImageViewer 
                       image={labelImage}
                       alt="Label Preview" 
+                      title="Label Preview"
                       maxHeight="max-h-60"
+                      className="w-full"
                     />
                   </div>
                 ) : (
@@ -142,10 +144,12 @@ const LabelingTab: React.FC<LabelingTabProps> = ({
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Shipper Sticker Preview</h4>
                 {shipperStickerImage ? (
                   <div className="mt-2">
-                    <ImagePreview 
+                    <EnhancedImageViewer
                       image={shipperStickerImage}
-                      alt="Shipper Sticker Preview" 
+                      alt="Shipper Sticker Preview"
+                      title="Shipper Sticker Preview" 
                       maxHeight="max-h-60"
+                      className="w-full"
                     />
                   </div>
                 ) : (

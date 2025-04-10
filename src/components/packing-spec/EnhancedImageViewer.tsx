@@ -1,15 +1,15 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
+  DialogClose
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { ZoomIn, ZoomOut, Search, Move, AlertTriangle, ExternalLink, Image, RefreshCw, Maximize, Download } from 'lucide-react';
+import { ZoomIn, ZoomOut, Search, Move, AlertTriangle, ExternalLink, Image, RefreshCw, Maximize, Download, X } from 'lucide-react';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
 import { extractPodioFileId } from '@/services/imageProxy';
 import { 
@@ -270,7 +270,11 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </div>
       </DialogTrigger>
       
-      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 gap-0 overflow-hidden" onWheel={handleWheel}>
+      <DialogContent 
+        className="max-w-5xl max-h-[90vh] w-[90vw] flex flex-col p-0 gap-0 overflow-hidden" 
+        onWheel={handleWheel}
+        hideCloseButton={true}
+      >
         <DialogHeader className="p-4 border-b flex flex-row justify-between items-center">
           <DialogTitle>{title || alt}</DialogTitle>
           <div className="flex items-center gap-2">
@@ -280,9 +284,12 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
             <Button variant="outline" size="icon" onClick={downloadImage} title="Download image">
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
-              <span className="h-4 w-4">✕</span>
-            </Button>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </DialogClose>
           </div>
         </DialogHeader>
         
@@ -325,7 +332,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
             ref={imgRef}
             src={getCurrentUrl() || ''} 
             alt={alt} 
-            className="max-h-[75vh] w-auto mx-auto object-contain transition-transform"
+            className="max-h-[70vh] w-auto mx-auto object-contain transition-transform"
             style={{ 
               transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
               transformOrigin: 'center',
