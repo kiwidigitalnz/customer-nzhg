@@ -53,12 +53,12 @@ export const PODIO_CATEGORIES = {
   NEEDS_CHANGES: "Needs Changes",
   DRAFT: "Draft",
   APPROVAL_STATUS: {
-    APPROVED_BY_CUSTOMER: { id: 2, text: "Approved by Customer" },
-    CHANGES_REQUESTED: { id: 1, text: "Changes Requested" }
+    APPROVED_BY_CUSTOMER: { id: 3, text: "Approved by Customer" },
+    CHANGES_REQUESTED: { id: 4, text: "Changes Requested" }
   },
   CUSTOMER_APPROVAL_STATUS: {
     APPROVE_SPECIFICATION: { id: 2, text: "Approve Specification" },
-    REQUEST_CHANGES: { id: 1, text: "Request Changes" }
+    REQUEST_CHANGES: { id: 3, text: "Request Changes" }
   }
 };
 
@@ -452,9 +452,13 @@ export const updatePackingSpecStatus = async (
     
     // Map the status to the correct customer approval status ID
     if (status === 'approved-by-customer') {
-      // Use the customer approval status field with the "Approve Specification" option
+      // Use the customer approval status field with the "Approve Specification" option (ID: 2)
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id;
-      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.text})`);
+      console.log(`Setting customer approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.text})`);
+      
+      // Also update the approval status field (ID: 3 for Approved by Customer)
+      fields[FIELD_EXTERNAL_IDS.approvalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id;
+      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id} (${PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.text})`);
       
       // Also add the approved by name if provided
       if (approverName) {
@@ -466,9 +470,13 @@ export const updatePackingSpecStatus = async (
         start: new Date().toISOString().split('T')[0]
       };
     } else if (status === 'changes-requested') {
-      // Use the customer approval status field with the "Request Changes" option
+      // Use the customer approval status field with the "Request Changes" option (ID: 3)
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
-      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.text})`);
+      console.log(`Setting customer approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.text})`);
+      
+      // Also update the approval status field (ID: 4 for Changes Requested)
+      fields[FIELD_EXTERNAL_IDS.approvalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id;
+      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.id} (${PODIO_CATEGORIES.APPROVAL_STATUS.CHANGES_REQUESTED.text})`);
       
       // Add the requested changes if provided
       if (comments) {
