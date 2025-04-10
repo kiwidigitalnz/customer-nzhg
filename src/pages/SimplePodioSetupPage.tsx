@@ -26,29 +26,25 @@ const SimplePodioSetupPage = () => {
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       try {
-        console.log('Checking Supabase connection via health-check function');
         const { data, error } = await supabase.functions.invoke('health-check', {
           method: 'GET'
         });
         
         if (error) {
-          console.error('Supabase health check error:', error);
           setSupabaseConnected(false);
           toast({
             title: "Supabase Connection Issue",
-            description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
+            description: "Unable to connect to Supabase Edge Functions. Please contact support.",
             variant: "destructive"
           });
         } else {
-          console.log('Supabase health check successful:', data);
           setSupabaseConnected(true);
         }
       } catch (error) {
-        console.error('Error checking Supabase connection:', error);
         setSupabaseConnected(false);
         toast({
           title: "Supabase Connection Issue",
-          description: "Unable to connect to Supabase Edge Functions. Please set up Supabase first.",
+          description: "Unable to connect to Supabase Edge Functions. Please contact support.",
           variant: "destructive"
         });
       }
@@ -67,13 +63,10 @@ const SimplePodioSetupPage = () => {
         });
         
         if (error) {
-          console.error('Failed to retrieve Podio tokens:', error);
-          
-          // Special case for missing table
           if (error.message && error.message.includes('relation "podio_auth_tokens" does not exist')) {
             toast({
-              title: "Database Table Missing",
-              description: "The podio_auth_tokens table doesn't exist. Please run the Supabase migration.",
+              title: "Database Setup Required",
+              description: "Please contact support to complete the database setup.",
               variant: "destructive"
             });
           }
@@ -90,7 +83,6 @@ const SimplePodioSetupPage = () => {
           setPodioConnected(false);
         }
       } catch (error) {
-        console.error('Error checking Podio connection:', error);
         setPodioConnected(false);
       }
     };
@@ -108,11 +100,6 @@ const SimplePodioSetupPage = () => {
     } else if (error) {
       let description = errorDescription || error;
       
-      // Special handling for common error cases
-      if (error === 'database_error' && errorDescription?.includes('podio_auth_tokens')) {
-        description = "The database table for Podio tokens doesn't exist. Please run the migration.";
-      }
-      
       toast({
         title: "Podio Connection Failed",
         description: description,
@@ -124,8 +111,8 @@ const SimplePodioSetupPage = () => {
   const handleConnectPodio = async () => {
     if (!supabaseConnected) {
       toast({
-        title: "Supabase Not Connected",
-        description: "Supabase Edge Functions are required for Podio integration. Please set up Supabase first.",
+        title: "Connection Error",
+        description: "Backend services are not available. Please contact support.",
         variant: "destructive"
       });
       return;
@@ -139,10 +126,9 @@ const SimplePodioSetupPage = () => {
       });
       
       if (error) {
-        console.error('Failed to get auth URL:', error);
         toast({
           title: "Error",
-          description: "Failed to initialize Podio OAuth flow",
+          description: "Failed to initialize Podio connection. Please contact support.",
           variant: "destructive"
         });
         setIsLoading(false);
@@ -156,10 +142,9 @@ const SimplePodioSetupPage = () => {
       window.location.href = data.authUrl;
       
     } catch (error) {
-      console.error('Error starting OAuth flow:', error);
       toast({
         title: "Error",
-        description: "Failed to start Podio OAuth flow",
+        description: "Failed to start Podio OAuth flow. Please contact support.",
         variant: "destructive"
       });
       setIsLoading(false);
@@ -174,22 +159,11 @@ const SimplePodioSetupPage = () => {
       });
       
       if (error) {
-        console.error('Failed to refresh Podio status:', error);
-        
-        // Special handling for table not existing
-        if (error.message && error.message.includes('relation "podio_auth_tokens" does not exist')) {
-          toast({
-            title: "Database Setup Required",
-            description: "The podio_auth_tokens table doesn't exist. Please run the migration.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to refresh Podio connection status: " + error.message,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Error",
+          description: "Failed to refresh Podio connection status. Please contact support.",
+          variant: "destructive"
+        });
         
         setIsLoading(false);
         return;
@@ -216,10 +190,9 @@ const SimplePodioSetupPage = () => {
         });
       }
     } catch (error) {
-      console.error('Error refreshing status:', error);
       toast({
         title: "Error",
-        description: "Failed to refresh Podio connection status",
+        description: "Unable to connect to backend services. Please contact support.",
         variant: "destructive"
       });
     } finally {
@@ -236,16 +209,16 @@ const SimplePodioSetupPage = () => {
       <div className="container mx-auto py-10">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Podio OAuth Setup</CardTitle>
+            <CardTitle>Podio Connection</CardTitle>
             <CardDescription>
               Connect your application to Podio using OAuth authentication.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="mb-4 flex items-center justify-between">
-              <span>Supabase Connection:</span>
+              <span>Backend Connection:</span>
               <Badge variant={supabaseConnected ? "default" : "destructive"}>
-                {supabaseConnected ? "Connected" : "Not Connected"}
+                {supabaseConnected ? "Connected" : "Unavailable"}
               </Badge>
             </div>
             
@@ -265,10 +238,9 @@ const SimplePodioSetupPage = () => {
             {!supabaseConnected && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Supabase Required</AlertTitle>
+                <AlertTitle>Connection Error</AlertTitle>
                 <AlertDescription>
-                  <p>Supabase Edge Functions are required for Podio integration to work properly.</p>
-                  <p className="mt-2">Please connect your project to Supabase using the Supabase button at the top right of your Lovable interface.</p>
+                  <p>Backend services are currently unavailable. Please try again later or contact support.</p>
                 </AlertDescription>
               </Alert>
             )}
@@ -288,10 +260,7 @@ const SimplePodioSetupPage = () => {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Connection Failed</AlertTitle>
                 <AlertDescription>
-                  {errorDescription?.includes('podio_auth_tokens') 
-                    ? "The database table for Podio tokens doesn't exist. Please run the migration."
-                    : (errorDescription || error)
-                  }
+                  {errorDescription || error}
                 </AlertDescription>
               </Alert>
             )}
@@ -300,27 +269,16 @@ const SimplePodioSetupPage = () => {
               <Info className="h-4 w-4 text-blue-500" />
               <AlertTitle className="text-blue-700">How OAuth Works</AlertTitle>
               <AlertDescription className="text-blue-600 text-sm">
-                <p>This setup uses OAuth to authenticate your application with Podio:</p>
+                <p>This process authenticates your application with Podio to access data:</p>
                 <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>An admin clicks "Connect to Podio" below</li>
-                  <li>They sign in to Podio and authorize this application</li>
-                  <li>Podio provides an access token that is securely stored</li>
-                  <li>All users of the portal can now use this shared connection</li>
+                  <li>Click "Connect to Podio" below</li>
+                  <li>Sign in to Podio and authorize this application</li>
+                  <li>A secure connection will be established</li>
+                  <li>All users of the portal can use this shared connection</li>
                 </ol>
-                <p className="mt-2">You only need to do this once. The token will be refreshed automatically.</p>
+                <p className="mt-2">The connection refreshes automatically for uninterrupted service.</p>
               </AlertDescription>
             </Alert>
-            
-            <div className="bg-amber-50 p-4 rounded-md text-sm">
-              <p className="font-medium text-amber-800">Required Supabase Setup:</p>
-              <ol className="list-decimal list-inside mt-2 space-y-1 text-amber-700">
-                <li>Create a <code>podio_auth_tokens</code> table in your Supabase database</li>
-                <li>Configure your Podio API credentials as Supabase secrets</li>
-                <li>Deploy the Edge Functions included with this app</li>
-              </ol>
-              <p className="mt-2 text-amber-800 font-medium">Important Podio Settings:</p>
-              <p className="text-amber-700">Make sure your Podio API app has a domain that matches: <strong>https://customer.nzhg.com</strong></p>
-            </div>
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button 

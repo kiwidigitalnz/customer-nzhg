@@ -82,17 +82,25 @@ const RATE_LIMIT_UNTIL_KEY = 'podio_rate_limited_until';
 const RATE_LIMIT_ENDPOINT_KEY = 'podio_rate_limited_endpoint';
 const RATE_LIMIT_DURATION = 10 * 60 * 1000;
 
-// Clear auth tokens (now a no-op since we don't store tokens locally)
+// Clear auth tokens and sensitive data
 export const clearTokens = (): void => {
+  // Remove all Podio-related data from localStorage
+  const keysToRemove = Object.keys(localStorage).filter(key => 
+    key.startsWith('podio_') || 
+    key.includes('token') || 
+    key.includes('auth')
+  );
+  
+  keysToRemove.forEach(key => localStorage.removeItem(key));
   localStorage.removeItem('podio_user_data');
 };
 
-// Check if Podio API is configured
+// Check if Podio API is configured - always true since we're using edge functions
 export const isPodioConfigured = (): boolean => {
-  return true; // We're using Supabase edge functions now, so this is always true
+  return true;
 };
 
-// Server-side token refresh via Supabase Edge Function - simplified to just return true/false
+// Server-side token refresh via Supabase Edge Function
 export const refreshPodioToken = async (): Promise<boolean> => {
   try {
     const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
@@ -111,6 +119,10 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
+  if (!username || !password) {
+    throw new Error('Username and password are required');
+  }
+
   try {
     // Call the Edge Function to find the user in the Contacts app
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
@@ -139,7 +151,7 @@ export const authenticateUser = async (username: string, password: string): Prom
   }
 };
 
-// Generic function to call the Podio API via Edge Function - removed token verification
+// Generic function to call the Podio API via Edge Function
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
@@ -150,7 +162,7 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
     // Normalize endpoint (ensure it starts with a slash)
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     
-    // Prepare the request payload - no token verification
+    // Prepare the request payload
     const payload = {
       endpoint: normalizedEndpoint,
       options: {
@@ -240,11 +252,16 @@ export const clearRateLimitInfo = (): void => {
   localStorage.removeItem(RATE_LIMIT_ENDPOINT_KEY);
 };
 
-// User data caching
+// User data caching with expiration
 export const cacheUserData = (key: string, data: any): void => {
   try {
-    localStorage.setItem(`podio_cache_${key}`, JSON.stringify(data));
-    localStorage.setItem(`podio_cache_${key}_timestamp`, Date.now().toString());
+    const cacheItem = {
+      data,
+      timestamp: Date.now(),
+      expires: Date.now() + (24 * 60 * 60 * 1000) // 24 hour expiration
+    };
+    
+    localStorage.setItem(`podio_cache_${key}`, JSON.stringify(cacheItem));
   } catch (error) {
     // Silent catch in production
   }
@@ -252,16 +269,24 @@ export const cacheUserData = (key: string, data: any): void => {
 
 export const getCachedUserData = (key: string): any => {
   try {
-    const cachedData = localStorage.getItem(`podio_cache_${key}`);
-    if (!cachedData) return null;
+    const cachedItem = localStorage.getItem(`podio_cache_${key}`);
+    if (!cachedItem) return null;
     
-    return JSON.parse(cachedData);
+    const { data, expires } = JSON.parse(cachedItem);
+    
+    // Check if cache has expired
+    if (expires < Date.now()) {
+      localStorage.removeItem(`podio_cache_${key}`);
+      return null;
+    }
+    
+    return data;
   } catch (error) {
     return null;
   }
 };
 
-// Simple authorization check functions
+// Simplified authorization check functions for client side
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
   return true; // Simplified since we're relying on server-side auth
 };

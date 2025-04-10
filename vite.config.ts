@@ -24,14 +24,21 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Optimize production build
     minify: 'terser',
+    sourcemap: false, // Disable source maps in production for security
+    chunkSizeWarningLimit: 1000, // Increase warning limit for chunks
     rollupOptions: {
       output: {
         manualChunks: {
           // Split vendor code to improve caching
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@/components/ui']
+          ui: ['@/components/ui'],
+          supabase: ['@supabase/supabase-js']
         }
       }
-    }
+    },
+    // Add tree shaking
+    target: 'es2018',
+    cssCodeSplit: true,
+    reportCompressedSize: false // Skip compressed size reporting to speed up builds
   }
 }));
