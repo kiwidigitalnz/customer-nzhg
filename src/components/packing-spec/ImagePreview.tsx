@@ -32,30 +32,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
     );
   }
   
-  // For direct URL-based images, show a simple image
-  if (image?.isUrl) {
-    return (
-      <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-        <a 
-          href={imageUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className={`block ${maxHeight} overflow-hidden`}
-        >
-          <img 
-            src={imageUrl} 
-            alt={alt}
-            className={`object-contain ${maxHeight} max-w-full mx-auto`}
-          />
-        </a>
-      </div>
-    );
-  }
-  
-  // For Podio images, use the EnhancedImageViewer
+  // For all image types, use the EnhancedImageViewer for consistent experience
   return (
     <div className="bg-muted/20 rounded-md p-4 flex justify-center">
-      <EnhancedImageViewer image={image} alt={alt} />
+      <EnhancedImageViewer image={image} alt={alt} title={alt} />
     </div>
   );
 };

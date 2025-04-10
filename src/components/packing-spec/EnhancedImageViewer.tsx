@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
@@ -7,9 +8,15 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, Search, X, Move, AlertTriangle, ExternalLink, Image, RefreshCw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { ZoomIn, ZoomOut, Search, X, Move, AlertTriangle, ExternalLink, Image, RefreshCw, Maximize, Download } from 'lucide-react';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
 import { extractPodioFileId } from '@/services/imageProxy';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface EnhancedImageViewerProps {
   image: any;
@@ -30,10 +37,12 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   const [open, setOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [alternativeUrls, setAlternativeUrls] = useState<string[]>([]);
   const [currentUrlIndex, setCurrentUrlIndex] = useState(-1); // -1 means using the primary URL
   const [isPlaceholder, setIsPlaceholder] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
   
   useEffect(() => {
     const url = getImageUrl(image);
@@ -71,11 +80,15 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
   };
   
   const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.25, 3));
+    setScale(prev => Math.min(prev + 0.25, 5));
   };
   
   const handleZoomOut = () => {
     setScale(prev => Math.max(prev - 0.25, 0.5));
+  };
+  
+  const handleZoomSlider = (value: number[]) => {
+    setScale(value[0]);
   };
   
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -105,6 +118,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
     setOpen(isOpen);
     if (!isOpen) {
       resetView();
+      setFullscreen(false);
     }
   };
   
@@ -144,6 +158,55 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
     setImgError(false);
     setIsLoading(false);
   };
+  
+  const handleWheel = (e: React.WheelEvent) => {
+    if (open) {
+      e.preventDefault();
+      const delta = e.deltaY * -0.01;
+      const newScale = Math.max(0.5, Math.min(5, scale + delta));
+      setScale(newScale);
+    }
+  };
+  
+  const toggleFullscreen = () => {
+    if (containerRef.current) {
+      setFullscreen(!fullscreen);
+      
+      if (!fullscreen) {
+        if (containerRef.current.requestFullscreen) {
+          containerRef.current.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+  };
+  
+  const downloadImage = () => {
+    const url = getCurrentUrl();
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${alt || 'image'}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+  
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
   
   if (!imageUrl) {
     return (
@@ -207,9 +270,22 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden" onWheel={handleWheel}>
+        <DialogHeader className="p-4 border-b flex flex-row justify-between items-center">
           <DialogTitle>{title || alt}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={toggleFullscreen} title="Toggle fullscreen">
+              <Maximize className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={downloadImage} title="Download image">
+              <Download className="h-4 w-4" />
+            </Button>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+          </div>
         </DialogHeader>
         
         <div 
@@ -218,6 +294,7 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onMouseMove={handleMouseMove}
+          ref={containerRef}
           style={{ cursor: isDragging ? 'grabbing' : scale > 1 ? 'grab' : 'default' }}
         >
           {isLoading && !imgError && !isPlaceholder && (
@@ -304,29 +381,70 @@ const EnhancedImageViewer: React.FC<EnhancedImageViewerProps> = ({
         </div>
         
         <div className="p-3 border-t flex justify-between items-center gap-2 bg-muted/20">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={scale <= 0.5 || imgError || isPlaceholder || isLoading}>
               <ZoomOut className="h-4 w-4" />
             </Button>
+            
+            <div className="w-40 hidden md:block">
+              <Slider
+                defaultValue={[1]}
+                min={0.5}
+                max={5}
+                step={0.1}
+                value={[scale]}
+                onValueChange={handleZoomSlider}
+                disabled={imgError || isPlaceholder || isLoading}
+              />
+            </div>
+            
             <span className="px-2 text-sm">{Math.round(scale * 100)}%</span>
-            <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={scale >= 3 || imgError || isPlaceholder || isLoading}>
+            
+            <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={scale >= 5 || imgError || isPlaceholder || isLoading}>
               <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
           
           <div className="flex items-center">
             {scale > 1 && !imgError && !isPlaceholder && !isLoading && (
-              <span className="flex items-center text-xs text-muted-foreground mr-2">
+              <span className="hidden md:flex items-center text-xs text-muted-foreground mr-2">
                 <Move className="h-3 w-3 mr-1" />
                 Drag to move
               </span>
             )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="hidden md:flex">
+                  <ExternalLink className="h-3 w-3 mr-2" />
+                  Open
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-3">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Image options</h3>
+                  <a 
+                    href={getCurrentUrl() || ''}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center text-sm text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-2" />
+                    Open in new tab
+                  </a>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={downloadImage}
+                    className="w-full text-sm justify-start"
+                  >
+                    <Download className="h-3 w-3 mr-2" />
+                    Download image
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="secondary" size="sm" onClick={resetView} disabled={(scale === 1 && position.x === 0 && position.y === 0 && !imgError && !isPlaceholder)}>
               Reset View
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleDialogChange(false)} className="ml-2">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
             </Button>
           </div>
         </div>
