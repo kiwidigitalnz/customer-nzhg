@@ -46,19 +46,19 @@ export interface PackingSpec {
   }>;
 }
 
-// Define categories for easier search/filter
+// Define categories for easier search/filter - updated with correct IDs based on Podio API
 export const PODIO_CATEGORIES = {
   PENDING_APPROVAL: "Pending Approval",
   APPROVED: "Approved",
   NEEDS_CHANGES: "Needs Changes",
   DRAFT: "Draft",
   APPROVAL_STATUS: {
-    APPROVED_BY_CUSTOMER: { id: 1, text: "Approved by Customer" },
-    CHANGES_REQUESTED: { id: 2, text: "Changes Requested" }
+    APPROVED_BY_CUSTOMER: { id: 2, text: "Approved by Customer" },
+    CHANGES_REQUESTED: { id: 1, text: "Changes Requested" }
   },
   CUSTOMER_APPROVAL_STATUS: {
-    APPROVE_SPECIFICATION: { id: 1, text: "Approve Specification" },
-    REQUEST_CHANGES: { id: 2, text: "Request Changes" }
+    APPROVE_SPECIFICATION: { id: 2, text: "Approve Specification" },
+    REQUEST_CHANGES: { id: 1, text: "Request Changes" }
   }
 };
 
@@ -68,30 +68,30 @@ const FIELD_EXTERNAL_IDS = {
   productName: 'product-name',
   productCode: 'product-code',
   versionNumber: 'version-number',
-  customer: 'customerbrand-name', // Corrected from 'customer-brand-name'
-  updatedBy: 'specification-updated-by', // Corrected from 'updated-by'
+  customer: 'customerbrand-name',
+  updatedBy: 'specification-updated-by',
   dateReviewed: 'date-reviewed',
   
   // Honey specifications
   umfMgo: 'umf-mgo',
   honeyType: 'honey-type',
-  allergenType: 'allergen-or-lozenge-type', // Corrected from 'allergen-type'
-  ingredientType: 'ingredient', // Corrected from 'ingredient-type'
+  allergenType: 'allergen-or-lozenge-type',
+  ingredientType: 'ingredient',
   
   // Requirements
-  customerRequirements: 'customer-requrements', // Note the typo in Podio
+  customerRequirements: 'customer-requrements',
   countryOfEligibility: 'country-of-eligibility',
   otherMarkets: 'other-markets',
-  testingRequirements: 'testing-requirments', // Note the typo in Podio
-  regulatoryRequirements: 'reglatory-requirements', // Note the typo in Podio
+  testingRequirements: 'testing-requirments',
+  regulatoryRequirements: 'reglatory-requirements',
   
   // Packaging
-  jarColour: 'jar-colour', // Corrected from 'jar-color'
+  jarColour: 'jar-colour',
   jarMaterial: 'jar-material',
   jarShape: 'jar-shape',
   jarSize: 'jar-size',
   lidSize: 'lid-size',
-  lidColour: 'lid-colour', // Corrected from 'lid-color'
+  lidColour: 'lid-colour',
   onTheGoPackaging: 'on-the-go-packaging',
   pouchSize: 'pouch-size',
   sealInstructions: 'seal-instructions',
@@ -101,35 +101,35 @@ const FIELD_EXTERNAL_IDS = {
   customisedCartonType: 'customised-carton-type',
   palletType: 'pallet-type',
   cartonsPerLayer: 'cartons-per-layer',
-  layersPerPallet: 'number-of-layers', // Corrected from 'layers-per-pallet'
-  palletSpecifications: 'pallet', // Corrected from 'pallet-specs'
+  layersPerPallet: 'number-of-layers',
+  palletSpecifications: 'pallet',
   palletDocuments: 'pallet-documents',
   
   // Label
   labelCode: 'label-code',
-  labelSpecification: 'label-soecification', // Note the typo in Podio
+  labelSpecification: 'label-soecification',
   label: 'label',
-  labelUrl: 'label-url', // Added missing field
+  labelUrl: 'label-url',
   labelLink: 'label-link',
-  printingInfoLocation: 'printing-information-located', // Corrected
-  printingColour: 'printing-colour', // Corrected from 'printing-color'
-  printingInfoRequired: 'printing-information-required', // Corrected
+  printingInfoLocation: 'printing-information-located',
+  printingColour: 'printing-colour',
+  printingInfoRequired: 'printing-information-required',
   requiredBestBeforeDate: 'required-best-before-date',
-  dateFormatting: 'formate-of-dates', // Corrected from 'date-formatting'
+  dateFormatting: 'formate-of-dates',
   
   // Shipper sticker
   shipperSticker: 'shipper-sticker',
-  shipperStickerUrl: 'shipper-sticker-url', // Added missing field
-  shipperStickerCount: 'number-of-shipper-stickers-on-carton', // Corrected from 'num-shipper-stickers'
+  shipperStickerUrl: 'shipper-sticker-url',
+  shipperStickerCount: 'number-of-shipper-stickers-on-carton',
   
   // Approval
   approvalStatus: 'approval-status',
   customerApprovalStatus: 'customer-approval-status',
   customerRequestedChanges: 'customer-requested-changes',
-  approvedByName: 'approved-by-2', // Corrected from 'approved-by-name'
+  approvedByName: 'approved-by-2',
   approvalDate: 'approval-date',
   signature: 'signature',
-  emailForApproval: 'email-address-to-send-for-approval', // Corrected
+  emailForApproval: 'email-address-to-send-for-approval',
   action: 'action'
 };
 
@@ -149,7 +149,7 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       // Construct the filter payload using the field ID (265909622)
       const filterPayload = {
         filters: {
-          "265909622": [contactId] // Using field ID instead of external ID
+          "265909622": [contactId]
         }
       };
       
@@ -194,7 +194,7 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       
       // Get the status field value and convert to our app's status format with simplified handling
       const podioStatus = getFieldValueByExternalId(item, FIELD_EXTERNAL_IDS.approvalStatus);
-      const statusText = 'Pending Approval'; // Default status
+      const statusText = 'Pending Approval';
       
       // Map to our app's status format
       const status: SpecStatus = mapPodioStatusToAppStatus(
@@ -220,7 +220,7 @@ export const getPackingSpecsForContact = async (contactId?: number): Promise<Pac
       })) : [];
       
       // Add additional properties required by Dashboard component
-      const description = 'Packing specification'; // Default description
+      const description = 'Packing specification';
       const createdAt = created;
       
       // Extract additional details for the spec
@@ -299,7 +299,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
     
     // Get the status field value and convert to our app's status format with simplified handling
     const podioStatus = getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.approvalStatus);
-    const statusText = 'Pending Approval'; // Default status
+    const statusText = 'Pending Approval';
     
     // Map to our app's status format - simplified handling to avoid null issues
     const status: SpecStatus = mapPodioStatusToAppStatus(
@@ -408,8 +408,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
       createdAt: created,
       details,
       images,
-      comments: [], // Initialize empty comments array
-      // Include the raw Podio response for debugging if needed
+      comments: [],
       _podioResponse: response
     };
     
@@ -425,7 +424,6 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
       }
     } catch (commentsError) {
       console.error('Error fetching comments for packing spec:', commentsError);
-      // We'll continue with empty comments array if comments fetch fails
     }
     
     console.log('Processed packing spec details with field count:', 
@@ -456,6 +454,7 @@ export const updatePackingSpecStatus = async (
     if (status === 'approved-by-customer') {
       // Use the customer approval status field with the "Approve Specification" option
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id;
+      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.APPROVE_SPECIFICATION.text})`);
       
       // Also add the approved by name if provided
       if (approverName) {
@@ -469,6 +468,7 @@ export const updatePackingSpecStatus = async (
     } else if (status === 'changes-requested') {
       // Use the customer approval status field with the "Request Changes" option
       fields[FIELD_EXTERNAL_IDS.customerApprovalStatus] = PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id;
+      console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.id} (${PODIO_CATEGORIES.CUSTOMER_APPROVAL_STATUS.REQUEST_CHANGES.text})`);
       
       // Add the requested changes if provided
       if (comments) {
@@ -499,7 +499,6 @@ export const updatePackingSpecStatus = async (
         console.log('Comment added successfully');
       } catch (commentError) {
         console.error('Error adding comment:', commentError);
-        // Continue even if comment fails
       }
     }
     

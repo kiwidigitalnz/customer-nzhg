@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, AlertTriangle, MessageSquare, PenLine, CheckSquare } from 'lucide-react';
@@ -38,12 +38,15 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
   const [checklistCompleted, setChecklistCompleted] = useState(false);
   
   // Get all sections that need changes
-  const sectionsWithChanges = Object.entries(sectionStates)
-    .filter(([_, state]) => state.status === 'changes-requested')
-    .map(([section]) => section);
+  const sectionsWithChanges = useMemo(() => {
+    return Object.entries(sectionStates)
+      .filter(([_, state]) => state.status === 'changes-requested')
+      .map(([section]) => section);
+  }, [sectionStates]);
   
   // Get feedback from all sections
   const allFeedback = getSectionFeedback();
+  const feedbackCount = Object.keys(allFeedback).length;
   
   return (
     <div className="space-y-6 animate-in fade-in-50">
@@ -80,7 +83,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertTitle className="text-amber-800">Changes Requested</AlertTitle>
                   <AlertDescription className="text-amber-700">
-                    You've requested changes to {sectionsWithChanges.length} {sectionsWithChanges.length === 1 ? 'section' : 'sections'}.
+                    You've requested changes to {feedbackCount} {feedbackCount === 1 ? 'section' : 'sections'}.
                     Please review your feedback below before submitting.
                   </AlertDescription>
                 </Alert>
