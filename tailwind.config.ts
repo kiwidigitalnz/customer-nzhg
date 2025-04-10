@@ -81,6 +81,12 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Add honey-specific colors as actual color values for use in gradients
+        "honey-gold": "hsl(43, 85%, 45%)",
+        "honey-amber": "hsl(36, 75%, 45%)",
+        "honey-dark": "hsl(33, 70%, 35%)",
+        "honey-light": "hsl(43, 80%, 95%)",
+        "honey-cream": "hsl(39, 30%, 95%)",
       },
       borderRadius: {
         lg: "var(--radius)",
