@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FileIcon, ExternalLink, FileText, File, FileSpreadsheet, FileImage } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -22,24 +21,25 @@ interface DocumentsTabProps {
   files?: DocumentFile[];
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
+  onNavigateToNextTab?: () => void;
 }
 
 const DocumentsTab: React.FC<DocumentsTabProps> = ({ 
   details, 
   files = [],
   onApproveSection,
-  onRequestChanges
+  onRequestChanges,
+  onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.documents.status;
   
-  // Helper function to get appropriate icon based on file mimetype/name
   const getFileIcon = (file: DocumentFile) => {
     const name = file.name.toLowerCase();
     const mimetype = file.mimetype?.toLowerCase() || '';
     
     if (mimetype.includes('pdf') || name.endsWith('.pdf')) {
-      return <File className="h-5 w-5 text-red-500" />; // Changed from FilePdf to File with red color
+      return <File className="h-5 w-5 text-red-500" />;
     } else if (mimetype.includes('spreadsheet') || name.endsWith('.xlsx') || name.endsWith('.csv') || name.endsWith('.xls')) {
       return <FileSpreadsheet className="h-5 w-5 text-green-600" />;
     } else if (mimetype.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(name)) {
@@ -51,7 +51,6 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
     }
   };
 
-  // Format file size for display
   const formatFileSize = (size?: string) => {
     if (!size) return '';
     
@@ -72,6 +71,10 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
       await onApproveSection('documents');
     }
     updateSectionStatus('documents', 'approved');
+    
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -79,6 +82,10 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('documents', 'changes-requested', comments);
+    
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
 
   return (

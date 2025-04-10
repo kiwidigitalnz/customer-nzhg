@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Package, Box, Container } from 'lucide-react';
@@ -10,22 +9,21 @@ interface PackagingTabProps {
   details: Record<string, any>;
   onApproveSection?: (section: string) => Promise<void>;
   onRequestChanges?: (section: string, comments: string) => Promise<void>;
+  onNavigateToNextTab?: () => void;
 }
 
 const PackagingTab: React.FC<PackagingTabProps> = ({ 
   details,
   onApproveSection,
-  onRequestChanges
+  onRequestChanges,
+  onNavigateToNextTab
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
   const sectionStatus = sectionStates.packaging.status;
   
-  // Function to normalize field values, accounting for different property naming conventions
   const getFieldValue = (fieldKey: string, alternateKeys: string[] = []) => {
-    // Try the main key first
     if (details[fieldKey]) return details[fieldKey];
     
-    // Try any alternate keys
     for (const altKey of alternateKeys) {
       if (details[altKey]) return details[altKey];
     }
@@ -33,7 +31,6 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
     return "N/A";
   };
   
-  // Get lid color using both possible field names
   const lidColour = getFieldValue('lidColour', ['lidColor']);
 
   const handleApprove = async () => {
@@ -41,6 +38,10 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
       await onApproveSection('packaging');
     }
     updateSectionStatus('packaging', 'approved');
+    
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
   
   const handleRequestChanges = async (section: string, comments: string) => {
@@ -48,6 +49,10 @@ const PackagingTab: React.FC<PackagingTabProps> = ({
       await onRequestChanges(section, comments);
     }
     updateSectionStatus('packaging', 'changes-requested', comments);
+    
+    if (onNavigateToNextTab) {
+      onNavigateToNextTab();
+    }
   };
 
   return (
