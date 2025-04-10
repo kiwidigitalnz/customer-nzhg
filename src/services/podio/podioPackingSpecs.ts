@@ -460,9 +460,10 @@ export const updatePackingSpecStatus = async (
       fields[FIELD_EXTERNAL_IDS.approvalStatus] = PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id;
       console.log(`Setting approval status to ID: ${PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.id} (${PODIO_CATEGORIES.APPROVAL_STATUS.APPROVED_BY_CUSTOMER.text})`);
       
-      // Also add the approved by name if provided
+      // Only add the approved by name for approvals
       if (approverName) {
         fields[FIELD_EXTERNAL_IDS.approvedByName] = approverName;
+        console.log(`Setting approved by name to: ${approverName}`);
       }
       
       // Add approval date as today
@@ -483,10 +484,7 @@ export const updatePackingSpecStatus = async (
         fields[FIELD_EXTERNAL_IDS.customerRequestedChanges] = comments;
       }
       
-      // Also add the approver name if provided
-      if (approverName) {
-        fields[FIELD_EXTERNAL_IDS.approvedByName] = approverName;
-      }
+      // Do NOT update the approvedByName field for change requests
     }
     
     console.log('Fields being updated:', JSON.stringify(fields, null, 2));
