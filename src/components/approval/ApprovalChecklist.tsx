@@ -15,15 +15,11 @@ interface ApprovalChecklistProps {
   onComplete: (completed: boolean) => void;
 }
 
-// Default checklist items
+// Simplified checklist items
 const defaultItems: ChecklistItem[] = [
-  { id: 'product_details', label: 'I have reviewed all product details and specifications', required: true },
-  { id: 'honey_specs', label: 'I have verified the honey specifications (UMF/MGO) are correct', required: true },
-  { id: 'jar_details', label: 'I have confirmed the jar size, color, and material are as expected', required: true },
-  { id: 'label', label: 'I have checked the label design and information', required: true },
-  { id: 'regulatory', label: 'I have confirmed all regulatory requirements are met', required: true },
-  { id: 'shipping', label: 'I have reviewed shipping and packaging specifications', required: false },
-  { id: 'markets', label: 'I have verified country/market eligibility information', required: false },
+  { id: 'product_details', label: 'I have reviewed all product details', required: true },
+  { id: 'specifications', label: 'I have verified the specifications are correct', required: true },
+  { id: 'regulatory', label: 'I confirm all regulatory requirements are met', required: true },
 ];
 
 const ApprovalChecklist: React.FC<ApprovalChecklistProps> = ({ onComplete }) => {
@@ -61,12 +57,12 @@ const ApprovalChecklist: React.FC<ApprovalChecklistProps> = ({ onComplete }) => 
       <CardHeader className="pb-2">
         <CardTitle className="text-amber-800 flex items-center text-lg">
           <CheckCircle2 className="mr-2 h-5 w-5 text-amber-600" />
-          Pre-approval Checklist
+          Quick Approval Checklist
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="text-sm text-amber-700 mb-4">
-          Please check all items that you have reviewed before proceeding with approval.
+          Please confirm you have reviewed the following before approval:
         </div>
         
         <div className="space-y-3 mb-4">
