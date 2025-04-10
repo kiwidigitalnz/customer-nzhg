@@ -29,6 +29,7 @@ interface EnhancedApprovalDialogProps {
   buttonText: string;
   buttonClassName?: string;
   disabled?: boolean;
+  prefilledFeedback?: string;
 }
 
 const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
@@ -37,13 +38,14 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
   type,
   buttonText,
   buttonClassName = '',
-  disabled = false
+  disabled = false,
+  prefilledFeedback = ''
 }) => {
   const [open, setOpen] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(prefilledFeedback);
   const [signature, setSignature] = useState<string | null>(null);
   const [checklistCompleted, setChecklistCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
 
   const resetForm = () => {
     setName('');
-    setNotes('');
+    setNotes(prefilledFeedback);
     setSignature(null);
     setChecklistCompleted(false);
     setError(null);
@@ -69,6 +71,15 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       toast({
         title: "Missing Information",
         description: "Please provide your name and signature to approve this specification.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (type === 'reject' && !name) {
+      toast({
+        title: "Name Required",
+        description: "Please provide your name to submit change requests.",
         variant: "destructive",
       });
       return;
@@ -105,9 +116,12 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
         }
       }
 
+      // Format the notes to include the name of the person submitting
+      const formattedNotes = `Submitted by: ${name}\n\n${notes}`;
+
       // Add comment first if notes are provided
       if (notes) {
-        await addCommentToPackingSpec(specId, notes);
+        await addCommentToPackingSpec(specId, formattedNotes);
       }
 
       // Log the status being updated
@@ -117,7 +131,7 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       const success = await updatePackingSpecStatus(
         specId,
         type === 'approve' ? 'approved-by-customer' : 'changes-requested',
-        notes
+        formattedNotes
       );
 
       if (success) {
@@ -183,6 +197,13 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     setInternalOpen(open);
   }, [open]);
 
+  // Update notes when prefilledFeedback changes
+  React.useEffect(() => {
+    if (!notes || notes === prefilledFeedback) {
+      setNotes(prefilledFeedback);
+    }
+  }, [prefilledFeedback]);
+
   return (
     <Dialog open={internalOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -197,12 +218,12 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {type === 'approve' ? 'Approve Specification' : 'Request Changes'}
+            {type === 'approve' ? 'Approve Specification' : 'Submit Change Requests'}
           </DialogTitle>
           <DialogDescription>
             {type === 'approve' 
               ? 'Review and approve this packing specification.' 
-              : 'Request changes to this packing specification.'}
+              : 'Submit your requested changes to this packing specification.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -229,25 +250,26 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
               <ApprovalChecklist onComplete={setChecklistCompleted} />
             )}
 
+            <div className="grid gap-2 mt-4">
+              <label htmlFor="name" className="text-sm font-medium">
+                Your Name*
+              </label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full"
+                required
+              />
+            </div>
+
             {type === 'approve' && checklistCompleted && (
               <>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <label htmlFor="name" className="text-sm font-medium">
-                      Your Name
-                    </label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="col-span-3"
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
                     <label className="text-sm font-medium">
-                      Your Signature
+                      Your Signature*
                     </label>
                     <ResponsiveSignaturePad onSigned={handleSignatureCapture} name={name} />
                   </div>
@@ -272,14 +294,14 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <label htmlFor="notes" className="text-sm font-medium">
-                    Comments *
+                    Change Request Details*
                   </label>
                   <Textarea
                     id="notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Please explain what changes are needed"
-                    className="col-span-3"
+                    className="min-h-[200px]"
                     required
                   />
                   <p className="text-xs text-gray-500">
@@ -297,7 +319,9 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={loading || (type === 'approve' && (!checklistCompleted || !name || !signature)) || (type === 'reject' && !notes)}
+            disabled={loading || 
+              (type === 'approve' && (!checklistCompleted || !name || !signature)) || 
+              (type === 'reject' && (!name || !notes))}
             className={type === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}
           >
             {loading ? (

@@ -111,6 +111,8 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                     type="reject"
                     buttonText="Submit Change Requests"
                     buttonClassName="bg-amber-600 hover:bg-amber-700 text-white"
+                    prefilledFeedback={Object.entries(allFeedback).map(([section, feedback]) => 
+                      `${section.replace('-', ' ')}: ${feedback}`).join('\n\n')}
                   />
                 </div>
               </div>
