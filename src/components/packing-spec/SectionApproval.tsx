@@ -58,7 +58,7 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
     }
   };
   
-  // If the overall spec is already approved, display a read-only status
+  // If the overall spec is already approved by customer, display a read-only status
   if (specStatus === 'approved-by-customer') {
     return (
       <div className="flex items-center space-x-2 text-green-600 mt-2">
@@ -68,6 +68,7 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
     );
   }
   
+  // If the section is already approved locally, display a read-only approval status
   if (isApproved) {
     return (
       <div className="flex items-center space-x-2 text-green-600 mt-2">
@@ -77,6 +78,7 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
     );
   }
   
+  // If changes are requested for this section, display a read-only changes-requested status
   if (hasChangesRequested) {
     return (
       <div className="flex items-center space-x-2 text-amber-600 mt-2">
@@ -84,6 +86,11 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
         <span className="text-sm font-medium">Changes Requested</span>
       </div>
     );
+  }
+  
+  // Only show approval buttons if the spec is pending approval
+  if (specStatus !== 'pending-approval') {
+    return null;
   }
   
   return (
