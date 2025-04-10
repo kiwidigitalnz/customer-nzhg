@@ -89,6 +89,10 @@ const config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
+        playfair: ["Playfair Display", "serif"],
+        open: ["Open Sans", "sans-serif"],
+        inter: ["Inter", "sans-serif"],
+        manrope: ["Manrope", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
