@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { updatePackingSpecStatus } from '../services/podioApi';
-import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink, Loader2, MessageSquare, Clipboard } from 'lucide-react';
+import { Check, X, AlertCircle, Calendar, Package, Info, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from './approval';
 import StatusBadge, { SpecStatus } from './packing-spec/StatusBadge';
 
@@ -61,78 +60,6 @@ interface PackingSpecListProps {
   onUpdate: () => void;
   readOnly?: boolean;
 }
-
-interface QuickReviewProps {
-  spec: PackingSpec;
-  onOpenApproval: (spec: PackingSpec) => void;
-}
-
-const QuickReview: React.FC<QuickReviewProps> = ({ spec, onOpenApproval }) => {
-  const details = spec.details;
-  
-  return (
-    <div className="space-y-3 py-2 max-w-sm">
-      <h4 className="text-sm font-semibold">Quick Specification Review</h4>
-      
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-        <div>
-          <span className="font-medium text-xs text-muted-foreground block">Product:</span>
-          <span>{details.product || 'N/A'}</span>
-        </div>
-        
-        {details.productCode && (
-          <div>
-            <span className="font-medium text-xs text-muted-foreground block">Product Code:</span>
-            <span>{details.productCode}</span>
-          </div>
-        )}
-        
-        {details.honeyType && (
-          <div>
-            <span className="font-medium text-xs text-muted-foreground block">Honey Type:</span>
-            <span>{details.honeyType}</span>
-          </div>
-        )}
-        
-        {details.umfMgo && (
-          <div>
-            <span className="font-medium text-xs text-muted-foreground block">UMF/MGO:</span>
-            <span>{details.umfMgo}</span>
-          </div>
-        )}
-        
-        {details.jarSize && (
-          <div>
-            <span className="font-medium text-xs text-muted-foreground block">Jar Size:</span>
-            <span>{details.jarSize}</span>
-          </div>
-        )}
-        
-        {details.packagingType && (
-          <div>
-            <span className="font-medium text-xs text-muted-foreground block">Packaging:</span>
-            <span>{details.packagingType}</span>
-          </div>
-        )}
-      </div>
-      
-      <div className="pt-2">
-        <Button 
-          variant="default" 
-          className="w-full"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onOpenApproval(spec);
-          }}
-        >
-          <Check className="mr-2 h-4 w-4" /> 
-          Review & Approve
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListProps) => {
   const [selectedSpec, setSelectedSpec] = useState<PackingSpec | null>(null);
@@ -343,19 +270,6 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details
               </Button>
-              
-              {spec.status === 'pending-approval' && !readOnly && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="default" className="w-full">
-                      <Clipboard className="mr-2 h-4 w-4" /> Quick Review
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-auto p-4">
-                    <QuickReview spec={spec} onOpenApproval={handleOpenApproval} />
-                  </PopoverContent>
-                </Popover>
-              )}
             </CardFooter>
           </Card>
         ))}
