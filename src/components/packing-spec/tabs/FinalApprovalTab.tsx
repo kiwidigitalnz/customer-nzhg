@@ -10,6 +10,8 @@ import { useCommentPolling } from '@/hooks/useCommentPolling';
 import { CommentItem } from '@/services/podio/podioComments';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import EnhancedApprovalDialog from '@/components/approval/EnhancedApprovalDialog';
+import { SpecStatus } from '../StatusBadge';
 
 interface FinalApprovalTabProps {
   spec: {
@@ -89,6 +91,10 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
     }
   }, [newCommentsCount, activeTab, isActive, toast]);
 
+  // Determine if we should show approval buttons based on status
+  const shouldShowApprovalButtons = spec.status !== 'approved-by-customer';
+  const specStatus = spec.status as SpecStatus;
+
   return (
     <div className="space-y-6">
       <Card className="shadow-sm border-muted">
@@ -103,6 +109,29 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
         </CardHeader>
         
         <CardContent>
+          {/* Add approval buttons at the top of the card when appropriate */}
+          {shouldShowApprovalButtons && (
+            <div className="mb-6 flex flex-wrap gap-3">
+              <EnhancedApprovalDialog
+                specId={spec.id}
+                onStatusUpdated={onStatusUpdated || (() => {})}
+                type="approve"
+                buttonText="Approve Specification"
+                buttonClassName="bg-green-600 hover:bg-green-700"
+                specStatus={specStatus}
+              />
+              
+              <EnhancedApprovalDialog
+                specId={spec.id}
+                onStatusUpdated={onStatusUpdated || (() => {})}
+                type="reject"
+                buttonText="Request Changes"
+                buttonClassName="border-amber-300 text-amber-700 hover:bg-amber-50"
+                specStatus={specStatus}
+              />
+            </div>
+          )}
+          
           <Tabs defaultValue="comments" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="comments" className="relative">
