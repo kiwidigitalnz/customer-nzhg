@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import EnhancedApprovalDialog from '@/components/approval/EnhancedApprovalDialog';
 import { SpecStatus } from '../StatusBadge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 
 interface FinalApprovalTabProps {
   spec: {
@@ -39,6 +40,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>('comments');
   const { toast } = useToast();
+  const { allSectionsApproved } = useSectionApproval();
   
   // Use our enhanced comment polling hook but disable automatic polling
   const { 
@@ -128,27 +130,31 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                   <ol className="list-decimal ml-5 mt-2 space-y-1 text-sm">
                     <li>Review all tabs in the specification (Honey Specification, Requirements, Packaging, etc.)</li>
                     <li>You can approve individual sections as you review them</li>
-                    <li>Once all sections are reviewed, use the buttons below to provide your final decision</li>
+                    <li>{allSectionsApproved ? 
+                      "All sections have been approved. You can now submit your final approval." : 
+                      "Complete reviewing all sections before submitting final approval"}</li>
                     <li>When approved, the specification will be used for production</li>
                   </ol>
                 </AlertDescription>
               </Alert>
               
               <div className="flex flex-wrap gap-3">
-                <EnhancedApprovalDialog
-                  specId={spec.id}
-                  onStatusUpdated={onStatusUpdated || (() => {})}
-                  type="approve"
-                  buttonText="Approve Specification"
-                  buttonClassName="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-base"
-                  specStatus={specStatus}
-                />
+                {allSectionsApproved && (
+                  <EnhancedApprovalDialog
+                    specId={spec.id}
+                    onStatusUpdated={onStatusUpdated || (() => {})}
+                    type="approve"
+                    buttonText="Submit Approval"
+                    buttonClassName="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-base"
+                    specStatus={specStatus}
+                  />
+                )}
                 
                 <EnhancedApprovalDialog
                   specId={spec.id}
                   onStatusUpdated={onStatusUpdated || (() => {})}
                   type="reject"
-                  buttonText="Request Changes"
+                  buttonText="Submit Changes"
                   buttonClassName="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-3 text-base"
                   specStatus={specStatus}
                 />

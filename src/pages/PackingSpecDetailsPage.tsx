@@ -130,11 +130,10 @@ const PackingSpecDetailsPage = () => {
                     </div>
                   </div>
                   <div className="md:col-span-2">
-                    <h3 className="font-medium text-lg">Provide feedback</h3>
+                    <h3 className="font-medium text-lg">Approve or request changes</h3>
                     <p className="text-muted-foreground">
-                      You can request changes for specific sections by clicking the "Request Changes" 
-                      button and providing detailed feedback. You can also add general comments on 
-                      the "Final Approval" tab.
+                      For each section, you can either approve it or request changes by providing detailed feedback. 
+                      The Submit Approval button will only be available once all sections have been approved.
                     </p>
                   </div>
                 </div>
@@ -148,9 +147,9 @@ const PackingSpecDetailsPage = () => {
                   <div className="md:col-span-2">
                     <h3 className="font-medium text-lg">Final decision</h3>
                     <p className="text-muted-foreground">
-                      Once you've reviewed all sections, navigate to the "Final Approval" tab
-                      to either approve the entire specification or request changes. Your signature 
-                      will be required for final approval.
+                      Once you've reviewed all sections, navigate to the "Final Approval" tab.
+                      If all sections are approved, you'll be able to submit your final approval.
+                      Otherwise, you can submit change requests for sections that need modification.
                     </p>
                   </div>
                 </div>
