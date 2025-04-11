@@ -44,8 +44,10 @@ export * from "./switch";
 export * from "./table";
 export * from "./tabs";
 export * from "./textarea";
-export * from "./toast";
-export * from "./toaster";
+// Export toast components explicitly to avoid naming conflicts
+export { type ToastProps, type ToastActionElement, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "./toast";
+// Rename Toaster from toast.tsx to avoid conflict with Sonner's Toaster
+export { Toaster as ToastToaster } from "./toaster";
 export * from "./toggle";
 export * from "./toggle-group";
 export * from "./tooltip";
