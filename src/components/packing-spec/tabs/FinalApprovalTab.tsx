@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, MessageSquare, Send, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CheckCircle, MessageSquare, Send, Loader2, AlertCircle, InfoIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import CommentsList from '../CommentsList';
 import { useCommentPolling } from '@/hooks/useCommentPolling';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import EnhancedApprovalDialog from '@/components/approval/EnhancedApprovalDialog';
 import { SpecStatus } from '../StatusBadge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface FinalApprovalTabProps {
   spec: {
@@ -39,7 +40,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
   const [activeTab, setActiveTab] = useState<string>('comments');
   const { toast } = useToast();
   
-  // Use our enhanced comment polling hook
+  // Use our enhanced comment polling hook but disable automatic polling
   const { 
     comments, 
     isLoading: isLoadingComments, 
@@ -50,8 +51,8 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
     spec.id,
     spec.comments || [],
     isActive && activeTab === 'comments',
-    true,  // Enable automatic polling
-    10000  // Poll every 10 seconds
+    false,  // Disable automatic polling
+    0       // No polling interval
   );
 
   // Handle comment submission
@@ -97,41 +98,79 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card className="shadow-sm border-muted">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center">
-            <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
-            Final Review & Approval
+      {/* First card: Approval instructions and actions */}
+      <Card className="shadow-md border-green-100 border-2">
+        <CardHeader className="bg-green-50 pb-2 border-b border-green-100">
+          <CardTitle className="text-xl flex items-center">
+            <CheckCircle className="mr-2 h-6 w-6 text-green-600" />
+            Final Approval
           </CardTitle>
-          <CardDescription>
-            Review all sections and provide feedback or approval
+          <CardDescription className="text-base">
+            Review the packing specification and provide your final decision
           </CardDescription>
         </CardHeader>
         
-        <CardContent>
-          {/* Add approval buttons at the top of the card when appropriate */}
-          {shouldShowApprovalButtons && (
-            <div className="mb-6 flex flex-wrap gap-3">
-              <EnhancedApprovalDialog
-                specId={spec.id}
-                onStatusUpdated={onStatusUpdated || (() => {})}
-                type="approve"
-                buttonText="Approve Specification"
-                buttonClassName="bg-green-600 hover:bg-green-700"
-                specStatus={specStatus}
-              />
+        <CardContent className="pt-6">
+          {spec.status === 'approved-by-customer' ? (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <AlertTitle>Approved</AlertTitle>
+              <AlertDescription>
+                This packing specification has been approved and is now finalized.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <Alert className="mb-6 bg-blue-50 border-blue-200">
+                <InfoIcon className="h-5 w-5 text-blue-600" />
+                <AlertTitle>How to approve or request changes</AlertTitle>
+                <AlertDescription>
+                  <ol className="list-decimal ml-5 mt-2 space-y-1 text-sm">
+                    <li>Review all tabs in the specification (Honey Specification, Requirements, Packaging, etc.)</li>
+                    <li>You can approve individual sections as you review them</li>
+                    <li>Once all sections are reviewed, use the buttons below to provide your final decision</li>
+                    <li>When approved, the specification will be used for production</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
               
-              <EnhancedApprovalDialog
-                specId={spec.id}
-                onStatusUpdated={onStatusUpdated || (() => {})}
-                type="reject"
-                buttonText="Request Changes"
-                buttonClassName="border-amber-300 text-amber-700 hover:bg-amber-50"
-                specStatus={specStatus}
-              />
-            </div>
+              <div className="flex flex-wrap gap-3">
+                <EnhancedApprovalDialog
+                  specId={spec.id}
+                  onStatusUpdated={onStatusUpdated || (() => {})}
+                  type="approve"
+                  buttonText="Approve Specification"
+                  buttonClassName="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-base"
+                  specStatus={specStatus}
+                />
+                
+                <EnhancedApprovalDialog
+                  specId={spec.id}
+                  onStatusUpdated={onStatusUpdated || (() => {})}
+                  type="reject"
+                  buttonText="Request Changes"
+                  buttonClassName="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-3 text-base"
+                  specStatus={specStatus}
+                />
+              </div>
+            </>
           )}
-          
+        </CardContent>
+      </Card>
+      
+      {/* Second card: Comments section */}
+      <Card className="shadow-sm border-muted">
+        <CardHeader className="pb-2 bg-muted/30">
+          <CardTitle className="text-lg flex items-center">
+            <MessageSquare className="mr-2 h-5 w-5 text-primary/80" />
+            Comments & Discussion
+          </CardTitle>
+          <CardDescription>
+            Discuss this packing specification with the team
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="pt-4">
           <Tabs defaultValue="comments" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="comments" className="relative">
@@ -179,6 +218,19 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                         Add Comment
                       </>
                     )}
+                  </Button>
+                </div>
+                
+                <div className="flex justify-end mb-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={refreshComments}
+                    disabled={isLoadingComments}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Click to refresh comments
                   </Button>
                 </div>
                 
