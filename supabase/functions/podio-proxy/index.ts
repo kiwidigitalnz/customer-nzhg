@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -62,7 +63,7 @@ serve(async (req) => {
       console.log('Using Contacts app token');
     }
 
-    // Get the latest valid token from the database, regardless of client's authorization header
+    // Get the latest valid token from the database
     console.log('Fetching latest token from database');
     const { data: tokens, error: fetchError } = await supabase
       .from('podio_auth_tokens')
@@ -78,341 +79,128 @@ serve(async (req) => {
       );
     }
 
-    // If no tokens found, try client credentials flow
+    // If no tokens found, return auth error
     if (!tokens || tokens.length === 0) {
-      console.log('No tokens found in database. Will attempt client credentials');
-      
-      // Get Podio credentials from environment
-      const clientId = Deno.env.get('PODIO_CLIENT_ID');
-      const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-      
-      if (!clientId || !clientSecret) {
-        console.error('Podio credentials not configured');
-        return new Response(
-          JSON.stringify({ 
-            error: 'Podio credentials not configured',
-            details: 'Client ID or Client Secret missing in environment variables'
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      try {
-        const authResponse = await fetch('https://podio.com/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            'grant_type': 'client_credentials',
-            'client_id': clientId,
-            'client_secret': clientSecret,
-            'scope': 'global',
-          }),
-        });
-        
-        if (!authResponse.ok) {
-          const errorText = await authResponse.text();
-          console.error(`Authentication error (${authResponse.status}): ${errorText}`);
-          return new Response(
-            JSON.stringify({ 
-              error: 'Failed to obtain authentication token',
-              details: errorText,
-              status: authResponse.status
-            }),
-            { status: authResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        const authData = await authResponse.json();
-        const accessToken = authData.access_token;
-        
-        // Calculate new expiry time
-        const expiresAt = new Date(Date.now() + (authData.expires_in * 1000)).toISOString();
-        
-        // Store the new token in the database
-        const { error: insertError } = await supabase
-          .from('podio_auth_tokens')
-          .insert([{
-            access_token: authData.access_token,
-            refresh_token: authData.refresh_token,
-            expires_at: expiresAt,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }]);
-          
-        if (insertError) {
-          console.error('Error storing new token in database:', insertError);
-        }
-        
-        console.log(`Successfully obtained new access token via client credentials`);
-        
-        // Use this token for the current request
-        const headers: HeadersInit = {
-          'Authorization': `OAuth2 ${accessToken}`,
-          'Content-Type': 'application/json',
-        };
-        
-        if (appToken) {
-          headers['X-Podio-App'] = appToken;
-        }
-        
-        // Make the actual request to Podio API
-        const fullUrl = `https://api.podio.com${normalizedEndpoint}`;
-        console.log(`Full URL: ${fullUrl}`);
-        
-        const podioResponse = await fetch(fullUrl, {
-          method,
-          headers,
-          body: body ? JSON.stringify(JSON.parse(body)) : undefined,
-        });
-        
-        // Get response data
-        let responseData;
-        const contentType = podioResponse.headers.get('Content-Type') || '';
-        
-        if (contentType.includes('application/json')) {
-          responseData = await podioResponse.json().catch((e) => {
-            return { error: 'Invalid JSON response from Podio API' };
-          });
-        } else {
-          const text = await podioResponse.text();
-          responseData = { text };
-        }
-        
-        // Return the response
-        return new Response(
-          JSON.stringify(responseData),
-          { 
-            status: podioResponse.status, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      } catch (authError) {
-        console.error('Error in client credentials flow:', authError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Authentication error', 
-            details: authError.message
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      console.log('No tokens found in database');
+      return new Response(
+        JSON.stringify({ error: 'No authentication token available. Please connect to Podio first.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    // Token exists in database
+
     const token = tokens[0];
     const now = new Date();
     const tokenExpiry = new Date(token.expires_at);
-    
-    // Check if token has expired or will expire soon (within 5 minutes)
-    let accessToken = token.access_token;
-    if (tokenExpiry.getTime() - now.getTime() < 5 * 60 * 1000) {
-      console.log('Token expired or expiring soon. Refreshing...');
-      
-      // Get Podio credentials from environment
-      const clientId = Deno.env.get('PODIO_CLIENT_ID');
-      const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-      
-      if (!clientId || !clientSecret) {
-        console.error('Podio credentials not configured');
-        return new Response(
-          JSON.stringify({ error: 'Podio credentials not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      try {
-        // Refresh the token
-        const refreshResponse = await fetch('https://podio.com/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            'grant_type': 'refresh_token',
-            'client_id': clientId,
-            'client_secret': clientSecret,
-            'refresh_token': token.refresh_token,
-          }),
-        });
-        
-        if (!refreshResponse.ok) {
-          console.error('Failed to refresh token, trying client credentials instead');
-          
-          // Fall back to client credentials if refresh fails
-          const clientCredResponse = await fetch('https://podio.com/oauth/token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              'grant_type': 'client_credentials',
-              'client_id': clientId,
-              'client_secret': clientSecret,
-            }),
-          });
-          
-          if (!clientCredResponse.ok) {
-            const errorText = await clientCredResponse.text();
-            console.error(`Client credentials auth error: ${errorText}`);
-            return new Response(
-              JSON.stringify({ 
-                error: 'Failed to authenticate with Podio', 
-                details: errorText
-              }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-          
-          const newTokenData = await clientCredResponse.json();
-          accessToken = newTokenData.access_token;
-          
-          // Calculate new expiry time
-          const expiresAt = new Date(Date.now() + (newTokenData.expires_in * 1000)).toISOString();
-          
-          // Update the token in the database
-          await supabase
-            .from('podio_auth_tokens')
-            .update({
-              access_token: newTokenData.access_token,
-              refresh_token: newTokenData.refresh_token || token.refresh_token, // Keep old refresh token if none provided
-              expires_at: expiresAt,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', token.id);
-            
-          console.log('Token updated with client credentials response');
-        } else {
-          // Process normal refresh response
-          const newTokenData = await refreshResponse.json();
-          accessToken = newTokenData.access_token;
-          
-          // Calculate new expiry time
-          const expiresAt = new Date(Date.now() + (newTokenData.expires_in * 1000)).toISOString();
-          
-          // Update the token in the database
-          await supabase
-            .from('podio_auth_tokens')
-            .update({
-              access_token: newTokenData.access_token,
-              refresh_token: newTokenData.refresh_token,
-              expires_at: expiresAt,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', token.id);
-            
-          console.log('Token refreshed successfully');
-        }
-      } catch (refreshError) {
-        console.error('Error during token refresh:', refreshError);
-        // Continue with the current token even if refresh failed
-        console.log('Using existing token despite refresh failure');
-      }
+
+    // Check if token is expired
+    if (tokenExpiry <= now) {
+      console.log('Token is expired. Return auth error.');
+      return new Response(
+        JSON.stringify({ error: 'Authentication token is expired. Refreshing required.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Prepare headers for the Podio API request with the DB token
-    const headers: HeadersInit = {
-      'Authorization': `OAuth2 ${accessToken}`,
+    // Prepare headers with OAuth2 authorization
+    const headers = {
+      'Authorization': `OAuth2 ${token.access_token}`,
       'Content-Type': 'application/json',
     };
 
-    // Add app token if detected from endpoint
+    // Add app token if available
     if (appToken) {
       headers['X-Podio-App'] = appToken;
     }
 
-    // Construct full URL
-    const fullUrl = `https://api.podio.com${normalizedEndpoint}`;
-    console.log(`Full URL: ${fullUrl}`);
-    console.log(`Method: ${method}`);
-    
-    // Debug log the request details
-    if (body) {
-      try {
-        const parsedBody = JSON.parse(body);
-        console.log(`Request body:`, JSON.stringify(parsedBody, null, 2));
-      } catch (e) {
-        console.log(`Body: ${body.substring(0, 200) + (body.length > 200 ? '...' : '')}`);
-      }
-    } else {
-      console.log(`Body: None`);
-    }
+    // Format the Podio API URL
+    const apiUrl = `https://api.podio.com${normalizedEndpoint}`;
+    console.log(`Calling Podio API: ${method} ${apiUrl}`);
 
-    // Make the actual request to Podio API
-    const podioResponse = await fetch(fullUrl, {
+    // Make the request to Podio API
+    const requestOptions: RequestInit = {
       method,
       headers,
-      body: body ? JSON.stringify(JSON.parse(body)) : undefined,
-    });
+    };
 
-    // Get response data
-    let responseData;
-    const contentType = podioResponse.headers.get('Content-Type') || '';
-    
-    if (contentType.includes('application/json')) {
-      responseData = await podioResponse.json().catch((e) => {
-        console.error('Error parsing JSON response:', e);
-        return { error: 'Invalid JSON response from Podio API' };
-      });
-    } else {
-      const text = await podioResponse.text();
-      responseData = { text };
+    // Add body for non-GET requests if provided
+    if (method !== 'GET' && body) {
+      requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
 
-    // Log response details for debugging
-    console.log(`Podio API response status: ${podioResponse.status}`);
-    
-    if (podioResponse.status >= 400) {
-      console.error('Podio API error response:', JSON.stringify(responseData, null, 2));
-      console.error('Request details that caused error:', {
-        endpoint: normalizedEndpoint,
-        method,
-        hasBody: !!body,
-        hasAppToken: !!appToken,
-        statusCode: podioResponse.status
-      });
+    try {
+      const response = await fetch(apiUrl, requestOptions);
       
+      // Log response status
+      console.log(`Podio API response status: ${response.status}`);
+      
+      // Check for rate limiting
+      if (response.status === 429) {
+        console.error('Rate limit reached');
+        
+        // Get rate limit headers if available
+        const rateLimit = response.headers.get('X-Rate-Limit-Limit');
+        const rateRemaining = response.headers.get('X-Rate-Limit-Remaining');
+        const rateReset = response.headers.get('X-Rate-Limit-Reset');
+        
+        return new Response(
+          JSON.stringify({
+            error: 'Rate limit reached',
+            rateLimit: {
+              limit: rateLimit,
+              remaining: rateRemaining,
+              reset: rateReset
+            }
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Handle auth errors
+      if (response.status === 401 || response.status === 403) {
+        console.error('Authentication error');
+        const responseBody = await response.text();
+        
+        return new Response(
+          JSON.stringify({
+            error: 'Authentication error',
+            details: responseBody
+          }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Parse response body based on content type
+      let responseBody;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        responseBody = await response.json();
+      } else {
+        responseBody = await response.text();
+      }
+
+      // Return the response data
       return new Response(
-        JSON.stringify({
-          error: `Podio API error (${podioResponse.status})`,
-          details: responseData,
-          requestInfo: {
-            endpoint: normalizedEndpoint,
-            method
-          }
-        }),
+        JSON.stringify(responseBody),
         { 
-          status: podioResponse.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          status: response.status, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
         }
       );
+    } catch (fetchError) {
+      console.error('Error making request to Podio API:', fetchError);
+      return new Response(
+        JSON.stringify({ error: fetchError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    // Return the response from Podio
-    return new Response(
-      JSON.stringify(responseData),
-      { 
-        status: podioResponse.status, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
   } catch (error) {
-    console.error('Error proxying Podio API request:', error);
-    
-    // Create a more detailed error response
-    const errorDetails = {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      time: new Date().toISOString()
-    };
-    
+    console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: 'Failed to proxy Podio API request', 
-        details: errorDetails
-      }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

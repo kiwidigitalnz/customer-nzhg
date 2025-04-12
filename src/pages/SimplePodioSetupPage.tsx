@@ -7,21 +7,26 @@ import MainLayout from '../components/MainLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle, Info, RefreshCw, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Progress } from '@/components/ui/progress';
 
 const SimplePodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [podioConnected, setPodioConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAuth, setLastAuth] = useState<string | null>(null);
+  const [timeUntilExpiry, setTimeUntilExpiry] = useState<string | null>(null);
+  const [expiryPercentage, setExpiryPercentage] = useState(100);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [intervalId, setIntervalId] = useState<number | null>(null);
 
   const success = searchParams.get('success');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+  const reauth = searchParams.get('reauth');
 
   useEffect(() => {
     const checkSupabaseConnection = async () => {
@@ -79,6 +84,17 @@ const SimplePodioSetupPage = () => {
           setPodioConnected(true);
           const expiryDate = new Date(data.expires_at);
           setLastAuth(expiryDate.toLocaleString());
+          
+          // Calculate time until expiry
+          updateExpiryInfo(expiryDate);
+          
+          // Start the interval to update the expiry countdown
+          if (intervalId === null) {
+            const id = window.setInterval(() => {
+              updateExpiryInfo(expiryDate);
+            }, 60000); // Update every minute
+            setIntervalId(id);
+          }
         } else {
           setPodioConnected(false);
         }
@@ -88,7 +104,37 @@ const SimplePodioSetupPage = () => {
     };
     
     checkPodioConnection();
-  }, [supabaseConnected, toast]);
+    
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [supabaseConnected, toast, intervalId]);
+
+  const updateExpiryInfo = (expiryDate: Date) => {
+    const now = new Date();
+    const diffMs = expiryDate.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      setTimeUntilExpiry("Expired");
+      setExpiryPercentage(0);
+      return;
+    }
+    
+    // Calculate hours and minutes remaining
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    setTimeUntilExpiry(`${diffHrs}h ${diffMins}m`);
+    
+    // Calculate percentage for progress bar (assuming 8 hour token life)
+    const totalMs = 8 * 60 * 60 * 1000; // 8 hours in ms
+    const elapsed = totalMs - diffMs;
+    const percentage = Math.max(0, Math.min(100, 100 - (elapsed / totalMs * 100)));
+    setExpiryPercentage(percentage);
+  };
 
   useEffect(() => {
     if (success) {
@@ -105,8 +151,14 @@ const SimplePodioSetupPage = () => {
         description: description,
         variant: "destructive"
       });
+    } else if (reauth === 'required') {
+      toast({
+        title: "Podio Reauthorization Required",
+        description: "Your Podio token has expired and needs to be refreshed.",
+        variant: "destructive"
+      });
     }
-  }, [success, error, errorDescription, toast]);
+  }, [success, error, errorDescription, reauth, toast]);
 
   const handleConnectPodio = async () => {
     if (!supabaseConnected) {
@@ -174,6 +226,9 @@ const SimplePodioSetupPage = () => {
         const expiryDate = new Date(data.expires_at);
         setLastAuth(expiryDate.toLocaleString());
         
+        // Update expiry info
+        updateExpiryInfo(expiryDate);
+        
         toast({
           title: "Status Refreshed",
           description: data.refreshed 
@@ -230,8 +285,23 @@ const SimplePodioSetupPage = () => {
             </div>
             
             {lastAuth && (
-              <div className="text-sm text-muted-foreground">
-                Token valid until: {lastAuth}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Token valid until: {lastAuth}</span>
+                </div>
+                
+                {timeUntilExpiry && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span>Time remaining:</span>
+                      <span className={expiryPercentage < 20 ? "text-red-500 font-medium" : ""}>
+                        {timeUntilExpiry}
+                      </span>
+                    </div>
+                    <Progress value={expiryPercentage} className="h-1.5" />
+                  </div>
+                )}
               </div>
             )}
             
@@ -261,6 +331,16 @@ const SimplePodioSetupPage = () => {
                 <AlertTitle>Connection Failed</AlertTitle>
                 <AlertDescription>
                   {errorDescription || error}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {reauth === 'required' && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Reauthorization Required</AlertTitle>
+                <AlertDescription>
+                  Your Podio authorization has expired. Please reconnect to Podio using the button below.
                 </AlertDescription>
               </Alert>
             )}

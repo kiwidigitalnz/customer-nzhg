@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import MainLayout from '../components/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { validatePodioAuthState } from '@/services/podio/podioOAuth';
 
 const PodioCallbackPage = () => {
   const navigate = useNavigate();
@@ -22,6 +23,20 @@ const PodioCallbackPage = () => {
   useEffect(() => {
     // Check if this is an OAuth callback
     if (code && state) {
+      // First validate the state parameter to prevent CSRF attacks
+      const isValidState = validatePodioAuthState(state);
+      
+      if (!isValidState) {
+        console.error('Invalid state parameter - possible CSRF attack');
+        toast({
+          title: "Security Error",
+          description: "Invalid authentication state. Please try again.",
+          variant: "destructive"
+        });
+        navigate('/podio-setup?error=invalid_state');
+        return;
+      }
+      
       // Call the Edge Function to handle the token exchange
       const handleOAuthCallback = async () => {
         try {
@@ -44,6 +59,11 @@ const PodioCallbackPage = () => {
           }
           
           if (data && data.success) {
+            // Store token information when the user is redirected back
+            if (data.tokenInfo) {
+              localStorage.setItem('podio_token_expiry', new Date(data.tokenInfo.expires_at).getTime().toString());
+            }
+            
             toast({
               title: "Podio Connected",
               description: "Successfully authenticated with Podio",

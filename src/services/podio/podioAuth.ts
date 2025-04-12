@@ -82,6 +82,17 @@ const RATE_LIMIT_UNTIL_KEY = 'podio_rate_limited_until';
 const RATE_LIMIT_ENDPOINT_KEY = 'podio_rate_limited_endpoint';
 const RATE_LIMIT_DURATION = 10 * 60 * 1000;
 
+// Last successful token refresh time
+let lastTokenRefresh = 0;
+// How often to check token (every 10 minutes)
+const TOKEN_CHECK_INTERVAL = 10 * 60 * 1000;
+// Refresh token if it expires within this time (2 hours)
+const TOKEN_REFRESH_BUFFER = 2 * 60 * 60 * 1000;
+
+// Track active token refresh to prevent multiple concurrent attempts
+let tokenRefreshInProgress = false;
+let tokenRefreshPromise = null;
+
 // Clear auth tokens and sensitive data
 export const clearTokens = (): void => {
   // Remove all Podio-related data from localStorage
@@ -100,20 +111,97 @@ export const isPodioConfigured = (): boolean => {
   return true;
 };
 
-// Server-side token refresh via Supabase Edge Function
+// Server-side token refresh via Supabase Edge Function with optimized refresh logic
 export const refreshPodioToken = async (): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
-      method: 'POST'
-    });
-    
-    if (error || !data || !data.access_token) {
-      return false;
+  // If refresh already in progress, wait for that instead of starting a new one
+  if (tokenRefreshInProgress && tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+  
+  // Check if we've refreshed recently to reduce unnecessary API calls
+  const now = Date.now();
+  if (now - lastTokenRefresh < TOKEN_CHECK_INTERVAL) {
+    // Get cached expiry time
+    const tokenExpiry = localStorage.getItem('podio_token_expiry');
+    // If we have a valid non-expiring token, skip refresh
+    if (tokenExpiry && parseInt(tokenExpiry, 10) > now + TOKEN_REFRESH_BUFFER) {
+      return true;
     }
-    
-    return true;
-  } catch (error) {
-    return false;
+  }
+  
+  tokenRefreshInProgress = true;
+  tokenRefreshPromise = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+        method: 'POST'
+      });
+      
+      if (error) {
+        console.error('Token refresh error:', error);
+        
+        // Handle specific error case where reauthorization is needed
+        if (error.message && error.message.includes('needs_reauth')) {
+          // Signal to the UI that reauthorization is needed
+          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+          return false;
+        }
+        
+        return false;
+      }
+      
+      if (!data || !data.access_token) {
+        console.error('Invalid token response:', data);
+        return false;
+      }
+      
+      // Store token expiry in localStorage for client-side checks
+      if (data.expires_at) {
+        const expiryTime = new Date(data.expires_at).getTime();
+        localStorage.setItem('podio_token_expiry', expiryTime.toString());
+      }
+      
+      // Update last refresh time
+      lastTokenRefresh = now;
+      
+      return true;
+    } catch (error) {
+      console.error('Unexpected error refreshing token:', error);
+      return false;
+    } finally {
+      tokenRefreshInProgress = false;
+      tokenRefreshPromise = null;
+    }
+  })();
+  
+  return tokenRefreshPromise;
+};
+
+// Setup automatic token refresh interval
+export const setupTokenRefreshInterval = (): void => {
+  // Initial token check
+  refreshPodioToken();
+  
+  // Set up interval to check token every 30 minutes
+  const intervalId = setInterval(async () => {
+    await refreshPodioToken();
+  }, 30 * 60 * 1000); // 30 minutes
+  
+  // Store interval ID for cleanup
+  window.podioTokenRefreshInterval = intervalId;
+  
+  // Listen for visibility changes to refresh when tab becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshPodioToken();
+    }
+  });
+};
+
+// Cleanup token refresh interval
+export const cleanupTokenRefreshInterval = (): void => {
+  if (window.podioTokenRefreshInterval) {
+    clearInterval(window.podioTokenRefreshInterval);
+    window.podioTokenRefreshInterval = null;
   }
 };
 
@@ -145,17 +233,26 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error(data.error);
     }
     
+    // If authentication successful, ensure token refresh is set up
+    setupTokenRefreshInterval();
+    
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-// Generic function to call the Podio API via Edge Function
+// Generic function to call the Podio API via Edge Function with OAuth2 headers
 export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   // Check for rate limiting
   if (isRateLimited()) {
     throw new Error('Rate limit reached. Please try again later.');
+  }
+  
+  // Ensure we have a valid token before proceeding
+  const tokenValid = await refreshPodioToken();
+  if (!tokenValid) {
+    throw new Error('Failed to obtain valid Podio token. Please reauthenticate.');
   }
   
   try {
@@ -185,6 +282,19 @@ export const callPodioApi = async (endpoint: string, options: RequestInit = {}):
       if (error.message?.includes('429') || response.error?.status === 429) {
         setRateLimit(endpoint);
         throw new Error('Rate limit reached. Please try again later.');
+      }
+      
+      // If unauthorized (token expired), try refreshing token once and retry
+      if (error.message?.includes('401') || response.error?.status === 401) {
+        // Force token refresh
+        const refreshed = await refreshPodioToken();
+        
+        if (refreshed) {
+          // Retry the API call with fresh token
+          return callPodioApi(endpoint, options);
+        } else {
+          throw new Error('Authentication failed. Please log in again.');
+        }
       }
       
       throw new Error(error.message || 'Podio API error');
@@ -288,9 +398,33 @@ export const getCachedUserData = (key: string): any => {
 
 // Simplified authorization check functions for client side
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
-  return true; // Simplified since we're relying on server-side auth
+  return refreshPodioToken();
 };
 
 export const validateContactsAppAccess = async (): Promise<boolean> => {
-  return true; // Simplified since we're relying on server-side auth
+  try {
+    // Try to make a simple request to the Contacts app to verify access
+    await callPodioApi(`/app/${PODIO_CONTACTS_APP_ID}`);
+    return true;
+  } catch (error) {
+    console.error('Failed to validate Contacts app access:', error);
+    return false;
+  }
+};
+
+// Initialize Podio authentication on app start
+export const initializePodioAuth = (): void => {
+  // Set up automatic token refresh
+  setupTokenRefreshInterval();
+  
+  // Add event listener for reauth events
+  window.addEventListener('podio-reauth-needed', () => {
+    // Navigate to setup page for reauthorization
+    window.location.href = '/podio-setup?reauth=required';
+  });
+  
+  // Cleanup on window unload
+  window.addEventListener('beforeunload', () => {
+    cleanupTokenRefreshInterval();
+  });
 };

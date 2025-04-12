@@ -17,7 +17,7 @@ export const getPodioClientSecret = (): string => {
 // Get the redirect URI based on the current environment
 export const getPodioRedirectUri = (): string => {
   // Use the current origin for the redirect URI to handle different environments
-  return `${window.location.origin}/podio-callback`;
+  return `${window.location.origin}`;
 };
 
 // Generate a random state for CSRF protection
@@ -42,5 +42,9 @@ export const validatePodioAuthState = (returnedState: string): boolean => {
   localStorage.removeItem('podio_auth_state');
   
   // Validate that the state matches to prevent CSRF attacks
+  if (!storedState || !returnedState) {
+    return false;
+  }
+  
   return storedState === returnedState;
 };

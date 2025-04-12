@@ -64,8 +64,9 @@ serve(async (req) => {
       const tokenExpiry = new Date(token.expires_at);
       let refreshed = false;
 
-      // Check if token has expired or will expire soon (within 5 minutes)
-      if (tokenExpiry.getTime() - now.getTime() < 5 * 60 * 1000) {
+      // Check if token has expired or will expire soon (within 30 minutes)
+      // This gives enough buffer but isn't overly aggressive
+      if (tokenExpiry.getTime() - now.getTime() < 30 * 60 * 1000) {
         console.log('Token expired or expiring soon. Refreshing...');
         
         // Get Podio credentials from environment
@@ -84,13 +85,13 @@ serve(async (req) => {
         const refreshResponse = await fetch(PODIO_TOKEN_URL, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
           },
-          body: new URLSearchParams({
-            'grant_type': 'refresh_token',
-            'client_id': clientId,
-            'client_secret': clientSecret,
-            'refresh_token': token.refresh_token,
+          body: JSON.stringify({
+            grant_type: 'refresh_token',
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: token.refresh_token,
           }),
         });
 
@@ -98,16 +99,28 @@ serve(async (req) => {
           const refreshError = await refreshResponse.text();
           console.error('Failed to refresh token:', refreshError);
           
-          // If refresh fails, return the error but also include the original token
-          // This allows the client to still use the token if it's not yet expired
+          // If refresh fails, determine if token is actually expired
+          if (tokenExpiry < now) {
+            // Token is actually expired, return error to trigger reauthorization
+            return new Response(
+              JSON.stringify({ 
+                error: 'Token expired and refresh failed', 
+                details: refreshError,
+                needs_reauth: true
+              }),
+              { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          // Token not yet expired, return the original token
           return new Response(
             JSON.stringify({ 
-              error: 'Failed to refresh token', 
-              details: refreshError,
               access_token: token.access_token,
-              expires_at: token.expires_at
+              expires_at: token.expires_at,
+              refreshed: false,
+              warning: 'Future refresh attempt failed, token still valid'
             }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -115,7 +128,7 @@ serve(async (req) => {
         const newTokenData = await refreshResponse.json();
         console.log('Token refreshed successfully');
         
-        // Calculate new expiry time
+        // Calculate new expiry time - Podio returns expires_in in seconds
         const expiresAt = new Date(Date.now() + (newTokenData.expires_in * 1000)).toISOString();
         
         // Update the token in the database

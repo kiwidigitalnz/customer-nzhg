@@ -1,6 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
+// CORS headers for cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,41 +15,40 @@ serve(async (req) => {
   }
 
   try {
-    // Get Podio credentials from environment
+    // Get Podio credentials from environment variables
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     
     if (!clientId) {
+      console.error('Podio client ID not configured');
       return new Response(
         JSON.stringify({ error: 'Podio client ID not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Generate a state parameter for CSRF protection
-    const state = crypto.randomUUID();
+    // Generate a random state for CSRF protection
+    const state = Math.random().toString(36).substring(2, 15) + 
+                  Math.random().toString(36).substring(2, 15);
     
-    // Use root domain as redirect URI since that's what Podio allows
-    const redirectUri = 'https://customer.nzhg.com';
+    // Determine the redirect URI based on the request origin
+    const url = new URL(req.url);
+    let redirectUri = url.origin;
     
-    // Construct the Podio authorization URL
-    const authUrl = new URL('https://podio.com/oauth/authorize');
-    authUrl.searchParams.append('client_id', clientId);
-    authUrl.searchParams.append('redirect_uri', redirectUri);
-    authUrl.searchParams.append('state', state);
-    authUrl.searchParams.append('scope', 'global:all');
+    // Build the Podio authorization URL
+    const authUrl = `https://podio.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     
+    // Return the auth URL to the client
     return new Response(
       JSON.stringify({ 
-        authUrl: authUrl.toString(),
+        authUrl: authUrl,
         state: state
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error generating Podio auth URL:', error);
-    
+    console.error('Error generating auth URL:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate Podio auth URL', details: error.message }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
