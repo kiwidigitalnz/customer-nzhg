@@ -91,7 +91,7 @@ const TOKEN_REFRESH_BUFFER = 2 * 60 * 60 * 1000;
 
 // Track active token refresh to prevent multiple concurrent attempts
 let tokenRefreshInProgress = false;
-let tokenRefreshPromise = null;
+let tokenRefreshPromise: Promise<boolean> | null = null;
 
 // Clear auth tokens and sensitive data
 export const clearTokens = (): void => {
