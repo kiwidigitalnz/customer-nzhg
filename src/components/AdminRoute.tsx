@@ -19,7 +19,7 @@ const AdminRoute = () => {
   return (
     <Routes>
       <Route 
-        path="/admin/podio-setup" 
+        path="podio-setup" 
         element={
           <Suspense fallback={<LoadingSpinner size="md" text="Loading admin page..." />}>
             <PodioSetupPage />
@@ -27,7 +27,7 @@ const AdminRoute = () => {
         } 
       />
       <Route 
-        path="/admin/podio-callback" 
+        path="podio-callback" 
         element={
           <Suspense fallback={<LoadingSpinner size="md" text="Loading callback handler..." />}>
             <PodioCallbackPage />

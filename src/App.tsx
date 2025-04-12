@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Route, Routes, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PackingSpecPage from './pages/PackingSpecDetailsPage';
@@ -34,33 +34,29 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
-          <Route path="/podio-callback" element={<PodioCallbackPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/packing-spec/:id"
-            element={
-              <ProtectedRoute>
-                <PackingSpecPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/admin/*" element={<AdminRoute />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
+      <Route path="/podio-callback" element={<PodioCallbackPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/packing-spec/:id"
+        element={
+          <ProtectedRoute>
+            <PackingSpecPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/admin/*" element={<AdminRoute />} />
+    </Routes>
   );
 };
 

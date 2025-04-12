@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { supabase } from '@/integrations/supabase/client';
 
@@ -182,7 +181,7 @@ export const setupTokenRefreshInterval = (): void => {
   refreshPodioToken();
   
   // Set up interval to check token every 30 minutes
-  const intervalId = setInterval(async () => {
+  const intervalId = window.setInterval(async () => {
     await refreshPodioToken();
   }, 30 * 60 * 1000); // 30 minutes
   
