@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, LogIn, User, Lock, EyeOff, Eye } from 'lucide-react';
+import { AlertCircle, LogIn, User, Lock, EyeOff, Eye, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -19,14 +19,12 @@ const LoginForm = () => {
   const [authenticating, setAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [retryCount, setRetryCount] = useState(0);
-  const { login, loading, error } = useAuth();
+  const { login, loading, error, connectionIssue, retryStatus, resetConnection } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const loginAttemptInProgress = useRef(false);
   const loginButtonRef = useRef<HTMLButtonElement>(null);
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const MAX_RETRIES = 2;
 
   // Simulate progress during login to provide feedback
   useEffect(() => {
@@ -84,25 +82,6 @@ const LoginForm = () => {
     return 'Login failed. Please try again.';
   };
 
-  const shouldRetry = (error: any): boolean => {
-    // Only retry for network issues or 5xx errors
-    if (retryCount >= MAX_RETRIES) return false;
-    
-    if (typeof error === 'object') {
-      // Network error
-      if (error.message && (
-        error.message.includes('network') || 
-        error.message.includes('connection') ||
-        error.message.includes('timeout')
-      )) return true;
-      
-      // Server error (5xx)
-      if (error.status && error.status >= 500) return true;
-    }
-    
-    return false;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -150,27 +129,20 @@ const LoginForm = () => {
         const errorMsg = parseErrorMessage(error);
         setLoginError(errorMsg);
         
-        // Check if we should retry
-        if (shouldRetry(error)) {
-          setRetryCount(prev => prev + 1);
+        // Check if the error supports retry
+        if (error.retry && !connectionIssue) {
           toast({
-            title: 'Connection issue',
-            description: 'Retrying login...',
+            title: 'Login issue',
+            description: `Retrying... (${retryStatus.authRetries}/${retryStatus.maxAuthRetries})`,
             variant: 'default',
           });
-          
-          // Small delay before retry
-          setTimeout(() => {
-            handleSubmit(e);
-          }, 1000);
-          return;
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: errorMsg,
+            variant: 'destructive',
+          });
         }
-        
-        toast({
-          title: 'Login Failed',
-          description: errorMsg,
-          variant: 'destructive',
-        });
       }
     } catch (loginErr: any) {
       // Enhanced error handling with more specific messages
@@ -208,10 +180,23 @@ const LoginForm = () => {
   // Display either the component's local error or the error from the auth context
   const displayError = loginError || (typeof error === 'string' ? error : error?.message);
 
-  // Reset retry count when inputs change
+  // Reset user input if the connection issue is detected
   useEffect(() => {
-    setRetryCount(0);
-  }, [username, password]);
+    if (connectionIssue) {
+      // Clear sensitive data when connection issues are detected
+      setPassword('');
+    }
+  }, [connectionIssue]);
+  
+  // Button to restart connection when connection issues are detected
+  const handleResetConnection = () => {
+    resetConnection();
+    toast({
+      title: 'Connection reset',
+      description: 'Attempting to reconnect to the authentication service',
+      variant: 'default',
+    });
+  };
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">
@@ -222,6 +207,27 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {connectionIssue && (
+          <Alert variant="destructive" className="mb-4">
+            <WifiOff className="h-4 w-4" />
+            <AlertTitle>Connection Issue</AlertTitle>
+            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                Unable to connect to the authentication service. Please check your internet connection.
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleResetConnection}
+                className="whitespace-nowrap"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reset Connection
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {isLoading && (
           <div className="mb-4">
             <Progress value={loadingProgress} className="h-1 mb-2" />
@@ -289,14 +295,16 @@ const LoginForm = () => {
             ref={loginButtonRef}
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700" 
-            disabled={isLoading}
+            disabled={isLoading || connectionIssue}
           >
             {isLoading ? (
               <LoadingSpinner size="sm" className="mr-2" />
+            ) : connectionIssue ? (
+              <WifiOff className="mr-2 h-4 w-4" />
             ) : (
               <LogIn className="mr-2 h-4 w-4" />
             )}
-            {isLoading ? 'Logging in...' : 'Log In'}
+            {isLoading ? 'Logging in...' : connectionIssue ? 'Reconnect Required' : 'Log In'}
           </Button>
         </form>
       </CardContent>

@@ -93,6 +93,17 @@ const TOKEN_REFRESH_BUFFER = 2 * 60 * 60 * 1000;
 let tokenRefreshInProgress = false;
 let tokenRefreshPromise: Promise<boolean> | null = null;
 
+// Retry limitations for authentication
+const MAX_AUTH_RETRIES = 3;
+const MAX_TOKEN_RETRIES = 2;
+const RETRY_BACKOFF_MS = 1000; // Start with 1 second, will be multiplied
+
+// Counter for tracking retry attempts
+let authRetryCount = 0;
+let tokenRetryCount = 0;
+let lastAuthRetryTime = 0;
+let connectionErrorDetected = false;
+
 // Global typings needed for global variable
 declare global {
   interface Window {
@@ -111,6 +122,12 @@ export const clearTokens = (): void => {
   
   keysToRemove.forEach(key => localStorage.removeItem(key));
   localStorage.removeItem('podio_user_data');
+  
+  // Reset retry counters
+  authRetryCount = 0;
+  tokenRetryCount = 0;
+  lastAuthRetryTime = 0;
+  connectionErrorDetected = false;
 };
 
 // Check if Podio API is configured - always true since we're using edge functions
@@ -120,6 +137,12 @@ export const isPodioConfigured = (): boolean => {
 
 // Server-side token refresh via Supabase Edge Function with optimized refresh logic
 export const refreshPodioToken = async (): Promise<boolean> => {
+  // First, check if we've exceeded the maximum retry attempts
+  if (tokenRetryCount >= MAX_TOKEN_RETRIES) {
+    console.warn(`Token refresh maximum retries (${MAX_TOKEN_RETRIES}) reached. Waiting for user action.`);
+    return false;
+  }
+  
   // If refresh already in progress, wait for that instead of starting a new one
   if (tokenRefreshInProgress && tokenRefreshPromise) {
     return tokenRefreshPromise;
@@ -132,6 +155,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     const tokenExpiry = localStorage.getItem('podio_token_expiry');
     // If we have a valid non-expiring token, skip refresh
     if (tokenExpiry && parseInt(tokenExpiry, 10) > now + TOKEN_REFRESH_BUFFER) {
+      // Reset retry count on successful check
+      tokenRetryCount = 0;
       return true;
     }
   }
@@ -139,6 +164,16 @@ export const refreshPodioToken = async (): Promise<boolean> => {
   tokenRefreshInProgress = true;
   tokenRefreshPromise = (async () => {
     try {
+      // Increment retry counter
+      tokenRetryCount++;
+      
+      // Apply exponential backoff if this is a retry
+      if (tokenRetryCount > 1) {
+        const backoffTime = RETRY_BACKOFF_MS * Math.pow(2, tokenRetryCount - 1);
+        console.log(`Token refresh retry ${tokenRetryCount}/${MAX_TOKEN_RETRIES}. Waiting ${backoffTime}ms before retry.`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+      }
+      
       const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
         method: 'POST'
       });
@@ -153,6 +188,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
           return false;
         }
         
+        // If we haven't reached max retries, we'll try again next time
+        // the retry count stays incremented
         return false;
       }
       
@@ -169,6 +206,9 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       
       // Update last refresh time
       lastTokenRefresh = now;
+      
+      // Reset retry counter on success
+      tokenRetryCount = 0;
       
       return true;
     } catch (error) {
@@ -212,13 +252,64 @@ export const cleanupTokenRefreshInterval = (): void => {
   }
 };
 
+// Reset connection error state
+export const resetConnectionError = (): void => {
+  connectionErrorDetected = false;
+  authRetryCount = 0;
+  tokenRetryCount = 0;
+};
+
+// Check if we're in a connection error state
+export const isInConnectionErrorState = (): boolean => {
+  return connectionErrorDetected;
+};
+
+// Get current retry counts for debugging
+export const getRetryStatus = (): { authRetries: number, tokenRetries: number, maxAuthRetries: number, maxTokenRetries: number } => {
+  return {
+    authRetries: authRetryCount,
+    tokenRetries: tokenRetryCount,
+    maxAuthRetries: MAX_AUTH_RETRIES,
+    maxTokenRetries: MAX_TOKEN_RETRIES
+  };
+};
+
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
   if (!username || !password) {
     throw new Error('Username and password are required');
   }
 
+  // Check if we've exceeded maximum retries
+  const now = Date.now();
+  if (authRetryCount >= MAX_AUTH_RETRIES) {
+    // Only retry if sufficient time has passed (30 seconds) since the last retry
+    if (now - lastAuthRetryTime < 30000) {
+      connectionErrorDetected = true;
+      throw {
+        status: 429,
+        message: `Maximum login attempts reached (${MAX_AUTH_RETRIES}). Please try again later.`,
+        retry: false
+      };
+    } else {
+      // Reset counter if enough time has passed
+      console.log('Resetting auth retry counter after timeout');
+      authRetryCount = 0;
+    }
+  }
+
   try {
+    // Update retry tracking
+    authRetryCount++;
+    lastAuthRetryTime = now;
+    
+    // Apply exponential backoff if this is a retry
+    if (authRetryCount > 1) {
+      const backoffTime = RETRY_BACKOFF_MS * Math.pow(2, authRetryCount - 1);
+      console.log(`Auth retry ${authRetryCount}/${MAX_AUTH_RETRIES}. Waiting ${backoffTime}ms before retry.`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+    }
+
     // Call the Edge Function to find the user in the Contacts app
     const { data, error } = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
@@ -230,10 +321,20 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     if (error) {
       console.error('Authentication error from edge function:', error);
+      
+      // Set connection error state if this is a network error
+      if (error.message && 
+          (error.message.includes('network') || 
+           error.message.includes('failed to fetch') || 
+           error.status === 0)) {
+        connectionErrorDetected = true;
+      }
+      
       throw {
         status: error.status || 500,
         message: error.message || 'Authentication failed',
-        edge: true
+        edge: true,
+        retry: authRetryCount < MAX_AUTH_RETRIES
       };
     }
     
@@ -246,9 +347,16 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw {
         status: data.status || 401,
         message: data.error || 'Authentication failed',
-        details: data.details || null
+        details: data.details || null,
+        retry: authRetryCount < MAX_AUTH_RETRIES && 
+               data.status !== 401 && // Don't retry invalid credentials
+               data.status !== 404    // Don't retry user not found
       };
     }
+    
+    // Reset retry counters on success
+    authRetryCount = 0;
+    connectionErrorDetected = false;
     
     // If authentication successful, ensure token refresh is set up
     setupTokenRefreshInterval();
@@ -260,10 +368,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     // Format fetch errors better
     if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
+      connectionErrorDetected = true;
       throw {
         status: 0,
         message: 'Network error: Unable to reach authentication service',
-        networkError: true
+        networkError: true,
+        retry: authRetryCount < MAX_AUTH_RETRIES
       };
     }
     

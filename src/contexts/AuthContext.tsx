@@ -5,7 +5,10 @@ import {
   cacheUserData,
   authenticateUser,
   setupTokenRefreshInterval,
-  cleanupTokenRefreshInterval
+  cleanupTokenRefreshInterval,
+  resetConnectionError,
+  isInConnectionErrorState,
+  getRetryStatus
 } from '../services/podio/podioAuth';
 import { supabase } from '../integrations/supabase/client';
 
@@ -20,16 +23,28 @@ export interface UserData {
   logoUrl?: string;
 }
 
+// Error interface with retry information
+interface AuthError {
+  status?: number;
+  message: string;
+  details?: any;
+  retry?: boolean;
+  networkError?: boolean;
+}
+
 // Auth context interface
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
-  error: any;
+  error: AuthError | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
   forceReauthenticate: () => Promise<boolean>;
   clearError: () => void;
+  connectionIssue: boolean;
+  retryStatus: { authRetries: number, tokenRetries: number, maxAuthRetries: number, maxTokenRetries: number };
+  resetConnection: () => void;
 }
 
 // Create context with default values
@@ -42,6 +57,9 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   forceReauthenticate: async () => false,
   clearError: () => {},
+  connectionIssue: false,
+  retryStatus: { authRetries: 0, tokenRetries: 0, maxAuthRetries: 3, maxTokenRetries: 2 },
+  resetConnection: () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -49,8 +67,24 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<AuthError | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [connectionIssue, setConnectionIssue] = useState(false);
+  
+  // Check for connection issues periodically
+  useEffect(() => {
+    const checkConnectionStatus = () => {
+      setConnectionIssue(isInConnectionErrorState());
+    };
+    
+    // Check immediately
+    checkConnectionStatus();
+    
+    // Then check periodically
+    const intervalId = setInterval(checkConnectionStatus, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
   
   // Check for existing user data and set up token refresh on mount
   useEffect(() => {
@@ -73,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         console.error('Error checking authentication:', err);
-        setError(err);
+        setError(err as AuthError);
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
@@ -100,6 +134,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener('podio-reauth-needed', handleReauth);
     };
+  }, []);
+
+  // Get current retry status for debugging
+  const retryStatus = getRetryStatus();
+
+  // Reset connection state
+  const resetConnection = useCallback(() => {
+    resetConnectionError();
+    setConnectionIssue(false);
+    setError(null);
   }, []);
 
   // Clear error state
@@ -130,7 +174,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw {
             status: 0,
             message: 'Network error: Unable to connect to the authentication service',
-            networkError: true
+            networkError: true,
+            retry: authError.retry !== false
           };
         }
         
@@ -139,11 +184,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw {
             status: 500,
             message: 'Server returned an invalid response format',
-            parseError: true
+            parseError: true,
+            retry: false
           };
         }
         
-        // Pass through other errors
+        // Pass through other errors with retry info
+        if (typeof authError === 'object') {
+          if (authError.retry === undefined) {
+            authError.retry = false; // Default to no retry if not specified
+          }
+        }
+        
         throw authError;
       }
       
@@ -174,11 +226,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(formattedUserData);
       setIsAuthenticated(true);
       
+      // Reset connection issues on successful login
+      setConnectionIssue(false);
+      
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError(err);
+      
+      // Format the error for consistent handling
+      const formattedError: AuthError = {
+        status: err.status || 500,
+        message: err.message || 'An unknown error occurred',
+        details: err.details || null,
+        retry: err.retry !== undefined ? err.retry : false,
+        networkError: err.networkError || false
+      };
+      
+      setError(formattedError);
       setIsAuthenticated(false);
+      
+      // Update connection issue state
+      setConnectionIssue(isInConnectionErrorState());
       
       return false;
     } finally {
@@ -193,6 +261,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('podio_user_data');
     setUser(null);
     setIsAuthenticated(false);
+    
+    // Reset connection issues on logout
+    setConnectionIssue(false);
     
     // Redirect to index/landing page after logout
     window.location.href = '/';
@@ -221,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err) {
       console.error('Reauthentication error:', err);
-      setError(err);
+      setError(err as AuthError);
       setIsAuthenticated(false);
       return false;
     }
@@ -236,6 +307,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated,
     forceReauthenticate,
     clearError,
+    connectionIssue,
+    retryStatus,
+    resetConnection
   };
 
   return (

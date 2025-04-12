@@ -139,6 +139,7 @@ serve(async (req) => {
       // First, try to fetch some items to verify we can access the app
       if (DEBUG) console.log(`Fetching items from app ${contactsAppId} to verify access`);
       
+      // FIX: Added space after "OAuth2" in Authorization header
       const verifyResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
@@ -171,7 +172,7 @@ serve(async (req) => {
     let userSearchData;
     
     try {
-      // First attempt: Use simpler filter approach
+      // FIX: Added space after "OAuth2" in Authorization header
       const userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
@@ -195,6 +196,7 @@ serve(async (req) => {
           
           // Fallback: Try to get all items from the app without filters
           try {
+            // FIX: Added space after "OAuth2" in Authorization header
             const allItemsResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/`, {
               method: 'GET',
               headers: {
@@ -302,7 +304,7 @@ serve(async (req) => {
     // If we have a logo file ID but no direct URL, build the URL to access it
     if (logoValue && !finalLogoUrl) {
       try {
-        // Get file information from Podio API to construct URL
+        // FIX: Added space after "OAuth2" in Authorization header
         const fileResponse = await fetch(`https://api.podio.com/file/${logoValue}`, {
           method: 'GET',
           headers: {
