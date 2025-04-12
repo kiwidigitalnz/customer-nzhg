@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -34,6 +35,26 @@ function getFieldValueByExternalId(item: any, externalId: string): any {
   return null;
 }
 
+// Helper to create consistent error responses
+function errorResponse(status: number, message: string, details: any = null) {
+  const errorBody = { 
+    error: message,
+    details: details,
+    status
+  };
+  
+  return new Response(
+    JSON.stringify(errorBody),
+    { 
+      status, 
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json' 
+      } 
+    }
+  );
+}
+
 // Set DEBUG mode to true for more verbose logging
 const DEBUG = true;
 
@@ -49,10 +70,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({ error: 'Supabase credentials not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('Missing Supabase configuration');
+      return errorResponse(500, 'Supabase credentials not configured');
     }
 
     // Create Supabase client with service key
@@ -66,21 +85,22 @@ serve(async (req) => {
         hasContactsAppId: !!contactsAppId
       });
       
-      return new Response(
-        JSON.stringify({ error: 'Podio Contacts App ID not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'Podio Contacts App ID not configured');
     }
 
     // Parse request data
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      console.error('Error parsing request body:', e);
+      return errorResponse(400, 'Invalid request body, JSON expected');
+    }
+    
     const { username, password } = requestData;
 
     if (!username || !password) {
-      return new Response(
-        JSON.stringify({ error: 'Username and password are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(400, 'Username and password are required');
     }
 
     // Get the stored Podio token from the database
@@ -92,17 +112,12 @@ serve(async (req) => {
 
     if (fetchError) {
       console.error('Error fetching Podio token:', fetchError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to retrieve Podio authentication', details: fetchError }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'Failed to retrieve Podio authentication', fetchError);
     }
 
     if (!tokens || tokens.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No Podio token found. Admin must authenticate with Podio first.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('No Podio tokens found');
+      return errorResponse(404, 'No Podio token found. Admin must authenticate with Podio first.');
     }
 
     const token = tokens[0];
@@ -113,10 +128,8 @@ serve(async (req) => {
     const now = Date.now();
     
     if (expiresAt <= now) {
-      return new Response(
-        JSON.stringify({ error: 'Podio token is expired and needs to be refreshed' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('Podio token is expired', { expiresAt, now });
+      return errorResponse(401, 'Podio token is expired and needs to be refreshed');
     }
     
     console.log('Using stored Podio token to search for user');
@@ -140,23 +153,17 @@ serve(async (req) => {
       if (!verifyResponse.ok) {
         const errorText = await verifyResponse.text();
         console.error(`Failed to verify app access: ${verifyResponse.status} - ${errorText}`);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to access Contacts app in Podio', 
-            details: errorText,
-            status: verifyResponse.status
-          }),
-          { status: verifyResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        return errorResponse(
+          verifyResponse.status, 
+          'Failed to access Contacts app in Podio', 
+          errorText
         );
       }
       
       if (DEBUG) console.log('Successfully verified app access');
     } catch (error) {
       console.error('Error verifying app access:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify app access', details: error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'Failed to verify app access', error.message);
     }
     
     // Use the correct filter format according to Podio API docs
@@ -199,12 +206,10 @@ serve(async (req) => {
             if (!allItemsResponse.ok) {
               const fallbackError = await allItemsResponse.text();
               console.error(`Fallback approach failed: ${allItemsResponse.status} - ${fallbackError}`);
-              return new Response(
-                JSON.stringify({ 
-                  error: 'Failed to search for user with fallback approach', 
-                  details: fallbackError
-                }),
-                { status: allItemsResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              return errorResponse(
+                allItemsResponse.status, 
+                'Failed to search for user with fallback approach', 
+                fallbackError
               );
             }
             
@@ -217,12 +222,10 @@ serve(async (req) => {
                 allItemsData ? Object.keys(allItemsData) : 'null/undefined'
               );
               
-              return new Response(
-                JSON.stringify({ 
-                  error: 'Unexpected response format from Podio. Please check the logs.',
-                  details: 'Expected array of items in response'
-                }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              return errorResponse(
+                500,
+                'Unexpected response format from Podio. Please check the logs.',
+                'Expected array of items in response'
               );
             }
             
@@ -238,28 +241,20 @@ serve(async (req) => {
             }
             
             if (matchingItems.length === 0) {
-              return new Response(
-                JSON.stringify({ error: 'User not found' }),
-                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
+              console.log('User not found after fallback search:', username);
+              return errorResponse(404, 'User not found');
             }
             
             userSearchData = { items: matchingItems };
           } catch (fallbackError) {
             console.error('Error during fallback search:', fallbackError);
-            return new Response(
-              JSON.stringify({ error: 'Search fallback failed', details: fallbackError.message }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            return errorResponse(500, 'Search fallback failed', fallbackError.message);
           }
         } else {
-          return new Response(
-            JSON.stringify({ 
-              error: 'Failed to search for user in Contacts app', 
-              details: errorText,
-              status: userSearchResponse.status
-            }),
-            { status: userSearchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          return errorResponse(
+            userSearchResponse.status, 
+            'Failed to search for user in Contacts app', 
+            errorText
           );
         }
       } else {
@@ -267,20 +262,14 @@ serve(async (req) => {
       }
     } catch (error) {
       console.error('Error during user search request:', error);
-      return new Response(
-        JSON.stringify({ error: 'Network error during user search', details: error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(500, 'Network error during user search', error.message);
     }
     
     if (DEBUG) console.log(`Found ${userSearchData?.items?.length || 0} matching users`);
     
     if (!userSearchData?.items || userSearchData.items.length === 0) {
       console.log('User not found:', username);
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(404, 'User not found');
     }
 
     const userItem = userSearchData.items[0];
@@ -291,18 +280,12 @@ serve(async (req) => {
     
     if (!storedPassword) {
       console.log('User found but no password field:', username);
-      return new Response(
-        JSON.stringify({ error: 'User password not set' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(401, 'User password not set');
     }
     
     if (storedPassword !== password) {
       console.log('Invalid password for user:', username);
-      return new Response(
-        JSON.stringify({ error: 'Invalid password' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse(401, 'Invalid password');
     }
 
     console.log('User authenticated successfully:', username);
@@ -361,9 +344,6 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error authenticating user:', error);
     
-    return new Response(
-      JSON.stringify({ error: 'Failed to authenticate user', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return errorResponse(500, 'Failed to authenticate user', error.message);
   }
 });

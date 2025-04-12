@@ -19,12 +19,14 @@ const LoginForm = () => {
   const [authenticating, setAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   const { login, loading, error } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const loginAttemptInProgress = useRef(false);
   const loginButtonRef = useRef<HTMLButtonElement>(null);
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const MAX_RETRIES = 2;
 
   // Simulate progress during login to provide feedback
   useEffect(() => {
@@ -52,6 +54,54 @@ const LoginForm = () => {
       };
     }
   }, [authenticating]);
+
+  const parseErrorMessage = (error: any): string => {
+    if (!error) return 'An unknown error occurred';
+    
+    // Handle string errors
+    if (typeof error === 'string') return error;
+    
+    // Handle error objects
+    if (typeof error === 'object') {
+      // Check for specific error properties in order of preference
+      if (error.message) return error.message;
+      if (error.error) return typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+      if (error.details) return typeof error.details === 'string' ? error.details : JSON.stringify(error.details);
+      
+      // If it's a network error or unexpected format, check for status
+      if (error.status) {
+        if (error.status === 404) return 'User not found. Please check your username.';
+        if (error.status === 401) return 'Invalid credentials. Please try again.';
+        if (error.status === 429) return 'Too many login attempts. Please try again later.';
+        if (error.status >= 500) return 'Server error. Please try again later.';
+        return `Error ${error.status}: ${error.statusText || 'Something went wrong'}`;
+      }
+      
+      // Last resort: stringify the object
+      return JSON.stringify(error);
+    }
+    
+    return 'Login failed. Please try again.';
+  };
+
+  const shouldRetry = (error: any): boolean => {
+    // Only retry for network issues or 5xx errors
+    if (retryCount >= MAX_RETRIES) return false;
+    
+    if (typeof error === 'object') {
+      // Network error
+      if (error.message && (
+        error.message.includes('network') || 
+        error.message.includes('connection') ||
+        error.message.includes('timeout')
+      )) return true;
+      
+      // Server error (5xx)
+      if (error.status && error.status >= 500) return true;
+    }
+    
+    return false;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +146,25 @@ const LoginForm = () => {
         
         navigate('/dashboard');
       } else if (error) {
-        // Parse error message
-        const errorMsg = typeof error === 'object' && error !== null 
-          ? error.message || 'Login failed' 
-          : String(error);
-          
+        // Parse and handle error
+        const errorMsg = parseErrorMessage(error);
         setLoginError(errorMsg);
+        
+        // Check if we should retry
+        if (shouldRetry(error)) {
+          setRetryCount(prev => prev + 1);
+          toast({
+            title: 'Connection issue',
+            description: 'Retrying login...',
+            variant: 'default',
+          });
+          
+          // Small delay before retry
+          setTimeout(() => {
+            handleSubmit(e);
+          }, 1000);
+          return;
+        }
         
         toast({
           title: 'Login Failed',
@@ -111,16 +174,7 @@ const LoginForm = () => {
       }
     } catch (loginErr: any) {
       // Enhanced error handling with more specific messages
-      let errorMessage = loginErr instanceof Error ? loginErr.message : 'An error occurred during login';
-      
-      // Check for common error patterns and provide more user-friendly messages
-      if (errorMessage.includes('User not found')) {
-        errorMessage = 'Username not found. Please check your username or contact support.';
-      } else if (errorMessage.includes('Invalid password')) {
-        errorMessage = 'Incorrect password. Please try again.';
-      } else if (errorMessage.includes('Network error')) {
-        errorMessage = 'Connection problem. Please check your internet connection and try again.';
-      }
+      const errorMessage = parseErrorMessage(loginErr);
       
       setLoginError(errorMessage);
       
@@ -153,6 +207,11 @@ const LoginForm = () => {
 
   // Display either the component's local error or the error from the auth context
   const displayError = loginError || (typeof error === 'string' ? error : error?.message);
+
+  // Reset retry count when inputs change
+  useEffect(() => {
+    setRetryCount(0);
+  }, [username, password]);
 
   return (
     <Card className="w-full max-w-md shadow-lg border-gray-100">

@@ -1,3 +1,4 @@
+
 // Core authentication service for Podio integration
 import { supabase } from '@/integrations/supabase/client';
 
@@ -91,6 +92,13 @@ const TOKEN_REFRESH_BUFFER = 2 * 60 * 60 * 1000;
 // Track active token refresh to prevent multiple concurrent attempts
 let tokenRefreshInProgress = false;
 let tokenRefreshPromise: Promise<boolean> | null = null;
+
+// Global typings needed for global variable
+declare global {
+  interface Window {
+    podioTokenRefreshInterval: number | null;
+  }
+}
 
 // Clear auth tokens and sensitive data
 export const clearTokens = (): void => {
@@ -221,7 +229,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     });
     
     if (error) {
-      throw new Error(error.message || 'Authentication failed');
+      console.error('Authentication error from edge function:', error);
+      throw {
+        status: error.status || 500,
+        message: error.message || 'Authentication failed',
+        edge: true
+      };
     }
     
     if (!data) {
@@ -229,7 +242,12 @@ export const authenticateUser = async (username: string, password: string): Prom
     }
     
     if (data.error) {
-      throw new Error(data.error);
+      // If the server returns a structured error
+      throw {
+        status: data.status || 401,
+        message: data.error || 'Authentication failed',
+        details: data.details || null
+      };
     }
     
     // If authentication successful, ensure token refresh is set up
@@ -237,6 +255,19 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     return data;
   } catch (error) {
+    // Log the error for debugging
+    console.error('Error during authentication:', error);
+    
+    // Format fetch errors better
+    if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw {
+        status: 0,
+        message: 'Network error: Unable to reach authentication service',
+        networkError: true
+      };
+    }
+    
+    // Rethrow the error for the calling code to handle
     throw error;
   }
 };

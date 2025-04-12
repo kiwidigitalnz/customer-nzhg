@@ -29,6 +29,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   forceReauthenticate: () => Promise<boolean>;
+  clearError: () => void;
 }
 
 // Create context with default values
@@ -40,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   isAuthenticated: false,
   forceReauthenticate: async () => false,
+  clearError: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -70,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       } catch (err) {
+        console.error('Error checking authentication:', err);
         setError(err);
         setIsAuthenticated(false);
       } finally {
@@ -99,7 +102,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Login method
+  // Clear error state
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // Login method with enhanced error handling
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
@@ -110,10 +118,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Call the function for user authentication
-      const userData = await authenticateUser(username, password);
+      let userData;
+      try {
+        userData = await authenticateUser(username, password);
+      } catch (authError: any) {
+        // Check if this is a network or fetch error
+        if (authError instanceof Error && 
+           (authError.message.includes('fetch') || 
+            authError.message.includes('network') || 
+            authError.message.includes('Failed to fetch'))) {
+          throw {
+            status: 0,
+            message: 'Network error: Unable to connect to the authentication service',
+            networkError: true
+          };
+        }
+        
+        // Check if this is a JSON parse error (invalid response)
+        if (authError instanceof SyntaxError && authError.message.includes('JSON')) {
+          throw {
+            status: 500,
+            message: 'Server returned an invalid response format',
+            parseError: true
+          };
+        }
+        
+        // Pass through other errors
+        throw authError;
+      }
       
       if (!userData) {
         throw new Error('Empty response from authentication service');
+      }
+      
+      // Check for error in the response
+      if (userData.error) {
+        throw userData;
       }
       
       // Store user data in localStorage - ensure podioItemId is included
@@ -136,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return true;
     } catch (err) {
+      console.error('Login error:', err);
       setError(err);
       setIsAuthenticated(false);
       
@@ -179,6 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       return true;
     } catch (err) {
+      console.error('Reauthentication error:', err);
       setError(err);
       setIsAuthenticated(false);
       return false;
@@ -193,6 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     isAuthenticated,
     forceReauthenticate,
+    clearError,
   };
 
   return (
