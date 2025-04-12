@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,14 +84,12 @@ const SimplePodioSetupPage = () => {
           const expiryDate = new Date(data.expires_at);
           setLastAuth(expiryDate.toLocaleString());
           
-          // Calculate time until expiry
           updateExpiryInfo(expiryDate);
           
-          // Start the interval to update the expiry countdown
           if (intervalId === null) {
             const id = window.setInterval(() => {
               updateExpiryInfo(expiryDate);
-            }, 60000); // Update every minute
+            }, 60000);
             setIntervalId(id);
           }
         } else {
@@ -105,7 +102,6 @@ const SimplePodioSetupPage = () => {
     
     checkPodioConnection();
     
-    // Cleanup interval on unmount
     return () => {
       if (intervalId !== null) {
         window.clearInterval(intervalId);
@@ -123,14 +119,12 @@ const SimplePodioSetupPage = () => {
       return;
     }
     
-    // Calculate hours and minutes remaining
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     
     setTimeUntilExpiry(`${diffHrs}h ${diffMins}m`);
     
-    // Calculate percentage for progress bar (assuming 8 hour token life)
-    const totalMs = 8 * 60 * 60 * 1000; // 8 hours in ms
+    const totalMs = 8 * 60 * 60 * 1000;
     const elapsed = totalMs - diffMs;
     const percentage = Math.max(0, Math.min(100, 100 - (elapsed / totalMs * 100)));
     setExpiryPercentage(percentage);
@@ -187,10 +181,8 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      // Store state in localStorage for verification when callback happens
       localStorage.setItem('podio_oauth_state', data.state);
       
-      // Redirect to the Podio authorization URL
       window.location.href = data.authUrl;
       
     } catch (error) {
@@ -226,7 +218,6 @@ const SimplePodioSetupPage = () => {
         const expiryDate = new Date(data.expires_at);
         setLastAuth(expiryDate.toLocaleString());
         
-        // Update expiry info
         updateExpiryInfo(expiryDate);
         
         toast({
@@ -344,60 +335,52 @@ const SimplePodioSetupPage = () => {
                 </AlertDescription>
               </Alert>
             )}
-            
-            <Alert className="bg-blue-50 border-blue-100">
-              <Info className="h-4 w-4 text-blue-500" />
-              <AlertTitle className="text-blue-700">How OAuth Works</AlertTitle>
-              <AlertDescription className="text-blue-600 text-sm">
-                <p>This process authenticates your application with Podio to access data:</p>
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Click "Connect to Podio" below</li>
-                  <li>Sign in to Podio and authorize this application</li>
-                  <li>A secure connection will be established</li>
-                  <li>All users of the portal can use this shared connection</li>
-                </ol>
-                <p className="mt-2">The connection refreshes automatically for uninterrupted service.</p>
-              </AlertDescription>
-            </Alert>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={handleRefreshStatus}
-              disabled={isLoading || !supabaseConnected}
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Checking...
-                </>
-              ) : 'Refresh Status'}
-            </Button>
-            
-            <div className="space-x-2">
-              {podioConnected && (
-                <Button onClick={goToDashboard}>
-                  Go to Dashboard
-                </Button>
-              )}
-              
+          <CardFooter>
+            <div className="w-full flex flex-col sm:flex-row sm:justify-between gap-2">
               <Button 
-                onClick={handleConnectPodio}
+                variant="outline" 
+                onClick={handleRefreshStatus}
                 disabled={isLoading || !supabaseConnected}
-                variant={podioConnected ? 'outline' : 'default'}
+                className="w-full sm:w-auto"
               >
                 {isLoading ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
+                    Checking...
                   </>
-                ) : (
-                  <>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    {podioConnected ? 'Reconnect to Podio' : 'Connect to Podio'}
-                  </>
-                )}
+                ) : 'Refresh Status'}
               </Button>
+              
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                {podioConnected && (
+                  <Button 
+                    onClick={goToDashboard}
+                    className="w-full sm:w-auto"
+                  >
+                    Go to Dashboard
+                  </Button>
+                )}
+                
+                <Button 
+                  onClick={handleConnectPodio}
+                  disabled={isLoading || !supabaseConnected}
+                  variant={podioConnected ? 'outline' : 'default'}
+                  className="w-full sm:w-auto"
+                >
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      {podioConnected ? 'Reconnect to Podio' : 'Connect to Podio'}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardFooter>
         </Card>
