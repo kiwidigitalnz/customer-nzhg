@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   clearTokens,
@@ -175,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 0,
             message: 'Network error: Unable to connect to the authentication service',
             networkError: true,
-            retry: authError.retry !== false
+            retry: true // Default to allowing retry for network errors
           };
         }
         
@@ -190,13 +189,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         // Pass through other errors with retry info
+        // Make sure we're handling a custom auth error with retry property
+        // or a standard error without it
         if (typeof authError === 'object') {
-          if (authError.retry === undefined) {
-            authError.retry = false; // Default to no retry if not specified
-          }
+          // Use custom auth error fields if they exist, or create a new error object
+          throw {
+            status: authError.status || 500,
+            message: authError.message || 'Authentication failed',
+            details: authError.details || null,
+            retry: authError.retry !== undefined ? authError.retry : false,
+            networkError: authError.networkError || false
+          };
+        } else {
+          // For standard errors without retry property
+          throw {
+            status: 500,
+            message: authError.message || 'Authentication failed',
+            retry: false
+          };
         }
-        
-        throw authError;
       }
       
       if (!userData) {
@@ -238,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: err.status || 500,
         message: err.message || 'An unknown error occurred',
         details: err.details || null,
-        retry: err.retry !== undefined ? err.retry : false,
+        retry: typeof err.retry === 'boolean' ? err.retry : false, // Ensure retry is a boolean
         networkError: err.networkError || false
       };
       
