@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, LogIn, User, Lock, EyeOff, Eye, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -363,14 +362,12 @@ const LoginForm = () => {
             className="w-full bg-blue-600 hover:bg-blue-700" 
             disabled={isLoading || connectionIssue}
           >
-            {isLoading ? (
-              <LoadingSpinner size="sm" text={connectionIssue ? 'Reconnecting...' : 'Logging in...'} />
-            ) : connectionIssue ? (
+            {connectionIssue ? (
               <WifiOff className="mr-2 h-4 w-4" />
             ) : (
               <LogIn className="mr-2 h-4 w-4" />
             )}
-            {isLoading ? 'Loading...' : connectionIssue ? 'Reconnect Required' : 'Log In'}
+            {connectionIssue ? 'Reconnect Required' : 'Log In'}
           </Button>
         </form>
       </CardContent>
