@@ -286,10 +286,7 @@ const LoginForm = () => {
         )}
         
         {isLoading && (
-          <div className="mb-4">
-            <Progress value={loadingProgress} className="h-1 mb-2" />
-            <p className="text-xs text-center text-muted-foreground">Authenticating...</p>
-          </div>
+          <Progress value={loadingProgress} className="h-1 mb-2" />
         )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -367,13 +364,13 @@ const LoginForm = () => {
             disabled={isLoading || connectionIssue}
           >
             {isLoading ? (
-              <LoadingSpinner size="sm" className="mr-2" />
+              <LoadingSpinner size="sm" text={connectionIssue ? 'Reconnecting...' : 'Logging in...'} />
             ) : connectionIssue ? (
               <WifiOff className="mr-2 h-4 w-4" />
             ) : (
               <LogIn className="mr-2 h-4 w-4" />
             )}
-            {isLoading ? 'Logging in...' : connectionIssue ? 'Reconnect Required' : 'Log In'}
+            {isLoading ? 'Loading...' : connectionIssue ? 'Reconnect Required' : 'Log In'}
           </Button>
         </form>
       </CardContent>
