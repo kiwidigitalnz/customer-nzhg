@@ -6,7 +6,6 @@ import {
   getPackingSpecsForContact, 
   PackingSpec
 } from '../services/podioApi';
-import { SpecStatus } from '@/components/packing-spec/StatusBadge';
 
 interface CategorizedSpecs {
   pending: PackingSpec[];

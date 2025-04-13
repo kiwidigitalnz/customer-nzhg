@@ -1,8 +1,6 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../hooks/use-toast';
 import { usePackingSpecs } from '../hooks/usePackingSpecs';
 import { 
   Building, 
@@ -16,8 +14,7 @@ import {
   CardHeader, 
   CardTitle, 
   CardDescription, 
-  CardContent,
-  CardFooter
+  CardContent
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -34,19 +31,15 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
-import { Badge } from '@/components/ui/badge';
 
 const Dashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'changes' | 'all'>('pending');
   
   // Use our hook for data fetching
   const { 
     specs,
     loading, 
-    error: fetchError, 
     isRateLimitReached, 
     refetch 
   } = usePackingSpecs();

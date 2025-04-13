@@ -18,7 +18,6 @@ export {
   isRateLimitedWithInfo,
   setRateLimit,
   clearRateLimit,
-  clearRateLimitInfo,
   cacheUserData,
   getCachedUserData
 } from './podio/podioAuth';
@@ -42,7 +41,7 @@ export {
   type PackingSpec
 } from './podio/podioPackingSpecs';
 
-// Export field helper functions from the correct file
+// Export field helper functions
 export {
   getFieldValueByExternalId,
   getFieldIdValue,
@@ -59,5 +58,5 @@ export {
   type CommentItem
 } from './podio/podioComments';
 
-// Export file upload related functions from the dedicated file
+// Export file upload related functions
 export { uploadFileToPodio, shouldProceedWithoutSignature } from './podio/podioFiles';
