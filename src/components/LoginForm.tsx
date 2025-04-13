@@ -56,6 +56,22 @@ const LoginForm = () => {
     if (typeof error === 'string') return { message: error };
     
     if (typeof error === 'object') {
+      if (error.data && typeof error.data === 'object') {
+        if (error.data.error) {
+          return { 
+            message: error.data.error,
+            details: error.data.details ? JSON.stringify(error.data.details) : undefined
+          };
+        }
+        
+        if (error.data.message) {
+          return { 
+            message: error.data.message,
+            details: error.data.details ? JSON.stringify(error.data.details) : undefined
+          };
+        }
+      }
+      
       if (error.message) {
         if (error.message.includes('Edge Function returned a non-2xx status code')) {
           if (error.details) {
@@ -64,6 +80,17 @@ const LoginForm = () => {
               details: typeof error.details === 'string' 
                 ? error.details 
                 : JSON.stringify(error.details)
+            };
+          }
+          
+          if (error.data) {
+            const dataMessage = typeof error.data === 'object' ? 
+              (error.data.error || error.data.message || JSON.stringify(error.data)) : 
+              String(error.data);
+              
+            return { 
+              message: 'Authentication failed: ' + dataMessage,
+              details: typeof error.data === 'object' ? JSON.stringify(error.data) : undefined
             };
           }
           
@@ -83,7 +110,10 @@ const LoginForm = () => {
             }
           }
           
-          return { message: 'Server error. Please try again later.' };
+          return { 
+            message: 'Server error. Please try again later.', 
+            details: 'Edge function returned a non-2xx status code. The server may need configuration.'
+          };
         }
         
         return { message: error.message };

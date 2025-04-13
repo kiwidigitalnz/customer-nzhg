@@ -118,6 +118,7 @@ export interface PodioAuthError {
   retry?: boolean;
   networkError?: boolean;
   edge?: boolean;
+  data?: any; // Add data field to capture additional error information
 }
 
 // Clear auth tokens and sensitive data
@@ -189,6 +190,21 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       
       if (error) {
         console.error('Token refresh error:', error);
+        
+        // Check for specific error cases in the response data
+        if (error.message && error.message.includes('Edge Function returned a non-2xx status code') && error.data) {
+          const errorData = error.data;
+          
+          // Check if this is a configuration issue needing setup
+          if (errorData.needs_setup || errorData.needs_reauth) {
+            // Signal to the UI that reauthorization is needed
+            window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+            return false;
+          }
+          
+          // Log detailed error information for debugging
+          console.error('Token refresh specific error:', errorData);
+        }
         
         // Handle specific error case where reauthorization is needed
         if (error.message && error.message.includes('needs_reauth')) {
@@ -320,13 +336,15 @@ export const authenticateUser = async (username: string, password: string): Prom
     }
 
     // Call the Edge Function to find the user in the Contacts app
-    const { data, error } = await supabase.functions.invoke('podio-user-auth', {
+    const response = await supabase.functions.invoke('podio-user-auth', {
       method: 'POST',
       body: {
         username,
         password
       }
     });
+    
+    const { data, error } = response;
     
     if (error) {
       console.error('Authentication error from edge function:', error);
@@ -346,8 +364,10 @@ export const authenticateUser = async (username: string, password: string): Prom
       if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
         try {
           // Check if we have error details in data
-          if (data && typeof data === 'object') {
-            edgeErrorDetails = data;
+          if (response.data && typeof response.data === 'object') {
+            edgeErrorDetails = response.data;
+          } else if (error.data && typeof error.data === 'object') {
+            edgeErrorDetails = error.data;
           }
         } catch (parseError) {
           console.error('Failed to parse edge function error details:', parseError);
@@ -356,20 +376,30 @@ export const authenticateUser = async (username: string, password: string): Prom
       
       // If we have detailed edge error information, use it
       if (edgeErrorDetails) {
-        throw {
+        const errorObj: PodioAuthError = {
           status: edgeErrorDetails.status || error.status || 500,
           message: edgeErrorDetails.error || error.message,
           details: edgeErrorDetails.details || null,
           edge: true,
+          data: edgeErrorDetails,
           retry: authRetryCount < MAX_AUTH_RETRIES && 
                 !(edgeErrorDetails.status === 401 || edgeErrorDetails.status === 404) // Don't retry auth errors
-        } as PodioAuthError;
+        };
+        
+        // Special handling for setup errors
+        if (edgeErrorDetails.needs_setup) {
+          errorObj.message = 'Podio integration requires setup. Please contact admin.';
+          errorObj.retry = false;
+        }
+        
+        throw errorObj;
       } else {
         // Otherwise use the generic error
         throw {
           status: error.status || 500,
           message: error.message || 'Authentication failed',
           edge: true,
+          data: error.data,
           retry: authRetryCount < MAX_AUTH_RETRIES
         } as PodioAuthError;
       }
@@ -385,6 +415,7 @@ export const authenticateUser = async (username: string, password: string): Prom
         status: data.status || 401,
         message: data.error || 'Authentication failed',
         details: data.details || null,
+        data: data,
         retry: authRetryCount < MAX_AUTH_RETRIES && 
                data.status !== 401 && // Don't retry invalid credentials
                data.status !== 404    // Don't retry user not found
@@ -415,7 +446,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     }
     
     // Ensure error is properly formatted before rethrowing
-    if (!(error as PodioAuthError).status) {
+    if (typeof error === 'object' && !(error as PodioAuthError).status) {
       const formattedError: PodioAuthError = {
         status: 500,
         message: error instanceof Error ? error.message : 'Unknown authentication error',

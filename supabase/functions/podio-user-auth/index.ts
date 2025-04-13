@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -87,7 +86,9 @@ serve(async (req) => {
         hasContactsAppId: !!contactsAppId
       });
       
-      return errorResponse(500, 'Podio Contacts App ID not configured');
+      return errorResponse(500, 'Podio Contacts App ID not configured', {
+        needs_setup: true
+      });
     }
 
     // Parse request data
@@ -119,7 +120,9 @@ serve(async (req) => {
 
     if (!tokens || tokens.length === 0) {
       console.error('No Podio tokens found');
-      return errorResponse(404, 'No Podio token found. Admin must authenticate with Podio first.');
+      return errorResponse(404, 'No Podio token found. Admin must authenticate with Podio first.', {
+        needs_setup: true
+      });
     }
 
     const token = tokens[0];
@@ -131,7 +134,9 @@ serve(async (req) => {
     
     if (expiresAt <= now) {
       console.error('Podio token is expired', { expiresAt, now });
-      return errorResponse(401, 'Podio token is expired and needs to be refreshed');
+      return errorResponse(401, 'Podio token is expired and needs to be refreshed', {
+        needs_refresh: true
+      });
     }
     
     console.log('Using stored Podio token to search for user');
@@ -156,10 +161,18 @@ serve(async (req) => {
       if (!verifyResponse.ok) {
         const errorText = await verifyResponse.text();
         console.error(`Failed to verify app access: ${verifyResponse.status} - ${errorText}`);
+        
+        let errorDetails;
+        try {
+          errorDetails = JSON.parse(errorText);
+        } catch (e) {
+          errorDetails = errorText;
+        }
+        
         return errorResponse(
           verifyResponse.status, 
           'Failed to access Contacts app in Podio', 
-          errorText
+          errorDetails
         );
       }
       
