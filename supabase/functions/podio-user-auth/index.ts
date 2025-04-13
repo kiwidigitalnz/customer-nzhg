@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -7,9 +8,15 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Helper to get field value by external ID
+// Set DEBUG mode for verbose logging
+const DEBUG = true;
+
+// Helper to get field value by external ID - with enhanced type safety
 function getFieldValueByExternalId(item: any, externalId: string): any {
-  if (!item || !item.fields) return null;
+  if (!item || !item.fields) {
+    console.log(`No fields found in item for external ID: ${externalId}`);
+    return null;
+  }
   
   for (const field of item.fields) {
     if (field.external_id === externalId) {
@@ -28,10 +35,37 @@ function getFieldValueByExternalId(item: any, externalId: string): any {
         } else {
           return field.values[0];
         }
+      } else {
+        console.log(`Field ${externalId} found but has no values`);
       }
+      return null;
     }
   }
+  
+  console.log(`Field with external ID ${externalId} not found`);
   return null;
+}
+
+// Normalize string values for safe comparison
+function normalizeString(str: string | null | undefined): string {
+  if (str === null || str === undefined) {
+    return '';
+  }
+  // Remove extra whitespace and convert to lowercase for case-insensitive comparison
+  return str.trim();
+}
+
+// Secure string comparison that avoids timing attacks
+function secureCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 // Helper to create consistent error responses
@@ -55,9 +89,6 @@ function errorResponse(status: number, message: string, details: any = null) {
     }
   );
 }
-
-// Set DEBUG mode to true for more verbose logging
-const DEBUG = true;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -102,9 +133,17 @@ serve(async (req) => {
     
     const { username, password } = requestData;
 
-    if (!username || !password) {
-      return errorResponse(400, 'Username and password are required');
+    // Validate input parameters
+    if (!username) {
+      return errorResponse(400, 'Username is required');
     }
+    
+    if (!password) {
+      return errorResponse(400, 'Password is required');
+    }
+    
+    // Log sanitized auth attempt (no passwords)
+    console.log(`Authentication attempt for username: ${username}`);
 
     // Get the stored Podio token from the database
     const { data: tokens, error: fetchError } = await supabase
@@ -146,7 +185,6 @@ serve(async (req) => {
       // First, try to fetch some items to verify we can access the app
       if (DEBUG) console.log(`Fetching items from app ${contactsAppId} to verify access`);
       
-      // FIX: Added space after "OAuth2" in Authorization header
       const verifyResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
@@ -187,7 +225,7 @@ serve(async (req) => {
     let userSearchData;
     
     try {
-      // FIX: Added space after "OAuth2" in Authorization header
+      // Search for user by username
       const userSearchResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/filter/`, {
         method: 'POST',
         headers: {
@@ -211,7 +249,6 @@ serve(async (req) => {
           
           // Fallback: Try to get all items from the app without filters
           try {
-            // FIX: Added space after "OAuth2" in Authorization header
             const allItemsResponse = await fetch(`https://api.podio.com/item/app/${contactsAppId}/`, {
               method: 'GET',
               headers: {
@@ -248,11 +285,11 @@ serve(async (req) => {
             
             console.log(`Found ${allItemsData.length} total items, filtering for username: ${username}`);
             
-            // Manually filter for the user with matching username
+            // Manually filter for the user with matching username (case-insensitive)
             const matchingItems = [];
             for (const item of allItemsData) {
               const itemUsername = getFieldValueByExternalId(item, 'customer-portal-username');
-              if (itemUsername === username) {
+              if (itemUsername && normalizeString(itemUsername).toLowerCase() === normalizeString(username).toLowerCase()) {
                 matchingItems.push(item);
               }
             }
@@ -295,12 +332,28 @@ serve(async (req) => {
     // Extract stored password and check
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
     
+    if (DEBUG) {
+      // Log sanitized password info (length and presence check only - no actual passwords)
+      console.log('Password validation:');
+      console.log(`- Stored password present: ${!!storedPassword}`);
+      console.log(`- Stored password length: ${storedPassword ? storedPassword.length : 0}`);
+      console.log(`- Input password present: ${!!password}`);
+      console.log(`- Input password length: ${password ? password.length : 0}`);
+    }
+    
     if (!storedPassword) {
       console.log('User found but no password field:', username);
       return errorResponse(401, 'User password not set');
     }
     
-    if (storedPassword !== password) {
+    // Normalize both passwords for comparison
+    const normalizedInput = normalizeString(password);
+    const normalizedStored = normalizeString(storedPassword);
+    
+    // Use constant-time comparison to prevent timing attacks
+    const passwordsMatch = secureCompare(normalizedInput, normalizedStored);
+    
+    if (!passwordsMatch) {
       console.log('Invalid password for user:', username);
       return errorResponse(401, 'Invalid password');
     }
@@ -319,7 +372,6 @@ serve(async (req) => {
     // If we have a logo file ID but no direct URL, build the URL to access it
     if (logoValue && !finalLogoUrl) {
       try {
-        // FIX: Added space after "OAuth2" in Authorization header
         const fileResponse = await fetch(`https://api.podio.com/file/${logoValue}`, {
           method: 'GET',
           headers: {
