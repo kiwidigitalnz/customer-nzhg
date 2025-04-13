@@ -40,6 +40,7 @@ const Dashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'changes' | 'all'>('pending');
   
   // Use our hook for data fetching
   const { 
@@ -70,6 +71,10 @@ const Dashboard = () => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const handleCardClick = (tabValue: 'pending' | 'approved' | 'changes' | 'all') => {
+    setActiveTab(tabValue);
   };
 
   return (
@@ -117,7 +122,10 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300">
+        <Card 
+          className={`bg-gradient-to-br from-card to-amber-50/50 shadow-sm border-amber-100 hover:shadow-md transition-all duration-300 cursor-pointer ${activeTab === 'pending' ? 'ring-2 ring-amber-400 ring-opacity-50' : ''}`}
+          onClick={() => handleCardClick('pending')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <PackageCheck className="h-5 w-5 text-amber-600" /> Pending Approval
@@ -134,7 +142,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-card to-green-50/50 shadow-sm border-green-100 hover:shadow-md transition-all duration-300">
+        <Card 
+          className={`bg-gradient-to-br from-card to-green-50/50 shadow-sm border-green-100 hover:shadow-md transition-all duration-300 cursor-pointer ${activeTab === 'approved' ? 'ring-2 ring-green-400 ring-opacity-50' : ''}`}
+          onClick={() => handleCardClick('approved')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" /> Approved
@@ -151,7 +162,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-card to-red-50/50 shadow-sm border-red-100 hover:shadow-md transition-all duration-300">
+        <Card 
+          className={`bg-gradient-to-br from-card to-red-50/50 shadow-sm border-red-100 hover:shadow-md transition-all duration-300 cursor-pointer ${activeTab === 'changes' ? 'ring-2 ring-red-400 ring-opacity-50' : ''}`}
+          onClick={() => handleCardClick('changes')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" /> Changes Requested
@@ -169,7 +183,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="pending" className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
         <TabsList className="mb-4 bg-muted/70 p-1 rounded-lg">
           <TabsTrigger value="pending" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm">
             Pending ({specs.pending.length})
