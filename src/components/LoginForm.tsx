@@ -55,6 +55,16 @@ const LoginForm = () => {
     if (typeof error === 'string') return { message: error };
     
     if (typeof error === 'object') {
+      if (error.status === 401) {
+        if (error.message && error.message.toLowerCase().includes('invalid password')) {
+          return { message: 'Invalid password. Please try again.' };
+        }
+        if (error.message && error.message.toLowerCase().includes('user password not set')) {
+          return { message: 'Your account password has not been set. Please contact support.' };
+        }
+        return { message: 'Invalid credentials. Please check your username and password.' };
+      }
+      
       if (error.data && typeof error.data === 'object') {
         if (error.data.error) {
           return { 

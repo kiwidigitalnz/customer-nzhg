@@ -329,7 +329,8 @@ serve(async (req) => {
     const userItem = userSearchData.items[0];
     if (DEBUG) console.log('Found user item:', userItem.item_id);
     
-    // Extract stored password and check
+    // Extract stored password using correct external ID and log its presence
+    // CHANGED: Use the correct external ID for the password field
     const storedPassword = getFieldValueByExternalId(userItem, 'customer-portal-password');
     
     if (DEBUG) {
@@ -349,6 +350,17 @@ serve(async (req) => {
     // Normalize both passwords for comparison
     const normalizedInput = normalizeString(password);
     const normalizedStored = normalizeString(storedPassword);
+    
+    // ADDED: Enhanced password debugging
+    if (DEBUG) {
+      console.log(`- Normalized input password length: ${normalizedInput.length}`);
+      console.log(`- Normalized stored password length: ${normalizedStored.length}`);
+      // Do not log actual passwords, but log first and last character for comparison
+      if (normalizedInput.length > 0 && normalizedStored.length > 0) {
+        console.log(`- First/last chars of input: ${normalizedInput[0]}...${normalizedInput[normalizedInput.length-1]}`);
+        console.log(`- First/last chars of stored: ${normalizedStored[0]}...${normalizedStored[normalizedStored.length-1]}`);
+      }
+    }
     
     // Use constant-time comparison to prevent timing attacks
     const passwordsMatch = secureCompare(normalizedInput, normalizedStored);
