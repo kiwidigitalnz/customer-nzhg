@@ -43,6 +43,8 @@ function errorResponse(status: number, message: string, details: any = null) {
     status
   };
   
+  console.error(`Error ${status}: ${message}`, details);
+  
   return new Response(
     JSON.stringify(errorBody),
     { 

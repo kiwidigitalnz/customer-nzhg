@@ -7,7 +7,8 @@ import {
   cleanupTokenRefreshInterval,
   resetConnectionError,
   isInConnectionErrorState,
-  getRetryStatus
+  getRetryStatus,
+  PodioAuthError
 } from '../services/podio/podioAuth';
 import { supabase } from '../integrations/supabase/client';
 
@@ -22,20 +23,11 @@ export interface UserData {
   logoUrl?: string;
 }
 
-// Error interface with retry information
-interface AuthError {
-  status?: number;
-  message: string;
-  details?: any;
-  retry?: boolean;
-  networkError?: boolean;
-}
-
 // Auth context interface
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
-  error: AuthError | null;
+  error: PodioAuthError | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -66,7 +58,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<AuthError | null>(null);
+  const [error, setError] = useState<PodioAuthError | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
   
@@ -106,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         console.error('Error checking authentication:', err);
-        setError(err as AuthError);
+        setError(err as PodioAuthError);
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
@@ -157,7 +149,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       if (!username || !password) {
-        throw new Error('Username and password are required');
+        throw {
+          status: 400,
+          message: 'Username and password are required',
+          retry: false
+        } as PodioAuthError;
       }
 
       // Call the function for user authentication
@@ -175,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             message: 'Network error: Unable to connect to the authentication service',
             networkError: true,
             retry: true // Default to allowing retry for network errors
-          };
+          } as PodioAuthError;
         }
         
         // Check if this is a JSON parse error (invalid response)
@@ -185,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             message: 'Server returned an invalid response format',
             parseError: true,
             retry: false
-          };
+          } as PodioAuthError;
         }
         
         // Pass through other errors with retry info
@@ -199,14 +195,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             details: authError.details || null,
             retry: authError.retry !== undefined ? authError.retry : false,
             networkError: authError.networkError || false
-          };
+          } as PodioAuthError;
         } else {
           // For standard errors without retry property
           throw {
             status: 500,
             message: authError.message || 'Authentication failed',
             retry: false
-          };
+          } as PodioAuthError;
         }
       }
       
@@ -245,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Login error:', err);
       
       // Format the error for consistent handling
-      const formattedError: AuthError = {
+      const formattedError: PodioAuthError = {
         status: err.status || 500,
         message: err.message || 'An unknown error occurred',
         details: err.details || null,
@@ -303,7 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err) {
       console.error('Reauthentication error:', err);
-      setError(err as AuthError);
+      setError(err as PodioAuthError);
       setIsAuthenticated(false);
       return false;
     }

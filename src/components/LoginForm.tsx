@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,7 @@ const LoginForm = () => {
   const [authenticating, setAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const { login, loading, error, connectionIssue, retryStatus, resetConnection } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -26,16 +26,13 @@ const LoginForm = () => {
   const loginButtonRef = useRef<HTMLButtonElement>(null);
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simulate progress during login to provide feedback
   useEffect(() => {
     if (authenticating) {
-      setLoadingProgress(10); // Start with 10%
+      setLoadingProgress(10);
       
-      // Gradually increase progress to simulate loading
       const timer = setInterval(() => {
         setLoadingProgress(prev => {
           if (prev >= 90) {
-            // Don't go to 100% until actually done
             return 90;
           }
           return prev + 5;
@@ -53,42 +50,82 @@ const LoginForm = () => {
     }
   }, [authenticating]);
 
-  const parseErrorMessage = (error: any): string => {
-    if (!error) return 'An unknown error occurred';
+  const parseErrorMessage = (error: any): { message: string, details?: string } => {
+    if (!error) return { message: 'An unknown error occurred' };
     
-    // Handle string errors
-    if (typeof error === 'string') return error;
+    if (typeof error === 'string') return { message: error };
     
-    // Handle error objects
     if (typeof error === 'object') {
-      // Check for specific error properties in order of preference
-      if (error.message) return error.message;
-      if (error.error) return typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
-      if (error.details) return typeof error.details === 'string' ? error.details : JSON.stringify(error.details);
-      
-      // If it's a network error or unexpected format, check for status
-      if (error.status) {
-        if (error.status === 404) return 'User not found. Please check your username.';
-        if (error.status === 401) return 'Invalid credentials. Please try again.';
-        if (error.status === 429) return 'Too many login attempts. Please try again later.';
-        if (error.status >= 500) return 'Server error. Please try again later.';
-        return `Error ${error.status}: ${error.statusText || 'Something went wrong'}`;
+      if (error.message) {
+        if (error.message.includes('Edge Function returned a non-2xx status code')) {
+          if (error.details) {
+            return { 
+              message: 'Authentication failed',
+              details: typeof error.details === 'string' 
+                ? error.details 
+                : JSON.stringify(error.details)
+            };
+          }
+          
+          if (error.status) {
+            switch(error.status) {
+              case 401:
+                return { message: 'Invalid credentials. Please check your username and password.' };
+              case 404:
+                return { message: 'User not found. Please check your username.' };
+              case 429:
+                return { message: 'Too many login attempts. Please try again later.' };
+              default:
+                return { 
+                  message: `Error ${error.status}: ${error.message}`,
+                  details: error.details ? JSON.stringify(error.details) : undefined
+                };
+            }
+          }
+          
+          return { message: 'Server error. Please try again later.' };
+        }
+        
+        return { message: error.message };
       }
       
-      // Last resort: stringify the object
-      return JSON.stringify(error);
+      if (error.error) {
+        return { 
+          message: typeof error.error === 'string' ? error.error : 'Authentication failed',
+          details: typeof error.error !== 'string' ? JSON.stringify(error.error) : undefined
+        };
+      }
+      
+      if (error.details) {
+        return { 
+          message: 'Authentication failed', 
+          details: typeof error.details === 'string' ? error.details : JSON.stringify(error.details)
+        };
+      }
+      
+      if (error.status) {
+        if (error.status === 404) return { message: 'User not found. Please check your username.' };
+        if (error.status === 401) return { message: 'Invalid credentials. Please try again.' };
+        if (error.status === 429) return { message: 'Too many login attempts. Please try again later.' };
+        if (error.status >= 500) return { message: 'Server error. Please try again later.' };
+        return {
+          message: `Error ${error.status}: ${error.statusText || 'Something went wrong'}`,
+          details: error.details ? JSON.stringify(error.details) : undefined
+        };
+      }
+      
+      return { message: 'Login failed', details: JSON.stringify(error) };
     }
     
-    return 'Login failed. Please try again.';
+    return { message: 'Login failed. Please try again.' };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Clear previous errors
     setLoginError(null);
+    setErrorDetails(null);
     
-    // Prevent duplicate login attempts
     if (loginAttemptInProgress.current || authenticating) {
       return;
     }
@@ -105,16 +142,13 @@ const LoginForm = () => {
       loginAttemptInProgress.current = true;
       setAuthenticating(true);
       
-      // Disable the login button to prevent multiple clicks
       if (loginButtonRef.current) {
         loginButtonRef.current.disabled = true;
       }
       
-      // Try to look up the user in the Contacts app
       const success = await login(username, password);
       
       if (success) {
-        // Set progress to 100% on success
         setLoadingProgress(100);
         
         toast({
@@ -125,11 +159,10 @@ const LoginForm = () => {
         
         navigate('/dashboard');
       } else if (error) {
-        // Parse and handle error
-        const errorMsg = parseErrorMessage(error);
-        setLoginError(errorMsg);
+        const parsedError = parseErrorMessage(error);
+        setLoginError(parsedError.message);
+        setErrorDetails(parsedError.details || null);
         
-        // Check if the error supports retry
         if (error.retry && !connectionIssue) {
           toast({
             title: 'Login issue',
@@ -139,32 +172,30 @@ const LoginForm = () => {
         } else {
           toast({
             title: 'Login Failed',
-            description: errorMsg,
+            description: parsedError.message,
             variant: 'destructive',
           });
         }
       }
     } catch (loginErr: any) {
-      // Enhanced error handling with more specific messages
-      const errorMessage = parseErrorMessage(loginErr);
+      const parsedError = parseErrorMessage(loginErr);
       
-      setLoginError(errorMessage);
+      setLoginError(parsedError.message);
+      setErrorDetails(parsedError.details || null);
       
       toast({
         title: 'Login Failed',
-        description: errorMessage,
+        description: parsedError.message,
         variant: 'destructive',
       });
     } finally {
       setAuthenticating(false);
       loginAttemptInProgress.current = false;
       
-      // Re-enable the login button
       if (loginButtonRef.current) {
         loginButtonRef.current.disabled = false;
       }
       
-      // Clear progress timer
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current);
       }
@@ -177,18 +208,14 @@ const LoginForm = () => {
     setShowPassword(!showPassword);
   };
 
-  // Display either the component's local error or the error from the auth context
   const displayError = loginError || (typeof error === 'string' ? error : error?.message);
 
-  // Reset user input if the connection issue is detected
   useEffect(() => {
     if (connectionIssue) {
-      // Clear sensitive data when connection issues are detected
       setPassword('');
     }
   }, [connectionIssue]);
   
-  // Button to restart connection when connection issues are detected
   const handleResetConnection = () => {
     resetConnection();
     toast({
@@ -287,7 +314,19 @@ const LoginForm = () => {
             <Alert variant="destructive" className="mt-2">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Login Error</AlertTitle>
-              <AlertDescription>{displayError}</AlertDescription>
+              <AlertDescription>
+                <div>{displayError}</div>
+                {errorDetails && (
+                  <div className="mt-2 text-xs opacity-80 max-h-20 overflow-y-auto">
+                    <details>
+                      <summary className="cursor-pointer">Technical details</summary>
+                      <pre className="mt-1 p-2 bg-black/5 rounded text-xs whitespace-pre-wrap">
+                        {errorDetails}
+                      </pre>
+                    </details>
+                  </div>
+                )}
+              </AlertDescription>
             </Alert>
           )}
           

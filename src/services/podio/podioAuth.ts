@@ -1,4 +1,3 @@
-
 // Core authentication service for Podio integration
 import { supabase } from '@/integrations/supabase/client';
 
@@ -109,6 +108,16 @@ declare global {
   interface Window {
     podioTokenRefreshInterval: number | null;
   }
+}
+
+// Enhanced error interface
+export interface PodioAuthError {
+  status?: number;
+  message: string;
+  details?: any;
+  retry?: boolean;
+  networkError?: boolean;
+  edge?: boolean;
 }
 
 // Clear auth tokens and sensitive data
@@ -290,7 +299,7 @@ export const authenticateUser = async (username: string, password: string): Prom
         status: 429,
         message: `Maximum login attempts reached (${MAX_AUTH_RETRIES}). Please try again later.`,
         retry: false
-      };
+      } as PodioAuthError;
     } else {
       // Reset counter if enough time has passed
       console.log('Resetting auth retry counter after timeout');
@@ -330,12 +339,40 @@ export const authenticateUser = async (username: string, password: string): Prom
         connectionErrorDetected = true;
       }
       
-      throw {
-        status: error.status || 500,
-        message: error.message || 'Authentication failed',
-        edge: true,
-        retry: authRetryCount < MAX_AUTH_RETRIES
-      };
+      // If it's a non-2xx status code from the edge function,
+      // try to extract more specific error details from the response
+      let edgeErrorDetails = null;
+      
+      if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
+        try {
+          // Check if we have error details in data
+          if (data && typeof data === 'object') {
+            edgeErrorDetails = data;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse edge function error details:', parseError);
+        }
+      }
+      
+      // If we have detailed edge error information, use it
+      if (edgeErrorDetails) {
+        throw {
+          status: edgeErrorDetails.status || error.status || 500,
+          message: edgeErrorDetails.error || error.message,
+          details: edgeErrorDetails.details || null,
+          edge: true,
+          retry: authRetryCount < MAX_AUTH_RETRIES && 
+                !(edgeErrorDetails.status === 401 || edgeErrorDetails.status === 404) // Don't retry auth errors
+        } as PodioAuthError;
+      } else {
+        // Otherwise use the generic error
+        throw {
+          status: error.status || 500,
+          message: error.message || 'Authentication failed',
+          edge: true,
+          retry: authRetryCount < MAX_AUTH_RETRIES
+        } as PodioAuthError;
+      }
     }
     
     if (!data) {
@@ -351,7 +388,7 @@ export const authenticateUser = async (username: string, password: string): Prom
         retry: authRetryCount < MAX_AUTH_RETRIES && 
                data.status !== 401 && // Don't retry invalid credentials
                data.status !== 404    // Don't retry user not found
-      };
+      } as PodioAuthError;
     }
     
     // Reset retry counters on success
@@ -374,7 +411,17 @@ export const authenticateUser = async (username: string, password: string): Prom
         message: 'Network error: Unable to reach authentication service',
         networkError: true,
         retry: authRetryCount < MAX_AUTH_RETRIES
+      } as PodioAuthError;
+    }
+    
+    // Ensure error is properly formatted before rethrowing
+    if (!(error as PodioAuthError).status) {
+      const formattedError: PodioAuthError = {
+        status: 500,
+        message: error instanceof Error ? error.message : 'Unknown authentication error',
+        retry: authRetryCount < MAX_AUTH_RETRIES
       };
+      throw formattedError;
     }
     
     // Rethrow the error for the calling code to handle
