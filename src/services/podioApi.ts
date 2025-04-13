@@ -1,4 +1,3 @@
-
 // This file serves as the main entry point for Podio API services
 
 // Export authentication-related functions
@@ -19,7 +18,8 @@ export {
   setRateLimit,
   clearRateLimit,
   cacheUserData,
-  getCachedUserData
+  getCachedUserData,
+  clearRateLimitInfo
 } from './podio/podioAuth';
 
 // Export OAuth-related functions
