@@ -111,7 +111,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
                 onClick={() => handleTabClick(tab.value)}
                 className={cn(
                   "flex flex-col items-center py-2 gap-1",
-                  currentTabValue === tab.value ? "selected-tab bg-background text-primary" : ""
+                  currentTabValue === tab.value ? "selected-tab" : ""
                 )}
                 data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
               >
@@ -137,7 +137,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
               onClick={() => handleTabClick('final-approval')}
               className={cn(
                 "flex flex-col items-center py-2 gap-1",
-                currentTabValue === 'final-approval' ? "selected-tab bg-background text-primary" : "",
+                currentTabValue === 'final-approval' ? "selected-tab" : "",
                 allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
               )}
               data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
@@ -167,7 +167,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
           onClick={() => handleTabClick(tab.value)}
           className={cn(
             "flex items-center gap-1.5",
-            currentTabValue === tab.value ? "selected-tab text-primary" : ""
+            currentTabValue === tab.value ? "selected-tab" : ""
           )}
           data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
         >
@@ -182,7 +182,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         onClick={() => handleTabClick('final-approval')}
         className={cn(
           "flex items-center gap-1.5",
-          currentTabValue === 'final-approval' ? "selected-tab text-primary" : "",
+          currentTabValue === 'final-approval' ? "selected-tab" : "",
           allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
         )}
         data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}

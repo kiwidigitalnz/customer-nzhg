@@ -553,7 +553,11 @@ const PackingSpecDetails = () => {
             />
             <CardContent>
               <Tabs value={activeTab} className="w-full" onValueChange={handleTabChange}>
-                <TabsNavigation newCommentsCount={newCommentsCount} />
+                <TabsNavigation 
+                  newCommentsCount={newCommentsCount} 
+                  onTabClick={handleTabChange} 
+                  currentTabValue={activeTab}
+                />
                 
                 <TabsContent value="overview">
                   <HoneySpecificationTab 
