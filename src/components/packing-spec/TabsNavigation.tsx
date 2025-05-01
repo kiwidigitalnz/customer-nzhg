@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -9,6 +9,7 @@ import {
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
@@ -22,6 +23,27 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   currentTabValue
 }) => {
   const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
+  const isMobile = useIsMobile();
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  
+  // When tab changes, scroll that tab into view on mobile
+  useEffect(() => {
+    if (isMobile && tabsListRef.current && currentTabValue) {
+      const activeTab = tabsListRef.current.querySelector(`[data-value="${currentTabValue}"]`);
+      if (activeTab) {
+        // Calculate position to center the tab in the viewport
+        const tabRect = activeTab.getBoundingClientRect();
+        const containerRect = tabsListRef.current.getBoundingClientRect();
+        const scrollLeft = activeTab.scrollLeft + tabRect.left - containerRect.left - 
+                         (containerRect.width / 2) + (tabRect.width / 2);
+                         
+        tabsListRef.current.scrollTo({
+          left: scrollLeft,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [currentTabValue, isMobile]);
   
   const getSectionIndicator = (section: SectionName) => {
     const status = sectionStates[section]?.status;
@@ -99,21 +121,27 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     }
   ];
 
-  // Mobile tab rendering (icons only with tooltips)
+  // Mobile tab rendering (icons only with tooltips and improved touch targets)
   const renderMobileTabs = () => (
-    <TabsList className="w-full grid grid-cols-4 md:hidden tabs-container">
+    <TabsList 
+      ref={tabsListRef}
+      className="w-full flex overflow-x-auto md:hidden tabs-container snap-x snap-mandatory overscroll-x-contain"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+    >
       {tabData.map((tab) => (
         <TooltipProvider key={tab.value} delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
               <TabsTrigger
                 value={tab.value}
+                data-value={tab.value}
                 onClick={() => handleTabClick(tab.value)}
                 className={cn(
-                  "flex flex-col items-center py-2 gap-1",
+                  "flex flex-col items-center py-3 px-4 gap-1 min-w-[72px] snap-center touch-manipulation",
                   currentTabValue === tab.value ? "selected-tab" : ""
                 )}
                 data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
+                aria-label={tab.tooltip}
               >
                 <span className="relative">
                   {tab.icon}
@@ -134,18 +162,20 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
           <TooltipTrigger asChild>
             <TabsTrigger
               value="final-approval"
+              data-value="final-approval"
               onClick={() => handleTabClick('final-approval')}
               className={cn(
-                "flex flex-col items-center py-2 gap-1",
+                "flex flex-col items-center py-3 px-4 gap-1 min-w-[72px] snap-center touch-manipulation",
                 currentTabValue === 'final-approval' ? "selected-tab" : "",
                 allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
               )}
               data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
+              aria-label="Final Approval"
             >
               {getFinalTabIcon()}
               <span className="text-[10px]">Approve</span>
               {newCommentsCount > 0 && (
-                <Badge variant="secondary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
+                <Badge variant="secondary" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
                   {newCommentsCount}
                 </Badge>
               )}
@@ -164,6 +194,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <TabsTrigger
           key={tab.value}
           value={tab.value}
+          data-value={tab.value}
           onClick={() => handleTabClick(tab.value)}
           className={cn(
             "flex items-center gap-1.5",
@@ -179,6 +210,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       
       <TabsTrigger
         value="final-approval"
+        data-value="final-approval"
         onClick={() => handleTabClick('final-approval')}
         className={cn(
           "flex items-center gap-1.5",

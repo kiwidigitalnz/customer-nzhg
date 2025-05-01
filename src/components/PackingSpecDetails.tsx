@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getPackingSpecDetails, updatePackingSpecStatus } from '../services/podioApi';
@@ -10,8 +11,10 @@ import * as z from 'zod';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, AlertTriangle, ArrowUp } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { SwipeableContainer } from '@/components/ui/swipeable-container';
 
 // Custom Components
 import HeaderSection from './packing-spec/HeaderSection';
@@ -33,6 +36,7 @@ import { ApprovalSharedInterface, approvalFormSchema, rejectionFormSchema } from
 import { SpecStatus } from './packing-spec/StatusBadge';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { addCommentToPackingSpec, getCommentsFromPodio } from '../services/podioApi';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Types
 interface PackingSpec {
@@ -79,6 +83,7 @@ const PackingSpecDetails = () => {
   const { user } = useAuth();
   const [spec, setSpec] = useState<PackingSpec | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [isAddingComment, setIsAddingComment] = useState(false);
@@ -92,6 +97,32 @@ const PackingSpecDetails = () => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const { sectionStates, updateSectionStatus, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
   const [sectionFeedback, setSectionFeedback] = useState<Record<string, string>>({});
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+
+  // Add scroll listener to show back to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 500) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   useEffect(() => {
     if (!user) {
@@ -139,6 +170,40 @@ const PackingSpecDetails = () => {
 
     fetchSpecDetails();
   }, [specId, user, navigate]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    
+    try {
+      if (!specId) return;
+      
+      // Fetch latest specification data
+      const data = await getPackingSpecDetails(specId);
+      
+      if (data) {
+        setSpec(data);
+        // Add haptic feedback for iOS devices
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        
+        toast({
+          title: "Refreshed",
+          description: "Latest specification data loaded",
+          variant: 'default',
+        });
+      }
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      toast({
+        title: 'Refresh failed',
+        description: 'Unable to load the latest data',
+        variant: 'destructive',
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleAddComment = async () => {
     if (!spec || !newComment.trim()) return;
@@ -293,10 +358,26 @@ const PackingSpecDetails = () => {
     
     return tabOrder[currentIndex + 1];
   };
+
+  const findPrevTabInSequence = (currentTab: string): string => {
+    const tabOrder = [...TAB_ORDER, 'final-approval'];
+    const currentIndex = tabOrder.indexOf(currentTab as any);
+    
+    if (currentIndex <= 0) {
+      return currentTab; // Stay on current tab if first tab or not found
+    }
+    
+    return tabOrder[currentIndex - 1];
+  };
   
   const navigateToNextTab = () => {
     const nextTab = findNextTabInSequence(activeTab);
     setActiveTab(nextTab);
+  };
+
+  const navigateToPrevTab = () => {
+    const prevTab = findPrevTabInSequence(activeTab);
+    setActiveTab(prevTab);
   };
 
   const handleGoBack = () => {
@@ -305,6 +386,10 @@ const PackingSpecDetails = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    // Scroll to top on tab change for better mobile experience
+    if (isMobile && contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const collectAllSectionFeedback = () => {
@@ -494,179 +579,229 @@ const PackingSpecDetails = () => {
   const hasPendingChanges = isApprovalPending;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Button variant="outline" onClick={handleGoBack} className="mb-6">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-      </Button>
-      
-      {hasPendingChanges && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-blue-800">Signature captured</h3>
-              <p className="text-blue-700 text-sm mt-1">
-                Your approval has been prepared but not yet submitted. Please complete the approval process.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {allSectionsApproved && spec.status !== 'approved-by-customer' && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-green-800">All sections approved</h3>
-              <p className="text-green-700 text-sm mt-1">
-                You have approved all sections. You can now provide final approval for the entire specification.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {anySectionsWithChangesRequested && spec.status !== 'changes-requested' && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-amber-800">Changes requested</h3>
-              <p className="text-amber-700 text-sm mt-1">
-                You have requested changes for some sections. You may still review other sections or submit your final feedback.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
-            <HeaderSection
-              title={spec.details.product || spec.title}
-              productCode={spec.details.productCode}
-              versionNumber={spec.details.versionNumber}
-              dateReviewed={spec.details.dateReviewed}
-              status={spec.status}
-            />
-            <CardContent>
-              <Tabs value={activeTab} className="w-full" onValueChange={handleTabChange}>
-                <TabsNavigation 
-                  newCommentsCount={newCommentsCount} 
-                  onTabClick={handleTabChange} 
-                  currentTabValue={activeTab}
-                />
-                
-                <TabsContent value="overview">
-                  <HoneySpecificationTab 
-                    details={spec.details} 
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="requirements">
-                  <RequirementsTab 
-                    details={spec.details} 
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="packaging">
-                  <PackagingTab 
-                    details={spec.details} 
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="label">
-                  <LabelingTab 
-                    details={spec.details}
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="shipping">
-                  <ShippingTab 
-                    details={spec.details} 
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="documents">
-                  <DocumentsTab 
-                    details={spec.details} 
-                    files={spec.files} 
-                    onApproveSection={handleSectionApproval}
-                    onRequestChanges={handleSectionRequestChanges}
-                    onNavigateToNextTab={navigateToNextTab}
-                    specStatus={spec.status}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="final-approval">
-                  <FinalApprovalTab 
-                    spec={{
-                      id: spec.id,
-                      comments: spec.comments,
-                      status: spec.status
-                    }}
-                    isActive={activeTab === 'final-approval'}
-                    newComment={newComment}
-                    onNewCommentChange={setNewComment}
-                    onAddComment={handleAddComment}
-                    isAddingComment={isAddingComment}
-                    onStatusUpdated={handleStatusUpdated}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="container mx-auto px-4 py-8" ref={contentRef}>
+        <Button variant="outline" onClick={handleGoBack} className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+        </Button>
         
-        <div>
-          <OverviewSidebar 
-            details={spec.details}
-            status={spec.status}
-            createdAt={spec.createdAt}
-            spec={spec}
-            user={user}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            isSubmitting={isSubmitting || isUpdatingStatus}
-            onNavigateToFinalTab={navigateToFinalApprovalTab}
-          />
-        </div>
-      </div>
+        {hasPendingChanges && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-blue-800">Signature captured</h3>
+                <p className="text-blue-700 text-sm mt-1">
+                  Your approval has been prepared but not yet submitted. Please complete the approval process.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-      <ApprovalSharedInterface
-        isOpen={approvalDialogOpen}
-        onOpenChange={setApprovalDialogOpen}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        title="Review Packing Specification"
-        description="Please review all details carefully before approving or requesting changes."
-        isSubmitting={isSubmitting || isUpdatingStatus}
-        defaultName={user?.name || ''}
-        itemPreview={approvalPreview}
-      />
-    </div>
+        {allSectionsApproved && spec.status !== 'approved-by-customer' && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-green-800">All sections approved</h3>
+                <p className="text-green-700 text-sm mt-1">
+                  You have approved all sections. You can now provide final approval for the entire specification.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {anySectionsWithChangesRequested && spec.status !== 'changes-requested' && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">Changes requested</h3>
+                <p className="text-amber-700 text-sm mt-1">
+                  You have requested changes for some sections. You may still review other sections or submit your final feedback.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
+              <HeaderSection
+                title={spec.details.product || spec.title}
+                productCode={spec.details.productCode}
+                versionNumber={spec.details.versionNumber}
+                dateReviewed={spec.details.dateReviewed}
+                status={spec.status}
+              />
+              <CardContent>
+                <Tabs value={activeTab} className="w-full" onValueChange={handleTabChange}>
+                  <TabsNavigation 
+                    newCommentsCount={newCommentsCount} 
+                    onTabClick={handleTabChange} 
+                    currentTabValue={activeTab}
+                  />
+                  
+                  <SwipeableContainer
+                    onSwipeLeft={navigateToNextTab}
+                    onSwipeRight={navigateToPrevTab}
+                    disabled={!isMobile}
+                  >
+                    <TabsContent value="overview">
+                      <HoneySpecificationTab 
+                        details={spec.details} 
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="requirements">
+                      <RequirementsTab 
+                        details={spec.details} 
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="packaging">
+                      <PackagingTab 
+                        details={spec.details} 
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="label">
+                      <LabelingTab 
+                        details={spec.details}
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="shipping">
+                      <ShippingTab 
+                        details={spec.details} 
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="documents">
+                      <DocumentsTab 
+                        details={spec.details} 
+                        files={spec.files} 
+                        onApproveSection={handleSectionApproval}
+                        onRequestChanges={handleSectionRequestChanges}
+                        onNavigateToNextTab={navigateToNextTab}
+                        specStatus={spec.status}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="final-approval">
+                      <FinalApprovalTab 
+                        spec={{
+                          id: spec.id,
+                          comments: spec.comments,
+                          status: spec.status
+                        }}
+                        isActive={activeTab === 'final-approval'}
+                        newComment={newComment}
+                        onNewCommentChange={setNewComment}
+                        onAddComment={handleAddComment}
+                        isAddingComment={isAddingComment}
+                        onStatusUpdated={handleStatusUpdated}
+                      />
+                    </TabsContent>
+                  </SwipeableContainer>
+                  
+                  {/* Mobile navigation helpers */}
+                  {isMobile && (
+                    <div className="flex justify-between mt-6 gap-2">
+                      {activeTab !== 'overview' && (
+                        <Button 
+                          variant="outline" 
+                          onClick={navigateToPrevTab}
+                          className="w-1/2 tap-highlight"
+                        >
+                          <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                        </Button>
+                      )}
+                      {activeTab !== 'final-approval' && (
+                        <Button 
+                          onClick={navigateToNextTab}
+                          className={cn(
+                            "w-1/2 tap-highlight", 
+                            activeTab === 'overview' ? "w-full" : ""
+                          )}
+                        >
+                          Next <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div>
+            <OverviewSidebar 
+              details={spec.details}
+              status={spec.status}
+              createdAt={spec.createdAt}
+              spec={spec}
+              user={user}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              isSubmitting={isSubmitting || isUpdatingStatus}
+              onNavigateToFinalTab={navigateToFinalApprovalTab}
+            />
+          </div>
+        </div>
+
+        <ApprovalSharedInterface
+          isOpen={approvalDialogOpen}
+          onOpenChange={setApprovalDialogOpen}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          title="Review Packing Specification"
+          description="Please review all details carefully before approving or requesting changes."
+          isSubmitting={isSubmitting || isUpdatingStatus}
+          defaultName={user?.name || ''}
+          itemPreview={approvalPreview}
+        />
+        
+        {/* Back to Top button */}
+        {showBackToTop && (
+          <Button 
+            variant="outline"
+            size="icon"
+            className={cn(
+              "back-to-top-button",
+              showBackToTop ? "visible" : ""
+            )}
+            onClick={scrollToTop}
+            aria-label="Back to top"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
+    </PullToRefresh>
   );
 };
 
