@@ -101,7 +101,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
 
   // Mobile tab rendering (icons only with tooltips)
   const renderMobileTabs = () => (
-    <TabsList className="w-full grid grid-cols-4 md:hidden">
+    <TabsList className="w-full grid grid-cols-4 md:hidden tabs-container">
       {tabData.map((tab) => (
         <TooltipProvider key={tab.value} delayDuration={300}>
           <Tooltip>
@@ -111,9 +111,9 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
                 onClick={() => handleTabClick(tab.value)}
                 className={cn(
                   "flex flex-col items-center py-2 gap-1",
-                  currentTabValue === tab.value ? "bg-background text-primary" : ""
+                  currentTabValue === tab.value ? "selected-tab bg-background text-primary" : ""
                 )}
-                data-state={currentTabValue === tab.value ? 'active' : ''}
+                data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
               >
                 <span className="relative">
                   {tab.icon}
@@ -137,10 +137,10 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
               onClick={() => handleTabClick('final-approval')}
               className={cn(
                 "flex flex-col items-center py-2 gap-1",
-                currentTabValue === 'final-approval' ? "bg-background text-primary" : "",
+                currentTabValue === 'final-approval' ? "selected-tab bg-background text-primary" : "",
                 allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
               )}
-              data-state={currentTabValue === 'final-approval' ? 'active' : ''}
+              data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
             >
               {getFinalTabIcon()}
               <span className="text-[10px]">Approve</span>
@@ -159,7 +159,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
 
   // Desktop tab rendering (icons and text)
   const renderDesktopTabs = () => (
-    <TabsList className="hidden md:flex md:flex-wrap w-full">
+    <TabsList className="hidden md:flex md:flex-wrap w-full tabs-container">
       {tabData.map((tab) => (
         <TabsTrigger
           key={tab.value}
@@ -167,9 +167,9 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
           onClick={() => handleTabClick(tab.value)}
           className={cn(
             "flex items-center gap-1.5",
-            currentTabValue === tab.value ? "text-primary" : ""
+            currentTabValue === tab.value ? "selected-tab text-primary" : ""
           )}
-          data-state={currentTabValue === tab.value ? 'active' : ''}
+          data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
         >
           {tab.icon}
           <span>{tab.label}</span>
@@ -182,10 +182,10 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         onClick={() => handleTabClick('final-approval')}
         className={cn(
           "flex items-center gap-1.5",
-          currentTabValue === 'final-approval' ? "text-primary" : "",
+          currentTabValue === 'final-approval' ? "selected-tab text-primary" : "",
           allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
         )}
-        data-state={currentTabValue === 'final-approval' ? 'active' : ''}
+        data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
       >
         {getFinalTabIcon()}
         <span>Final Approval</span>

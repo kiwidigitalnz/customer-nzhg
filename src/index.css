@@ -129,6 +129,7 @@
 [data-state="active"] {
   position: relative;
   font-weight: 600;
+  border-bottom-color: hsl(var(--primary)) !important;
 }
 
 [data-state="active"]::after {
@@ -140,6 +141,13 @@
   height: 2px;
   background-color: hsl(var(--primary));
   animation: tabActivate 0.3s ease-out forwards;
+}
+
+/* Selected tab class for additional styling */
+.selected-tab {
+  position: relative;
+  border-bottom-color: hsl(var(--primary));
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* Ensure tabs are always responsive */
