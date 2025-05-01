@@ -85,9 +85,12 @@ const SpecSection: React.FC<SpecSectionProps> = ({
           {attributesWithValues.map(({key, label, fieldType, formatter}) => {
             const value = data[key];
             
+            // Update the label if the field type is category to match Podio's label "Categories"
+            const displayLabel = fieldType === 'category' ? 'Categories' : label;
+            
             return (
               <div key={key} className="flex flex-col">
-                <span className="text-sm text-muted-foreground">{label}</span>
+                <span className="text-sm text-muted-foreground">{displayLabel}</span>
                 <span className="font-medium">
                   {formatter 
                     ? formatter(value)
