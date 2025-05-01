@@ -91,7 +91,9 @@ const PackingSpecDetailsPage = () => {
         </div>
       ) : (
         <SectionApprovalProvider>
-          <PackingSpecDetails />
+          <div className="max-w-7xl mx-auto px-4">
+            <PackingSpecDetails />
+          </div>
           
           {/* Getting Started Guide Dialog */}
           <Dialog open={showGuide} onOpenChange={setShowGuide}>
@@ -116,7 +118,7 @@ const PackingSpecDetailsPage = () => {
                   <div className="md:col-span-2">
                     <h3 className="font-medium text-lg">Review each section</h3>
                     <p className="text-muted-foreground">
-                      Navigate through each tab (Honey Specification, Requirements, Packaging, etc.) 
+                      Navigate through each tab (Overview, Requirements, Packaging, etc.) 
                       and review the information provided. Each section can be approved individually
                       as you go through them.
                     </p>

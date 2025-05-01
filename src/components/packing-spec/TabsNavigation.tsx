@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
@@ -26,33 +27,16 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     const status = sectionStates[section]?.status;
     
     if (status === 'approved') {
-      return <CheckCircle2 className="ml-1.5 h-4 w-4 text-green-600" />;
+      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
     }
     
     if (status === 'changes-requested') {
-      return <AlertTriangle className="ml-1.5 h-4 w-4 text-amber-600" />;
+      return <AlertTriangle className="h-4 w-4 text-amber-600" />;
     }
     
     return null;
   };
   
-  const getTabClassName = (section: SectionName, isActive: boolean) => {
-    const status = sectionStates[section]?.status;
-    let statusClasses = '';
-    
-    if (status === 'approved') {
-      statusClasses = "text-green-700";
-    } else if (status === 'changes-requested') {
-      statusClasses = "text-amber-700";
-    }
-    
-    return cn(
-      "relative group transition-all duration-300",
-      isActive ? "bg-background shadow-md font-medium" : "hover:bg-background/70",
-      statusClasses
-    );
-  };
-
   const handleTabClick = (value: string) => {
     if (onTabClick) {
       onTabClick(value);
@@ -62,115 +46,163 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   // Determine the final tab icon based on approval status
   const getFinalTabIcon = () => {
     if (allSectionsApproved) {
-      return <CheckCircle2 className="mr-2 h-5 w-5 text-green-600" />;
+      return <CheckCircle2 className="mr-1 h-4 w-4 text-green-600" />;
     } else if (anySectionsWithChangesRequested) {
-      return <AlertTriangle className="mr-2 h-5 w-5 text-amber-600" />;
+      return <AlertTriangle className="mr-1 h-4 w-4 text-amber-600" />;
     } else {
-      return <CheckSquare className="mr-2 h-5 w-5" />;
+      return <CheckSquare className="mr-1 h-4 w-4" />;
     }
   };
+  
+  const tabData = [
+    {
+      value: "overview",
+      sectionName: "overview" as SectionName,
+      icon: <Info className="h-4 w-4" />,
+      label: "Overview",
+      tooltip: "Honey Specification Overview"
+    },
+    {
+      value: "requirements",
+      sectionName: "requirements" as SectionName,
+      icon: <ShieldCheck className="h-4 w-4" />,
+      label: "Requirements",
+      tooltip: "View Requirements"
+    },
+    {
+      value: "packaging",
+      sectionName: "packaging" as SectionName,
+      icon: <Package className="h-4 w-4" />,
+      label: "Packaging",
+      tooltip: "Packaging Information"
+    },
+    {
+      value: "label",
+      sectionName: "label" as SectionName,
+      icon: <FileText className="h-4 w-4" />,
+      label: "Labeling",
+      tooltip: "Labeling Requirements"
+    },
+    {
+      value: "shipping",
+      sectionName: "shipping" as SectionName,
+      icon: <Truck className="h-4 w-4" />,
+      label: "Shipping",
+      tooltip: "Shipping Details"
+    },
+    {
+      value: "documents",
+      sectionName: "documents" as SectionName,
+      icon: <FileIcon className="h-4 w-4" />,
+      label: "Documents",
+      tooltip: "Required Documents"
+    }
+  ];
 
-  // Determine final tab class based on approval status
-  const getFinalTabClass = (isActive: boolean) => {
-    let statusClass = '';
-    
-    if (allSectionsApproved) {
-      statusClass = "text-green-700";
-    } else if (anySectionsWithChangesRequested) {
-      statusClass = "text-amber-700";
-    }
-    
-    return cn(
-      "relative group transition-all duration-300",
-      isActive ? "bg-background shadow-md font-medium scale-105" : "hover:bg-background/70",
-      statusClass
-    );
-  };
-  
-  // Define a consistent style for icons
-  const iconClass = "h-5 w-5 mr-2";
-  
-  return (
-    <TabsList className="mb-6 w-full flex overflow-x-auto justify-start p-2 bg-muted/70 rounded-lg shadow-sm border border-muted">
-      <TabsTrigger 
-        value="overview" 
-        className={getTabClassName('overview', currentTabValue === 'overview')}
-        data-state={currentTabValue === 'overview' ? 'active' : ''}
-        onClick={() => handleTabClick('overview')}
-      >
-        <Info className={iconClass} />
-        <span>Honey Specification</span>
-        {getSectionIndicator('overview')}
-      </TabsTrigger>
+  // Mobile tab rendering (icons only with tooltips)
+  const renderMobileTabs = () => (
+    <TabsList className="w-full grid grid-cols-4 md:hidden">
+      {tabData.map((tab) => (
+        <TooltipProvider key={tab.value} delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TabsTrigger
+                value={tab.value}
+                onClick={() => handleTabClick(tab.value)}
+                className={cn(
+                  "flex flex-col items-center py-2 gap-1",
+                  currentTabValue === tab.value ? "bg-background" : ""
+                )}
+                data-state={currentTabValue === tab.value ? 'active' : ''}
+              >
+                <span className="relative">
+                  {tab.icon}
+                  {getSectionIndicator(tab.sectionName) && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-current" />
+                  )}
+                </span>
+                <span className="text-[10px]">{tab.label}</span>
+              </TabsTrigger>
+            </TooltipTrigger>
+            <TooltipContent>{tab.tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
       
-      <TabsTrigger 
-        value="requirements" 
-        className={getTabClassName('requirements', currentTabValue === 'requirements')}
-        data-state={currentTabValue === 'requirements' ? 'active' : ''}
-        onClick={() => handleTabClick('requirements')}
-      >
-        <ShieldCheck className={iconClass} />
-        <span>Requirements</span>
-        {getSectionIndicator('requirements')}
-      </TabsTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <TabsTrigger
+              value="final-approval"
+              onClick={() => handleTabClick('final-approval')}
+              className={cn(
+                "flex flex-col items-center py-2 gap-1",
+                currentTabValue === 'final-approval' ? "bg-background" : "",
+                allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
+              )}
+              data-state={currentTabValue === 'final-approval' ? 'active' : ''}
+            >
+              {getFinalTabIcon()}
+              <span className="text-[10px]">Approve</span>
+              {newCommentsCount > 0 && (
+                <Badge variant="secondary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
+                  {newCommentsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Final Approval</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </TabsList>
+  );
+
+  // Desktop tab rendering (icons and text)
+  const renderDesktopTabs = () => (
+    <TabsList className="hidden md:flex md:flex-wrap w-full">
+      {tabData.map((tab) => (
+        <TabsTrigger
+          key={tab.value}
+          value={tab.value}
+          onClick={() => handleTabClick(tab.value)}
+          className={cn(
+            "flex items-center gap-1.5",
+            currentTabValue === tab.value ? "bg-background" : ""
+          )}
+          data-state={currentTabValue === tab.value ? 'active' : ''}
+        >
+          {tab.icon}
+          <span>{tab.label}</span>
+          {getSectionIndicator(tab.sectionName)}
+        </TabsTrigger>
+      ))}
       
-      <TabsTrigger 
-        value="packaging" 
-        className={getTabClassName('packaging', currentTabValue === 'packaging')}
-        data-state={currentTabValue === 'packaging' ? 'active' : ''}
-        onClick={() => handleTabClick('packaging')}
-      >
-        <Package className={iconClass} />
-        <span>Packaging</span>
-        {getSectionIndicator('packaging')}
-      </TabsTrigger>
-      
-      <TabsTrigger 
-        value="label" 
-        className={getTabClassName('label', currentTabValue === 'label')}
-        data-state={currentTabValue === 'label' ? 'active' : ''}
-        onClick={() => handleTabClick('label')}
-      >
-        <FileText className={iconClass} />
-        <span>Labeling</span>
-        {getSectionIndicator('label')}
-      </TabsTrigger>
-      
-      <TabsTrigger 
-        value="shipping" 
-        className={getTabClassName('shipping', currentTabValue === 'shipping')}
-        data-state={currentTabValue === 'shipping' ? 'active' : ''}
-        onClick={() => handleTabClick('shipping')}
-      >
-        <Truck className={iconClass} />
-        <span>Shipping</span>
-        {getSectionIndicator('shipping')}
-      </TabsTrigger>
-      
-      <TabsTrigger 
-        value="documents" 
-        className={getTabClassName('documents', currentTabValue === 'documents')}
-        data-state={currentTabValue === 'documents' ? 'active' : ''}
-        onClick={() => handleTabClick('documents')}
-      >
-        <FileIcon className={iconClass} />
-        <span>Documents</span>
-        {getSectionIndicator('documents')}
-      </TabsTrigger>
-      
-      <TabsTrigger 
-        value="final-approval" 
-        className={getFinalTabClass(currentTabValue === 'final-approval')}
-        data-state={currentTabValue === 'final-approval' ? 'active' : ''}
+      <TabsTrigger
+        value="final-approval"
         onClick={() => handleTabClick('final-approval')}
+        className={cn(
+          "flex items-center gap-1.5",
+          currentTabValue === 'final-approval' ? "bg-background" : "",
+          allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
+        )}
+        data-state={currentTabValue === 'final-approval' ? 'active' : ''}
       >
         {getFinalTabIcon()}
         <span>Final Approval</span>
         {newCommentsCount > 0 && (
-          <Badge variant="secondary" className="ml-2 bg-primary text-primary-foreground">{newCommentsCount}</Badge>
+          <Badge variant="secondary" className="bg-primary text-primary-foreground">
+            {newCommentsCount}
+          </Badge>
         )}
       </TabsTrigger>
     </TabsList>
+  );
+  
+  return (
+    <div className="w-full mb-6">
+      {renderMobileTabs()}
+      {renderDesktopTabs()}
+    </div>
   );
 };
 
