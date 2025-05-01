@@ -7,6 +7,7 @@ import { formatTextContent } from '@/utils/formatters';
 import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 import { SpecStatus } from '../StatusBadge';
+import SpecSection from '../SpecSection';
 
 interface HoneySpecificationTabProps {
   details: Record<string, any>;
@@ -57,6 +58,49 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
     }
   };
 
+  // Define honey details attributes for the SpecSection
+  const honeyAttributes = [
+    { 
+      key: 'honeyType2', 
+      label: 'Honey Type',
+      fieldType: 'text'
+    },
+    { 
+      key: 'honeyType', 
+      label: 'Honey Process',
+      fieldType: 'text'
+    },
+    {
+      key: 'umfMgo',
+      label: 'UMF/MGO',
+      fieldType: 'text'
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      fieldType: 'category'
+    }
+  ];
+  
+  // Define allergen attributes for the SpecSection
+  const allergenAttributes = [
+    {
+      key: 'allergenType',
+      label: 'Allergen Type',
+      fieldType: 'category'
+    },
+    {
+      key: 'allergenQtyGrams',
+      label: 'Allergen Quantity (g)',
+      fieldType: 'number'
+    },
+    {
+      key: 'ingredientType',
+      label: 'Ingredient Type',
+      fieldType: 'category'
+    }
+  ];
+
   return (
     <div className="space-y-6 animate-in fade-in-50">
       <Card className="shadow-sm border-muted">
@@ -68,70 +112,19 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Type</h4>
-                <p className="font-medium">{displayValue(details.honeyType2 || details.honeyType)}</p>
-              </div>
-              {details.honeyType && details.honeyType2 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Process</h4>
-                  <p className="font-medium">{displayValue(details.honeyType)}</p>
-                </div>
-              )}
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">UMF/MGO</h4>
-                <p className="font-medium">{displayValue(details.umfMgo)}</p>
-              </div>
-              {details.category && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Category</h4>
-                  <div className="mt-1">
-                    <CategoryDisplay 
-                      categories={details.category} 
-                      variant="outline"
-                      bgColor="bg-blue-50"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Allergen Type</h4>
-                <div className="mt-1">
-                  {details.allergenType ? (
-                    <CategoryDisplay 
-                      categories={details.allergenType} 
-                      variant="outline"
-                      bgColor="bg-red-50"
-                    />
-                  ) : (
-                    <span className="text-muted-foreground italic">N/A</span>
-                  )}
-                </div>
-              </div>
-              {details.allergenQtyGrams !== undefined && details.allergenQtyGrams !== null && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Allergen Quantity (g)</h4>
-                  <p className="font-medium">{displayValue(details.allergenQtyGrams)}</p>
-                </div>
-              )}
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Ingredient Type</h4>
-                <div className="mt-1">
-                  {details.ingredientType ? (
-                    <CategoryDisplay 
-                      categories={details.ingredientType} 
-                      variant="outline"
-                      bgColor="bg-green-50"
-                    />
-                  ) : (
-                    <span className="text-muted-foreground italic">N/A</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            <SpecSection
+              title="Honey Specifications"
+              attributes={honeyAttributes}
+              data={details}
+              emptyMessage="No honey specifications available"
+            />
+            
+            <SpecSection
+              title="Allergen & Ingredient Details"
+              attributes={allergenAttributes}
+              data={details}
+              emptyMessage="No allergen or ingredient details available"
+            />
           </div>
         </CardContent>
         <CardFooter className="border-t pt-4 flex justify-end">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { isRateLimited, isRateLimitedWithInfo, clearRateLimitInfo } from "../services/podioApi";
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface RateLimitWarningProps {
   onRetry: () => void;
@@ -14,6 +15,7 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [rateLimitReason, setRateLimitReason] = useState('API rate limit reached');
+  const { toast } = useToast();
   
   // Check localStorage for rate limit info
   useEffect(() => {
@@ -64,6 +66,11 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
   const handleRetry = () => {
     if (!isRateLimited()) {
       clearRateLimitInfo(); // Clear all rate limit info
+      toast({
+        title: "Retrying connection",
+        description: "Attempting to refresh data from the API...",
+        duration: 3000 // Set a reasonable duration
+      });
       onRetry();
     }
   };
@@ -95,7 +102,7 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
           disabled={isButtonDisabled}
           className="whitespace-nowrap"
         >
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <RefreshCw className={`mr-2 h-4 w-4 ${isButtonDisabled ? 'animate-spin' : ''}`} />
           {isButtonDisabled ? `Wait ${formatTimeLeft()}` : "Try Again"}
         </Button>
       </AlertDescription>

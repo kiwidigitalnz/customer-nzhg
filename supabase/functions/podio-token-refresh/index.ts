@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
@@ -14,12 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Podio token refresh request received');
+    
     // Get Supabase URL and key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase configuration');
+      console.error('Missing Supabase configuration', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
+      
       return new Response(
         JSON.stringify({
           error: 'Supabase credentials not configured',
@@ -104,7 +111,7 @@ serve(async (req) => {
     // Check if token is expired
     const expiresAt = new Date(token.expires_at).getTime();
     const now = Date.now();
-    const tokenBuffer = 10 * 60 * 1000; // 10 minutes
+    const tokenBuffer = 20 * 60 * 1000; // 20 minutes buffer (increased from 10)
     
     // If token is not expiring soon, return it
     if (expiresAt > now + tokenBuffer) {
@@ -134,17 +141,27 @@ serve(async (req) => {
     refreshParams.append('refresh_token', refreshToken);
 
     try {
+      // Use fetch with timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const refreshResponse = await fetch('https://podio.com/oauth/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: refreshParams.toString()
+        body: refreshParams.toString(),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       if (!refreshResponse.ok) {
         const errorText = await refreshResponse.text();
-        console.error('Failed to refresh token:', errorText);
+        console.error('Failed to refresh token:', errorText, {
+          status: refreshResponse.status,
+          statusText: refreshResponse.statusText
+        });
         
         // Try to parse the error text as JSON
         let errorDetails;
@@ -152,6 +169,39 @@ serve(async (req) => {
           errorDetails = JSON.parse(errorText);
         } catch (e) {
           errorDetails = errorText;
+        }
+        
+        // Special handling for common oauth errors
+        if (refreshResponse.status === 401 || 
+            (errorDetails && errorDetails.error === 'invalid_grant')) {
+          return new Response(
+            JSON.stringify({
+              error: 'Podio authentication has expired',
+              status: 401,
+              details: errorDetails,
+              needs_reauth: true
+            }),
+            { 
+              status: 401, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        
+        // Rate limit handling
+        if (refreshResponse.status === 429) {
+          return new Response(
+            JSON.stringify({
+              error: 'Podio API rate limit exceeded',
+              status: 429,
+              details: errorDetails,
+              retry_after: refreshResponse.headers.get('Retry-After') || '60'
+            }),
+            { 
+              status: 429, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
         }
         
         return new Response(
@@ -199,12 +249,15 @@ serve(async (req) => {
         );
       }
 
+      console.log('Token refreshed successfully');
+      
       // Return the new token
       return new Response(
         JSON.stringify({
           access_token: refreshData.access_token,
           refresh_token: refreshData.refresh_token,
           expires_at: newExpiryDate.toISOString(),
+          refreshed: true,
           message: 'Token refreshed successfully'
         }),
         { 
@@ -213,6 +266,22 @@ serve(async (req) => {
         }
       );
     } catch (refreshError) {
+      // Check for AbortController timeout
+      if (refreshError.name === 'AbortError') {
+        console.error('Token refresh request timed out');
+        return new Response(
+          JSON.stringify({
+            error: 'Token refresh request timed out',
+            details: 'Request to Podio API exceeded timeout limit',
+            status: 408
+          }),
+          { 
+            status: 408, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
       console.error('Error during token refresh:', refreshError);
       return new Response(
         JSON.stringify({

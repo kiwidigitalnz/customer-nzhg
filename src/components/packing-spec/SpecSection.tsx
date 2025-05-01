@@ -8,6 +8,7 @@ interface AttributeDefinition {
   key: string;
   label: string;
   fieldType?: 'text' | 'date' | 'html' | 'image' | 'link' | 'category' | 'country' | 'number';
+  formatter?: (value: any) => React.ReactNode;
 }
 
 interface SpecSectionProps {
@@ -16,6 +17,7 @@ interface SpecSectionProps {
   data: Record<string, any>;
   icon?: React.ReactNode;
   renderValue?: (value: any, fieldType?: string) => React.ReactNode;
+  emptyMessage?: string;
 }
 
 /**
@@ -26,15 +28,16 @@ const SpecSection: React.FC<SpecSectionProps> = ({
   attributes,
   data,
   icon,
-  renderValue
+  renderValue,
+  emptyMessage = "No data available for this section"
 }) => {
   // Filter attributes that have values
   const attributesWithValues = attributes.filter(attr => 
     hasValue(data[attr.key])
   );
   
-  // If no attributes have values, don't render the section
-  if (attributesWithValues.length === 0) return null;
+  // If no attributes have values and emptyMessage is not provided, don't render the section
+  if (attributesWithValues.length === 0 && !emptyMessage) return null;
   
   // Default renderer if not provided
   const defaultRenderValue = (value: any, fieldType?: string) => {
@@ -69,26 +72,36 @@ const SpecSection: React.FC<SpecSectionProps> = ({
     }
   };
   
+  // Display either the section with attributes or a message indicating no data
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-medium flex items-center">
         {icon && <span className="mr-2">{icon}</span>}
         {title}
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {attributesWithValues.map(({key, label, fieldType}) => {
-          const value = data[key];
-          
-          return (
-            <div key={key} className="flex flex-col">
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className="font-medium">
-                {renderValue ? renderValue(value, fieldType) : defaultRenderValue(value, fieldType)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      
+      {attributesWithValues.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {attributesWithValues.map(({key, label, fieldType, formatter}) => {
+            const value = data[key];
+            
+            return (
+              <div key={key} className="flex flex-col">
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <span className="font-medium">
+                  {formatter 
+                    ? formatter(value)
+                    : renderValue 
+                      ? renderValue(value, fieldType) 
+                      : defaultRenderValue(value, fieldType)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">{emptyMessage}</p>
+      )}
     </div>
   );
 };
