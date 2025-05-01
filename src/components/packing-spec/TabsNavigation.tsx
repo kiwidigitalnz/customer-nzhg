@@ -5,13 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
-  FileIcon, CheckSquare, CheckCircle2, AlertTriangle, Clock, ArrowRight
+  FileIcon, CheckSquare, CheckCircle2, AlertTriangle, Clock
 } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Button } from '@/components/ui/button';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
@@ -24,7 +23,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   onTabClick,
   currentTabValue
 }) => {
-  const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested, updateSectionStatus } = useSectionApproval();
+  const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
   const isMobile = useIsMobile();
   const tabsListRef = useRef<HTMLDivElement>(null);
   
@@ -66,34 +65,9 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     return <Clock className="h-4 w-4 text-gray-500" />;
   };
 
-  // Find the next pending section that needs approval
-  const getNextPendingSection = () => {
-    const tabOrder = ['overview', 'requirements', 'packaging', 'label', 'shipping', 'documents'];
-    
-    for (const section of tabOrder) {
-      const sectionStatus = sectionStates[section as SectionName]?.status;
-      if (sectionStatus === 'pending') {
-        return section;
-      }
-    }
-    
-    // If all sections are processed, return the final approval tab
-    return 'final-approval';
-  };
-  
   const handleTabClick = (value: string) => {
     if (onTabClick) {
       onTabClick(value);
-    }
-  };
-
-  const handleGoToNextPending = () => {
-    const nextSection = getNextPendingSection();
-    handleTabClick(nextSection);
-    
-    // Add haptic feedback for mobile
-    if (isMobile && 'vibrate' in navigator) {
-      navigator.vibrate(50);
     }
   };
 
@@ -372,21 +346,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       
       {renderMobileTabs()}
       {renderDesktopTabs()}
-      
-      {/* Next pending section button */}
-      {!allSectionsApproved && (
-        <div className="mt-3 flex justify-end">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleGoToNextPending}
-            className="flex items-center gap-1 text-xs"
-          >
-            Go to next pending
-            <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

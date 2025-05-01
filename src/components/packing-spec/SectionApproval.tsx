@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, Check, ThumbsUp, Clock } from 'lucide-react';
+import { AlertTriangle, Check, ThumbsUp } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { SpecStatus } from './StatusBadge';
 import { cn } from '@/lib/utils';
@@ -102,17 +102,10 @@ const SectionApproval: React.FC<SectionApprovalProps> = ({
     );
   }
 
-  // If the section is pending, show pending status alongside approval buttons
+  // If the section is pending, show approval buttons
   if (isPending && specStatus === 'pending-approval') {
     return (
       <div className="flex flex-col space-y-2 mt-2">
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-600 flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            <span>Pending Review</span>
-          </Badge>
-        </div>
-        
         <div className="flex space-x-2 mt-2">
           {/* Request Changes button - Now positioned first */}
           <Dialog open={open} onOpenChange={setOpen}>
