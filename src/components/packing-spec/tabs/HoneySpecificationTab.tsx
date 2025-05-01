@@ -77,7 +77,7 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
     },
     {
       key: 'category',
-      label: 'Category',
+      label: 'Lozenge type',
       fieldType: 'category' as const
     }
   ];
