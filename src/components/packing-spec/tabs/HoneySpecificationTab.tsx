@@ -71,12 +71,30 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Type</h4>
-                <p className="font-medium">{displayValue(details.honeyType)}</p>
+                <p className="font-medium">{displayValue(details.honeyType2 || details.honeyType)}</p>
               </div>
+              {details.honeyType && details.honeyType2 && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Honey Process</h4>
+                  <p className="font-medium">{displayValue(details.honeyType)}</p>
+                </div>
+              )}
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">UMF/MGO</h4>
                 <p className="font-medium">{displayValue(details.umfMgo)}</p>
               </div>
+              {details.category && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Category</h4>
+                  <div className="mt-1">
+                    <CategoryDisplay 
+                      categories={details.category} 
+                      variant="outline"
+                      bgColor="bg-blue-50"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <div>
@@ -93,6 +111,12 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
                   )}
                 </div>
               </div>
+              {details.allergenQtyGrams !== undefined && details.allergenQtyGrams !== null && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Allergen Quantity (g)</h4>
+                  <p className="font-medium">{displayValue(details.allergenQtyGrams)}</p>
+                </div>
+              )}
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Ingredient Type</h4>
                 <div className="mt-1">

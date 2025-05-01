@@ -24,6 +24,9 @@ export interface PackingSpec {
     productCode?: string;
     umfMgo?: string;
     honeyType?: string;
+    honeyType2?: string;  // Added new field
+    allergenQtyGrams?: number;  // Added new field
+    category?: string;  // Added new field
     jarSize?: string;
     jarColour?: string;
     jarMaterial?: string;
@@ -32,6 +35,7 @@ export interface PackingSpec {
     batchSize?: string;
     packagingType?: string;
     specialRequirements?: string;
+    shipperStickerCount?: string;  // Added new field
     [key: string]: any;
   };
   files?: {
@@ -75,8 +79,11 @@ const FIELD_EXTERNAL_IDS = {
   
   // Honey specifications
   umfMgo: 'umf-mgo',
-  honeyType: 'honey-type',
+  honeyType: 'honey-type',  // Original honey type field (now honey process)
+  honeyType2: 'honey-type-2',  // New honey type field
   allergenType: 'allergen-or-lozenge-type',
+  allergenQtyGrams: 'allergen-qty-grams',  // New allergen quantity field
+  category: 'category',  // New category field
   ingredientType: 'ingredient',
   
   // Requirements
@@ -121,7 +128,7 @@ const FIELD_EXTERNAL_IDS = {
   // Shipper sticker
   shipperSticker: 'shipper-sticker',
   shipperStickerUrl: 'shipper-sticker-url',
-  shipperStickerCount: 'number-of-shipper-stickers-on-carton',
+  shipperStickerCount: 'number-of-shipper-stickers-on-carton',  // Added new field
   
   // Approval
   approvalStatus: 'approval-status',
@@ -337,7 +344,10 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
       // Honey specifications
       umfMgo: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.umfMgo),
       honeyType: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.honeyType),
+      honeyType2: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.honeyType2), // New honey type field
       allergenType: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.allergenType),
+      allergenQtyGrams: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.allergenQtyGrams), // New allergen quantity field
+      category: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.category), // New category field
       ingredientType: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.ingredientType),
       
       // Market and requirements
@@ -380,7 +390,7 @@ export const getPackingSpecDetails = async (specId: number): Promise<any> => {
       dateFormatting: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.dateFormatting),
       shipperSticker: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.shipperSticker),
       shipperStickerUrl: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.shipperStickerUrl),
-      shipperStickerCount: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.shipperStickerCount),
+      shipperStickerCount: getFieldValueByExternalId(response, FIELD_EXTERNAL_IDS.shipperStickerCount), // New shipper sticker count field
       
       // Approval details
       customerApprovalStatus: approvalStatusText,

@@ -7,7 +7,7 @@ import { CountryFlagsList } from './CountryFlag';
 interface AttributeDefinition {
   key: string;
   label: string;
-  fieldType?: 'text' | 'date' | 'html' | 'image' | 'link' | 'category' | 'country';
+  fieldType?: 'text' | 'date' | 'html' | 'image' | 'link' | 'category' | 'country' | 'number';
 }
 
 interface SpecSectionProps {
@@ -60,6 +60,8 @@ const SpecSection: React.FC<SpecSectionProps> = ({
         return (
           <span className="whitespace-pre-line">{formatTextContent(value)}</span>
         );
+      case 'number':
+        return <span>{Number.isNaN(Number(value)) ? value : Number(value).toString()}</span>;
       default:
         return typeof value === 'string' ? 
           formatTextContent(value) : 
