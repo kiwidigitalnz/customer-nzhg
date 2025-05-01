@@ -47,8 +47,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     }
     
     return cn(
-      "relative group transition-all duration-200 hover:bg-background/90", 
-      isActive && "bg-background shadow-sm font-medium",
+      "relative group transition-all duration-300",
+      isActive ? "bg-background shadow-md font-medium" : "hover:bg-background/70",
       statusClasses
     );
   };
@@ -81,8 +81,8 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     }
     
     return cn(
-      "relative group transition-all duration-200 hover:bg-background/90", 
-      isActive && "bg-background shadow-sm font-medium",
+      "relative group transition-all duration-300",
+      isActive ? "bg-background shadow-md font-medium scale-105" : "hover:bg-background/70",
       statusClass
     );
   };
@@ -101,9 +101,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <Info className={iconClass} />
         <span>Honey Specification</span>
         {getSectionIndicator('overview')}
-        {currentTabValue === 'overview' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -115,9 +112,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <ShieldCheck className={iconClass} />
         <span>Requirements</span>
         {getSectionIndicator('requirements')}
-        {currentTabValue === 'requirements' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -129,9 +123,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <Package className={iconClass} />
         <span>Packaging</span>
         {getSectionIndicator('packaging')}
-        {currentTabValue === 'packaging' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -143,9 +134,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <FileText className={iconClass} />
         <span>Labeling</span>
         {getSectionIndicator('label')}
-        {currentTabValue === 'label' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -157,9 +145,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <Truck className={iconClass} />
         <span>Shipping</span>
         {getSectionIndicator('shipping')}
-        {currentTabValue === 'shipping' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -171,9 +156,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <FileIcon className={iconClass} />
         <span>Documents</span>
         {getSectionIndicator('documents')}
-        {currentTabValue === 'documents' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
-        )}
       </TabsTrigger>
       
       <TabsTrigger 
@@ -186,9 +168,6 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         <span>Final Approval</span>
         {newCommentsCount > 0 && (
           <Badge variant="secondary" className="ml-2 bg-primary text-primary-foreground">{newCommentsCount}</Badge>
-        )}
-        {currentTabValue === 'final-approval' && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transform scale-x-100 transition-transform duration-300"></span>
         )}
       </TabsTrigger>
     </TabsList>
