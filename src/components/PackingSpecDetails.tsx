@@ -6,6 +6,7 @@ import { getPackingSpecDetails, updatePackingSpecStatus } from '../services/podi
 import { useToast } from '@/hooks/use-toast';
 import { formatTextContent } from '@/utils/formatters';
 import * as z from 'zod';
+import { cn } from '@/lib/utils'; // Add this import for the cn utility
 
 // UI Components
 import { Card, CardContent } from '@/components/ui/card';
