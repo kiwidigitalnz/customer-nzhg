@@ -40,7 +40,28 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>('comments');
   const { toast } = useToast();
-  const { allSectionsApproved } = useSectionApproval();
+  const { allSectionsApproved, getSectionFeedback } = useSectionApproval();
+  
+  // Format section feedback for the change request form
+  const formattedSectionFeedback = React.useMemo(() => {
+    const feedbackItems = getSectionFeedback();
+    if (Object.keys(feedbackItems).length === 0) return '';
+    
+    let formattedText = '';
+    
+    Object.entries(feedbackItems).forEach(([section, feedback]) => {
+      if (feedback && feedback.trim()) {
+        // Format the section name to be more readable
+        const readableSection = section
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, char => char.toUpperCase());
+        
+        formattedText += `\n\n== ${readableSection} ==\n${feedback}`;
+      }
+    });
+    
+    return formattedText.trim();
+  }, [getSectionFeedback]);
   
   // Use our enhanced comment polling hook but disable automatic polling
   const { 
@@ -157,6 +178,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                   buttonText="Submit Changes"
                   buttonClassName="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-3 text-base"
                   specStatus={specStatus}
+                  prefilledFeedback={formattedSectionFeedback}
                 />
               </div>
             </>
