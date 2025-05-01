@@ -8,6 +8,7 @@ import SectionApproval from '../SectionApproval';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
 import { SpecStatus } from '../StatusBadge';
 import SpecSection from '../SpecSection';
+import { cn } from '@/lib/utils';
 
 interface HoneySpecificationTabProps {
   details: Record<string, any>;
@@ -25,6 +26,7 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
   specStatus
 }) => {
   const { sectionStates, updateSectionStatus } = useSectionApproval();
+  const sectionStatus = sectionStates['overview']?.status || 'pending';
   
   // Helper function to display values, showing "N/A" as a single value
   const displayValue = (value: any) => {
@@ -55,6 +57,18 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
     // Navigate to next tab after changes are requested
     if (onNavigateToNextTab) {
       onNavigateToNextTab();
+    }
+  };
+
+  // Get card background class based on section status
+  const getCardBackgroundClass = () => {
+    switch(sectionStatus) {
+      case 'approved':
+        return 'bg-green-50/50 border-green-200';
+      case 'changes-requested':
+        return 'bg-amber-50/50 border-amber-200';
+      default:
+        return '';
     }
   };
 
@@ -103,8 +117,8 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in-50">
-      <Card className="shadow-sm border-muted">
-        <CardHeader className="pb-2 bg-muted/30">
+      <Card className={cn("shadow-sm border-muted transition-colors duration-300", getCardBackgroundClass())}>
+        <CardHeader className={cn("pb-2", sectionStatus === 'approved' ? 'bg-green-100/30' : sectionStatus === 'changes-requested' ? 'bg-amber-100/30' : 'bg-muted/30')}>
           <CardTitle className="text-lg flex items-center">
             <Package className="mr-2 h-5 w-5 text-primary/80" />
             Honey Details

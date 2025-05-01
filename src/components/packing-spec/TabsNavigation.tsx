@@ -2,14 +2,16 @@
 import React, { useRef, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Info, ShieldCheck, Package, FileText, Truck, 
-  FileIcon, CheckSquare, CheckCircle2, AlertTriangle 
+  FileIcon, CheckSquare, CheckCircle2, AlertTriangle, Clock, ArrowRight
 } from 'lucide-react';
 import { useSectionApproval, SectionName } from '@/contexts/SectionApprovalContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
 
 interface TabsNavigationProps {
   newCommentsCount?: number;
@@ -22,9 +24,14 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   onTabClick,
   currentTabValue
 }) => {
-  const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested } = useSectionApproval();
+  const { sectionStates, allSectionsApproved, anySectionsWithChangesRequested, updateSectionStatus } = useSectionApproval();
   const isMobile = useIsMobile();
   const tabsListRef = useRef<HTMLDivElement>(null);
+  
+  // Calculate approval progress percentage
+  const totalSections = Object.keys(sectionStates).length;
+  const approvedSections = Object.values(sectionStates).filter(section => section.status === 'approved').length;
+  const approvalProgress = totalSections > 0 ? (approvedSections / totalSections) * 100 : 0;
   
   // When tab changes, scroll that tab into view on mobile
   useEffect(() => {
@@ -56,12 +63,37 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       return <AlertTriangle className="h-4 w-4 text-amber-600" />;
     }
     
-    return null;
+    return <Clock className="h-4 w-4 text-gray-500" />;
+  };
+
+  // Find the next pending section that needs approval
+  const getNextPendingSection = () => {
+    const tabOrder = ['overview', 'requirements', 'packaging', 'label', 'shipping', 'documents'];
+    
+    for (const section of tabOrder) {
+      const sectionStatus = sectionStates[section as SectionName]?.status;
+      if (sectionStatus === 'pending') {
+        return section;
+      }
+    }
+    
+    // If all sections are processed, return the final approval tab
+    return 'final-approval';
   };
   
   const handleTabClick = (value: string) => {
     if (onTabClick) {
       onTabClick(value);
+    }
+  };
+
+  const handleGoToNextPending = () => {
+    const nextSection = getNextPendingSection();
+    handleTabClick(nextSection);
+    
+    // Add haptic feedback for mobile
+    if (isMobile && 'vibrate' in navigator) {
+      navigator.vibrate(50);
     }
   };
 
@@ -74,6 +106,30 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
     } else {
       return <CheckSquare className="mr-1 h-4 w-4" />;
     }
+  };
+  
+  const getTabStatusClass = (section: SectionName) => {
+    const status = sectionStates[section]?.status;
+    
+    if (status === 'approved') {
+      return 'bg-green-50 hover:bg-green-100 data-[state=active]:bg-green-100 border-green-200';
+    }
+    
+    if (status === 'changes-requested') {
+      return 'bg-amber-50 hover:bg-amber-100 data-[state=active]:bg-amber-100 border-amber-200';
+    }
+    
+    return '';
+  };
+
+  const getFinalTabStatusClass = () => {
+    if (allSectionsApproved) {
+      return 'bg-green-50 hover:bg-green-100 data-[state=active]:bg-green-100 border-green-200';
+    } else if (anySectionsWithChangesRequested) {
+      return 'bg-amber-50 hover:bg-amber-100 data-[state=active]:bg-amber-100 border-amber-200';
+    }
+    
+    return '';
   };
   
   const tabData = [
@@ -128,34 +184,49 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
       className="w-full flex overflow-x-auto md:hidden tabs-container snap-x snap-mandatory overscroll-x-contain"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
-      {tabData.map((tab) => (
-        <TooltipProvider key={tab.value} delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TabsTrigger
-                value={tab.value}
-                data-value={tab.value}
-                onClick={() => handleTabClick(tab.value)}
-                className={cn(
-                  "flex flex-col items-center py-3 px-4 gap-1 min-w-[72px] snap-center touch-manipulation",
-                  currentTabValue === tab.value ? "selected-tab" : ""
-                )}
-                data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
-                aria-label={tab.tooltip}
-              >
-                <span className="relative">
-                  {tab.icon}
-                  {getSectionIndicator(tab.sectionName) && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-current" />
+      {tabData.map((tab) => {
+        const statusClass = getTabStatusClass(tab.sectionName);
+        return (
+          <TooltipProvider key={tab.value} delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger
+                  value={tab.value}
+                  data-value={tab.value}
+                  onClick={() => handleTabClick(tab.value)}
+                  className={cn(
+                    "flex flex-col items-center py-3 px-4 gap-1 min-w-[72px] snap-center touch-manipulation",
+                    currentTabValue === tab.value ? "selected-tab" : "",
+                    statusClass
                   )}
-                </span>
-                <span className="text-[10px]">{tab.label}</span>
-              </TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent>{tab.tooltip}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ))}
+                  data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
+                  aria-label={tab.tooltip}
+                >
+                  <span className="relative">
+                    {tab.icon}
+                    <span className="absolute -top-1 -right-1">
+                      {getSectionIndicator(tab.sectionName)}
+                    </span>
+                  </span>
+                  <span className="text-[10px]">{tab.label}</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs">
+                  <p>{tab.tooltip}</p>
+                  <p className="font-semibold mt-1">
+                    Status: {sectionStates[tab.sectionName]?.status === 'approved' 
+                      ? 'Approved' 
+                      : sectionStates[tab.sectionName]?.status === 'changes-requested'
+                        ? 'Changes Requested'
+                        : 'Pending'}
+                  </p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
       
       <TooltipProvider delayDuration={300}>
         <Tooltip>
@@ -167,7 +238,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
               className={cn(
                 "flex flex-col items-center py-3 px-4 gap-1 min-w-[72px] snap-center touch-manipulation",
                 currentTabValue === 'final-approval' ? "selected-tab" : "",
-                allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
+                getFinalTabStatusClass()
               )}
               data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
               aria-label="Final Approval"
@@ -181,7 +252,18 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
               )}
             </TabsTrigger>
           </TooltipTrigger>
-          <TooltipContent>Final Approval</TooltipContent>
+          <TooltipContent>
+            <div className="text-xs">
+              <p>Final Approval</p>
+              <p className="font-semibold mt-1">
+                {allSectionsApproved 
+                  ? 'Ready for Final Approval!' 
+                  : anySectionsWithChangesRequested 
+                    ? 'Changes Requested - Review before finalizing' 
+                    : 'Review all sections before approving'}
+              </p>
+            </div>
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </TabsList>
@@ -190,50 +272,121 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
   // Desktop tab rendering (icons and text)
   const renderDesktopTabs = () => (
     <TabsList className="hidden md:flex md:flex-wrap w-full tabs-container">
-      {tabData.map((tab) => (
-        <TabsTrigger
-          key={tab.value}
-          value={tab.value}
-          data-value={tab.value}
-          onClick={() => handleTabClick(tab.value)}
-          className={cn(
-            "flex items-center gap-1.5",
-            currentTabValue === tab.value ? "selected-tab" : ""
-          )}
-          data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
-        >
-          {tab.icon}
-          <span>{tab.label}</span>
-          {getSectionIndicator(tab.sectionName)}
-        </TabsTrigger>
-      ))}
+      {tabData.map((tab) => {
+        const statusClass = getTabStatusClass(tab.sectionName);
+        const sectionStatus = sectionStates[tab.sectionName]?.status;
+        return (
+          <TooltipProvider key={tab.value} delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  data-value={tab.value}
+                  onClick={() => handleTabClick(tab.value)}
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    currentTabValue === tab.value ? "selected-tab" : "",
+                    statusClass
+                  )}
+                  data-state={currentTabValue === tab.value ? 'active' : 'inactive'}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                  {getSectionIndicator(tab.sectionName)}
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-sm">
+                  <p>{tab.tooltip}</p>
+                  <p className="font-semibold mt-1">
+                    Status: {sectionStatus === 'approved' 
+                      ? 'Approved' 
+                      : sectionStatus === 'changes-requested'
+                        ? 'Changes Requested'
+                        : 'Pending'}
+                  </p>
+                  {sectionStatus === 'approved' && sectionStates[tab.sectionName]?.approvedAt && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Approved at: {new Date(sectionStates[tab.sectionName].approvedAt!).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
       
-      <TabsTrigger
-        value="final-approval"
-        data-value="final-approval"
-        onClick={() => handleTabClick('final-approval')}
-        className={cn(
-          "flex items-center gap-1.5",
-          currentTabValue === 'final-approval' ? "selected-tab" : "",
-          allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
-        )}
-        data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
-      >
-        {getFinalTabIcon()}
-        <span>Final Approval</span>
-        {newCommentsCount > 0 && (
-          <Badge variant="secondary" className="bg-primary text-primary-foreground">
-            {newCommentsCount}
-          </Badge>
-        )}
-      </TabsTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <TabsTrigger
+              value="final-approval"
+              data-value="final-approval"
+              onClick={() => handleTabClick('final-approval')}
+              className={cn(
+                "flex items-center gap-1.5",
+                currentTabValue === 'final-approval' ? "selected-tab" : "",
+                getFinalTabStatusClass()
+              )}
+              data-state={currentTabValue === 'final-approval' ? 'active' : 'inactive'}
+            >
+              {getFinalTabIcon()}
+              <span>Final Approval</span>
+              {newCommentsCount > 0 && (
+                <Badge variant="secondary" className="bg-primary text-primary-foreground">
+                  {newCommentsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="text-sm">
+              <p>Final Approval</p>
+              <p className="font-semibold mt-1">
+                {allSectionsApproved 
+                  ? 'Ready for Final Approval!' 
+                  : anySectionsWithChangesRequested 
+                    ? 'Changes Requested - Review before finalizing' 
+                    : 'Review all sections before approving'}
+              </p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </TabsList>
   );
   
   return (
     <div className="w-full mb-6">
+      {/* Progress bar showing approval status */}
+      <div className="mb-2 flex justify-between items-center">
+        <div className="flex-grow mr-2">
+          <Progress value={approvalProgress} className="h-2" />
+        </div>
+        <div className="text-xs text-muted-foreground whitespace-nowrap">
+          {approvedSections} of {totalSections} approved
+        </div>
+      </div>
+      
       {renderMobileTabs()}
       {renderDesktopTabs()}
+      
+      {/* Next pending section button */}
+      {!allSectionsApproved && (
+        <div className="mt-3 flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleGoToNextPending}
+            className="flex items-center gap-1 text-xs"
+          >
+            Go to next pending
+            <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

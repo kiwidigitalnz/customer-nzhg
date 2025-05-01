@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -56,6 +57,19 @@
     --status-rejected-bg: 0 84% 96%;
     --status-rejected-text: 0 84% 35%;
     --status-rejected-border: 0 84% 85%;
+    
+    /* Status Tab Colors - New */
+    --tab-approved-bg: 142 76% 97%;
+    --tab-approved-hover: 142 76% 93%;
+    --tab-approved-border: 142 76% 85%;
+    
+    --tab-changes-bg: 39 100% 97%;
+    --tab-changes-hover: 39 100% 93%;
+    --tab-changes-border: 39 100% 85%;
+    
+    --tab-pending-bg: 0 0% 97%;
+    --tab-pending-hover: 0 0% 93%;
+    --tab-pending-border: 0 0% 85%;
   }
 
   .dark {
@@ -154,6 +168,15 @@
   height: 2px;
   background-color: hsl(var(--primary));
   animation: tabActivate 0.3s ease-out forwards;
+}
+
+/* Tab status-specific styling */
+.tab-approved {
+  @apply bg-green-50 border-green-200;
+}
+
+.tab-changes-requested {
+  @apply bg-amber-50 border-amber-200;
 }
 
 /* Selected tab class for additional styling */
@@ -277,6 +300,33 @@
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+/* Slide in animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in-from-bottom-3 {
+  animation: slideInBottom 0.3s ease-out forwards;
+}
+
+@keyframes slideInBottom {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Improved button transitions */
 .btn-transition {
   transition: all 0.3s ease;
@@ -392,4 +442,22 @@
   .form-group {
     @apply mb-5;
   }
+}
+
+/* Enhanced tab styling for status visualization */
+.tab-status-approved {
+  @apply bg-green-50 border-green-200 text-green-800;
+}
+
+.tab-status-changes {
+  @apply bg-amber-50 border-amber-200 text-amber-800;
+}
+
+.tab-status-pending {
+  @apply bg-gray-50 border-gray-200 text-gray-700;
+}
+
+/* Indicator icons in tabs */
+.tab-indicator-icon {
+  @apply absolute -top-1 -right-1 h-4 w-4 rounded-full flex items-center justify-center;
 }
