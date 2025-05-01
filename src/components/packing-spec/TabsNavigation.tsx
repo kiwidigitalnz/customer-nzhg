@@ -111,7 +111,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
                 onClick={() => handleTabClick(tab.value)}
                 className={cn(
                   "flex flex-col items-center py-2 gap-1",
-                  currentTabValue === tab.value ? "bg-background" : ""
+                  currentTabValue === tab.value ? "bg-background text-primary" : ""
                 )}
                 data-state={currentTabValue === tab.value ? 'active' : ''}
               >
@@ -137,7 +137,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
               onClick={() => handleTabClick('final-approval')}
               className={cn(
                 "flex flex-col items-center py-2 gap-1",
-                currentTabValue === 'final-approval' ? "bg-background" : "",
+                currentTabValue === 'final-approval' ? "bg-background text-primary" : "",
                 allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
               )}
               data-state={currentTabValue === 'final-approval' ? 'active' : ''}
@@ -167,7 +167,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
           onClick={() => handleTabClick(tab.value)}
           className={cn(
             "flex items-center gap-1.5",
-            currentTabValue === tab.value ? "bg-background" : ""
+            currentTabValue === tab.value ? "text-primary" : ""
           )}
           data-state={currentTabValue === tab.value ? 'active' : ''}
         >
@@ -182,7 +182,7 @@ const TabsNavigation: React.FC<TabsNavigationProps> = ({
         onClick={() => handleTabClick('final-approval')}
         className={cn(
           "flex items-center gap-1.5",
-          currentTabValue === 'final-approval' ? "bg-background" : "",
+          currentTabValue === 'final-approval' ? "text-primary" : "",
           allSectionsApproved ? "text-green-600" : anySectionsWithChangesRequested ? "text-amber-600" : ""
         )}
         data-state={currentTabValue === 'final-approval' ? 'active' : ''}
