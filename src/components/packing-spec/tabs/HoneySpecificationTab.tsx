@@ -63,22 +63,22 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
     { 
       key: 'honeyType2', 
       label: 'Honey Type',
-      fieldType: 'text'
+      fieldType: 'text' as const
     },
     { 
       key: 'honeyType', 
       label: 'Honey Process',
-      fieldType: 'text'
+      fieldType: 'text' as const
     },
     {
       key: 'umfMgo',
       label: 'UMF/MGO',
-      fieldType: 'text'
+      fieldType: 'text' as const
     },
     {
       key: 'category',
       label: 'Category',
-      fieldType: 'category'
+      fieldType: 'category' as const
     }
   ];
   
@@ -87,17 +87,17 @@ const HoneySpecificationTab: React.FC<HoneySpecificationTabProps> = ({
     {
       key: 'allergenType',
       label: 'Allergen Type',
-      fieldType: 'category'
+      fieldType: 'category' as const
     },
     {
       key: 'allergenQtyGrams',
       label: 'Allergen Quantity (g)',
-      fieldType: 'number'
+      fieldType: 'number' as const
     },
     {
       key: 'ingredientType',
       label: 'Ingredient Type',
-      fieldType: 'category'
+      fieldType: 'category' as const
     }
   ];
 
