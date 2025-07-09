@@ -188,8 +188,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         await new Promise(resolve => setTimeout(resolve, backoffTime));
       }
       
-      console.log('Attempting token refresh via edge function...');
-      const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+      console.log('Attempting token check/refresh via authenticate function...');
+      const { data, error } = await supabase.functions.invoke('podio-authenticate', {
         method: 'POST'
       });
       
@@ -202,15 +202,15 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         if (error.message && error.message.includes('Edge Function returned a non-2xx status code') && error.data) {
           const errorData = error.data;
           
-        // Check if this is a configuration issue needing setup
-        if (errorData.needs_setup || errorData.needs_reauth) {
-          console.log('Token refresh failed - reauth needed:', errorData.error);
+        // Check if this is a configuration issue needing OAuth setup
+        if (errorData.needs_setup || errorData.needs_reauth || errorData.needs_oauth_setup) {
+          console.log('Token refresh failed - OAuth setup needed:', errorData.error);
           // Clear stored tokens and reset counters to prevent retry loops
           localStorage.removeItem('podio_token_expiry');
           localStorage.removeItem('podio_user_data'); // Also clear user data to force reauth
           tokenRetryCount = MAX_TOKEN_RETRIES; // Prevent further retries
-          // Signal to the UI that reauthorization is needed
-          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+          // Signal to the UI that OAuth setup is needed
+          window.dispatchEvent(new CustomEvent('podio-oauth-setup-needed'));
           return false;
         }
           
@@ -244,15 +244,15 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       if (data.hasOwnProperty('success') && data.success === false) {
         console.error('Token refresh failed:', data.error);
         
-    // Check if this is a configuration issue needing setup
-    if (data.needs_setup || data.needs_reauth) {
-      console.log('Token refresh failed - reauth needed:', data.error);
+    // Check if this is a configuration issue needing OAuth setup
+    if (data.needs_setup || data.needs_reauth || data.needs_oauth_setup) {
+      console.log('Token refresh failed - OAuth setup needed:', data.error);
       // Clear stored tokens and reset counters to prevent retry loops
       localStorage.removeItem('podio_token_expiry');
       localStorage.removeItem('podio_user_data'); // Also clear user data to force reauth
       tokenRetryCount = MAX_TOKEN_RETRIES; // Prevent further retries
-      // Signal to the UI that reauthorization is needed
-      window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+      // Signal to the UI that OAuth setup is needed
+      window.dispatchEvent(new CustomEvent('podio-oauth-setup-needed'));
       return false;
     }
         
@@ -690,9 +690,70 @@ export const getCachedUserData = (key: string): any => {
   }
 };
 
-// Simplified authorization check functions for client side
+// OAuth authentication check - verifies we have valid OAuth tokens
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
-  return refreshPodioToken();
+  console.log('=== OAUTH AUTHENTICATION CHECK START ===');
+  
+  try {
+    // Check if we have valid OAuth tokens by calling the updated authenticate function
+    const { data, error } = await supabase.functions.invoke('podio-authenticate', {
+      method: 'POST'
+    });
+    
+    console.log('OAuth token check response:', { data, error });
+    
+    if (error) {
+      console.error('OAuth authentication error:', error);
+      
+      // Enhanced error handling for edge function responses
+      if (error.message && error.message.includes('Edge Function returned a non-2xx status code') && error.data) {
+        const errorData = error.data;
+        
+        // Check if this needs OAuth setup
+        if (errorData.needs_oauth_setup) {
+          console.log('OAuth setup required:', errorData.error);
+          // Signal that OAuth setup is needed
+          return false;
+        }
+        
+        // Log detailed error information for debugging
+        console.error('OAuth specific error:', errorData);
+        return false;
+      }
+      
+      return false;
+    }
+    
+    if (!data) {
+      console.error('Empty response from authentication service');
+      return false;
+    }
+    
+    // Handle response structure
+    if (data.hasOwnProperty('success') && data.success === false) {
+      console.error('Authentication failed:', data.error);
+      return false;
+    }
+    
+    // Check for access token
+    if (!data.access_token) {
+      console.error('No access token received');
+      return false;
+    }
+    
+    // Store token expiry in localStorage for client-side checks
+    if (data.expires_at) {
+      const expiryTime = new Date(data.expires_at).getTime();
+      localStorage.setItem('podio_token_expiry', expiryTime.toString());
+    }
+    
+    console.log('OAuth authentication successful');
+    return true;
+    
+  } catch (error) {
+    console.error('Unexpected error in OAuth auth check:', error);
+    return false;
+  }
 };
 
 export const validateContactsAppAccess = async (): Promise<boolean> => {
@@ -731,7 +792,21 @@ export const isPodioProperlyConfigured = (): boolean => {
 
 // Initialize Podio authentication on app start
 export const initializePodioAuth = (): void => {
-  // Add event listener for reauth events with route checking
+  // Add event listener for OAuth setup events with route checking
+  window.addEventListener('podio-oauth-setup-needed', () => {
+    const currentPath = window.location.pathname;
+    
+    // Don't redirect if already on setup/auth pages
+    if (isAuthOrSetupPage(currentPath)) {
+      console.log('Already on auth/setup page, not redirecting:', currentPath);
+      return;
+    }
+    
+    // Navigate to setup page for OAuth setup
+    window.location.href = '/podio-setup?oauth_required=true';
+  });
+  
+  // Keep legacy event for compatibility
   window.addEventListener('podio-reauth-needed', () => {
     const currentPath = window.location.pathname;
     

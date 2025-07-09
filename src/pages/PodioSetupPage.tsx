@@ -149,16 +149,7 @@ const PodioSetupPage = () => {
     }
   };
 
-  const handleConnectPodio = async () => {    
-    if (!isPodioConfigured()) {
-      toast({
-        title: "Error",
-        description: "Please save Client ID and Secret first",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleStartOAuth = async () => {
     if (!supabaseConnected) {
       toast({
         title: "Supabase Not Connected",
@@ -173,17 +164,74 @@ const PodioSetupPage = () => {
     setConnectionError(null);
     
     try {
+      console.log('Starting OAuth flow...');
+      
+      // Get the OAuth authorization URL from the edge function
+      const { data, error } = await supabase.functions.invoke('podio-get-auth-url', {
+        method: 'GET'
+      });
+      
+      if (error) {
+        console.error('Error getting auth URL:', error);
+        throw new Error(error.message || 'Failed to get authorization URL');
+      }
+      
+      if (!data || !data.authUrl) {
+        throw new Error('No authorization URL received');
+      }
+      
+      console.log('Redirecting to OAuth URL...');
+      
+      // Store the state for later validation
+      if (data.state) {
+        localStorage.setItem('podio_oauth_state', data.state);
+      }
+      
+      // Redirect to Podio OAuth
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      console.error('Error starting OAuth flow:', error);
+      setConnectionStatus('error');
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setConnectionError(errorMessage);
+      
+      toast({
+        title: "OAuth Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      setConnecting(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!supabaseConnected) {
+      toast({
+        title: "Supabase Not Connected",
+        description: "Supabase Edge Functions are required for Podio integration. Please set up Supabase first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConnecting(true);
+    setConnectionStatus('idle');
+    setConnectionError(null);
+    
+    try {
+      // Check if we have valid OAuth tokens
       const success = await authenticateWithClientCredentials();
       
       if (success) {
         setConnectionStatus('success');
         toast({
           title: "Success",
-          description: "Connected to Podio API successfully",
+          description: "OAuth tokens are valid and working",
           variant: "default"
         });
         
-        // Now check if we have access to the Contacts app
+        // Test access to the Contacts app
         try {
           const hasAccess = await validateContactsAppAccess();
           
@@ -196,7 +244,7 @@ const PodioSetupPage = () => {
           } else {
             toast({
               title: "App Access Issue",
-              description: "Connected to Podio API, but could not access the Contacts app. Check app permissions.",
+              description: "OAuth tokens work, but could not access the Contacts app. Check app permissions.",
               variant: "destructive"
             });
           }
@@ -211,15 +259,15 @@ const PodioSetupPage = () => {
         
       } else {
         setConnectionStatus('error');
-        setConnectionError("Failed to authenticate with Podio. Please check your credentials.");
+        setConnectionError("No valid OAuth tokens found. Please complete OAuth setup.");
         toast({
-          title: "Connection Error",
-          description: "Failed to authenticate with Podio API",
+          title: "Authentication Required",
+          description: "No valid OAuth tokens found. Please complete OAuth setup.",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error connecting to Podio:', error);
+      console.error('Error testing connection:', error);
       setConnectionStatus('error');
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       setConnectionError(errorMessage);
@@ -227,7 +275,7 @@ const PodioSetupPage = () => {
       toast({
         title: "Error",
         description: errorMessage,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setConnecting(false);
@@ -324,18 +372,17 @@ const PodioSetupPage = () => {
               </AlertDescription>
             </Alert>
             
-            <div className="bg-amber-50 p-4 rounded-md text-sm">
-              <p className="font-medium text-amber-800">Podio API Setup Instructions:</p>
-              <ol className="list-decimal list-inside mt-2 space-y-1 text-amber-700">
-                <li>Go to <a href="https://podio.com/settings/api" target="_blank" rel="noopener noreferrer" className="underline">Podio API Settings</a></li>
-                <li>Click "Generate API Key"</li>
-                <li>Enter your application name (e.g., "NZHG Customer Portal")</li>
-                <li>For domain, enter: <strong>{window.location.origin}</strong></li>
-                <li>Copy the Client ID and Client Secret provided by Podio</li>
-                <li>Paste them in the fields above and save</li>
+            <div className="bg-blue-50 p-4 rounded-md text-sm">
+              <p className="font-medium text-blue-800">OAuth Setup Instructions:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1 text-blue-700">
+                <li>Ensure your PODIO_CLIENT_ID and PODIO_CLIENT_SECRET are configured in Supabase secrets</li>
+                <li>Click "Start OAuth Setup" below to begin the authorization process</li>
+                <li>You'll be redirected to Podio to authorize this application</li>
+                <li>After authorization, you'll be redirected back here</li>
+                <li>Use "Test Connection" to verify everything is working</li>
               </ol>
-              <p className="mt-2 text-amber-800 font-medium">Important:</p>
-              <p className="text-amber-700">Make sure the domain entered in Podio exactly matches: <strong>{window.location.origin}</strong></p>
+              <p className="mt-2 text-blue-800 font-medium">Note:</p>
+              <p className="text-blue-700">This uses OAuth 2.0 flow for secure access to your Podio data. No passwords are stored locally.</p>
             </div>
 
             {/* Debug section */}
@@ -383,16 +430,30 @@ const PodioSetupPage = () => {
               )}
               
               <Button 
-                onClick={handleConnectPodio}
+                onClick={handleStartOAuth}
                 disabled={connecting || !supabaseConnected}
-                variant={connectionStatus === 'success' ? 'outline' : 'default'}
+                variant="default"
+                className="mr-2"
               >
                 {connecting ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
+                    Starting OAuth...
                   </>
-                ) : 'Connect to Podio'}
+                ) : 'Start OAuth Setup'}
+              </Button>
+              
+              <Button 
+                onClick={handleTestConnection}
+                disabled={connecting || !supabaseConnected}
+                variant="outline"
+              >
+                {connecting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : 'Test Connection'}
               </Button>
             </div>
           </CardFooter>
