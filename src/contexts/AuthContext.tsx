@@ -287,30 +287,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Force reauthentication with Podio API
   const forceReauthenticate = useCallback(async (): Promise<boolean> => {
+    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
         method: 'POST'
       });
       
-      if (error || !data || !data.access_token) {
+      // Enhanced error handling for edge function responses
+      if (error) {
+        console.error('Reauthentication edge function error:', error);
         setIsAuthenticated(false);
+        setError({
+          status: 500,
+          message: 'Failed to connect to authentication service',
+          details: error.message,
+          retry: false
+        });
         window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
         return false;
       }
       
-      // Store token expiry in localStorage
+      // Check for response structure indicating failure
+      if (!data || data.success === false || !data.access_token) {
+        console.error('Reauthentication failed - invalid or missing token:', data);
+        setIsAuthenticated(false);
+        
+        // Handle specific error conditions
+        if (data && (data.needs_reauth || data.needs_setup)) {
+          setError({
+            status: data.status || 401,
+            message: data.error || 'Reauthentication required',
+            details: data.details,
+            retry: false
+          });
+          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+        } else {
+          setError({
+            status: 500,
+            message: 'Invalid authentication response',
+            retry: false
+          });
+        }
+        return false;
+      }
+      
+      // Validate and store token expiry
       if (data.expires_at) {
-        const expiryTime = new Date(data.expires_at).getTime();
-        localStorage.setItem('podio_token_expiry', expiryTime.toString());
+        const expiryDate = new Date(data.expires_at);
+        if (!isNaN(expiryDate.getTime())) {
+          const expiryTime = expiryDate.getTime();
+          localStorage.setItem('podio_token_expiry', expiryTime.toString());
+          
+          // Check if token is already expired
+          if (expiryTime <= Date.now()) {
+            console.warn('Received expired token from reauthentication');
+            setIsAuthenticated(false);
+            setError({
+              status: 401,
+              message: 'Received expired authentication token',
+              retry: false
+            });
+            return false;
+          }
+        } else {
+          console.warn('Invalid expiry date in reauthentication response:', data.expires_at);
+          // Still proceed but warn about the invalid date
+        }
       }
       
       setIsAuthenticated(true);
+      setError(null);
+      console.log('Reauthentication successful');
       return true;
     } catch (err) {
-      console.error('Reauthentication error:', err);
-      setError(err as PodioAuthError);
+      console.error('Unexpected reauthentication error:', err);
+      setError({
+        status: 500,
+        message: err instanceof Error ? err.message : 'Unknown reauthentication error',
+        retry: false
+      });
       setIsAuthenticated(false);
       return false;
+    } finally {
+      setLoading(false);
     }
   }, []);
 

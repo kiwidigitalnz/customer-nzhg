@@ -93,14 +93,18 @@ serve(async (req) => {
     }
 
     if (!tokens || tokens.length === 0) {
-      console.error('No Podio tokens found');
+      console.error('No Podio tokens found in database');
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'No Podio token found',
+          error: 'No Podio authentication found',
           status: 404,
-          details: 'Admin must authenticate with Podio first',
-          needs_setup: true
+          details: 'Podio OAuth authentication must be completed first',
+          needs_setup: true,
+          debug_info: {
+            timestamp: new Date().toISOString(),
+            tokens_found: 0
+          }
         }),
         { 
           status: 200, 
@@ -112,21 +116,50 @@ serve(async (req) => {
     const token = tokens[0];
     const refreshToken = token.refresh_token;
     
+    // Validate the token expiry date
+    const expiryDate = new Date(token.expires_at);
+    if (isNaN(expiryDate.getTime())) {
+      console.error('Invalid expiry date in stored token:', token.expires_at);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Invalid token expiry date in database',
+          status: 500,
+          details: 'Token data corruption detected',
+          needs_reauth: true,
+          debug_info: {
+            stored_expires_at: token.expires_at,
+            timestamp: new Date().toISOString()
+          }
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
     // Check if token is expired
-    const expiresAt = new Date(token.expires_at).getTime();
+    const expiresAt = expiryDate.getTime();
     const now = Date.now();
-    const tokenBuffer = 20 * 60 * 1000; // 20 minutes buffer (increased from 10)
+    const tokenBuffer = 20 * 60 * 1000; // 20 minutes buffer
     
     // If token is not expiring soon, return it
     if (expiresAt > now + tokenBuffer) {
-      console.log('Token still valid, not refreshing');
+      console.log('Token still valid, not refreshing. Expires at:', new Date(expiresAt).toISOString());
       return new Response(
         JSON.stringify({
           success: true,
           access_token: token.access_token,
           refresh_token: token.refresh_token,
           expires_at: token.expires_at,
-          message: 'Using existing valid token'
+          message: 'Using existing valid token',
+          time_remaining_ms: expiresAt - now,
+          debug_info: {
+            now: new Date(now).toISOString(),
+            expires_at: new Date(expiresAt).toISOString(),
+            buffer_minutes: tokenBuffer / (60 * 1000)
+          }
         }),
         { 
           status: 200, 
@@ -260,7 +293,7 @@ serve(async (req) => {
 
       console.log('Token refreshed successfully');
       
-      // Return the new token
+      // Return the new token with additional metadata
       return new Response(
         JSON.stringify({
           success: true,
@@ -268,7 +301,14 @@ serve(async (req) => {
           refresh_token: refreshData.refresh_token,
           expires_at: newExpiryDate.toISOString(),
           refreshed: true,
-          message: 'Token refreshed successfully'
+          message: 'Token refreshed successfully',
+          time_remaining_ms: refreshData.expires_in * 1000,
+          debug_info: {
+            old_expires_at: token.expires_at,
+            new_expires_at: newExpiryDate.toISOString(),
+            refreshed_at: new Date().toISOString(),
+            expires_in_seconds: refreshData.expires_in
+          }
         }),
         { 
           status: 200, 

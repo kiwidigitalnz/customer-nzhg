@@ -199,8 +199,10 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         // Check if this is a configuration issue needing setup
         if (errorData.needs_setup || errorData.needs_reauth) {
           console.log('Token refresh failed - reauth needed:', errorData.error);
-          // Clear stored tokens to prevent retry loops
+          // Clear stored tokens and reset counters to prevent retry loops
           localStorage.removeItem('podio_token_expiry');
+          localStorage.removeItem('podio_user_data'); // Also clear user data to force reauth
+          tokenRetryCount = MAX_TOKEN_RETRIES; // Prevent further retries
           // Signal to the UI that reauthorization is needed
           window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
           return false;
@@ -213,8 +215,10 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         // Handle specific error case where reauthorization is needed
         if (error.message && error.message.includes('needs_reauth')) {
           console.log('Token refresh failed - reauth needed from error message');
-          // Clear stored tokens to prevent retry loops
+          // Clear stored tokens and reset counters to prevent retry loops
           localStorage.removeItem('podio_token_expiry');
+          localStorage.removeItem('podio_user_data'); // Also clear user data to force reauth
+          tokenRetryCount = MAX_TOKEN_RETRIES; // Prevent further retries
           // Signal to the UI that reauthorization is needed
           window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
           return false;
@@ -237,8 +241,10 @@ export const refreshPodioToken = async (): Promise<boolean> => {
     // Check if this is a configuration issue needing setup
     if (data.needs_setup || data.needs_reauth) {
       console.log('Token refresh failed - reauth needed:', data.error);
-      // Clear stored tokens to prevent retry loops
+      // Clear stored tokens and reset counters to prevent retry loops
       localStorage.removeItem('podio_token_expiry');
+      localStorage.removeItem('podio_user_data'); // Also clear user data to force reauth
+      tokenRetryCount = MAX_TOKEN_RETRIES; // Prevent further retries
       // Signal to the UI that reauthorization is needed
       window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
       return false;

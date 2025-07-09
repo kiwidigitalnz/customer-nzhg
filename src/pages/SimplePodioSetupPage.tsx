@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Info, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { DebugLogger } from '@/utils/debugLogger';
 
 const SimplePodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -61,12 +62,22 @@ const SimplePodioSetupPage = () => {
     if (!supabaseConnected) return;
     
     const checkPodioConnection = async () => {
+      DebugLogger.info('SimplePodioSetupPage', 'Checking Podio connection status');
+      
       try {
         const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
           method: 'POST'
         });
         
+        DebugLogger.info('SimplePodioSetupPage', 'Token refresh response received', { 
+          hasError: !!error, 
+          hasData: !!data,
+          dataKeys: data ? Object.keys(data) : []
+        });
+        
         if (error) {
+          DebugLogger.error('SimplePodioSetupPage', 'Token refresh error', error);
+          
           if (error.message && error.message.includes('relation "podio_auth_tokens" does not exist')) {
             toast({
               title: "Database Setup Required",
@@ -79,21 +90,56 @@ const SimplePodioSetupPage = () => {
           return;
         }
         
-        if (data) {
+        // Check if we have a successful response with access token
+        if (data && data.access_token && !data.error) {
+          DebugLogger.info('SimplePodioSetupPage', 'Valid token found', {
+            expires_at: data.expires_at,
+            refreshed: data.refreshed,
+            message: data.message
+          });
+          
           setPodioConnected(true);
-          const expiryDate = new Date(data.expires_at);
-          setLastAuth(expiryDate.toLocaleString());
           
-          updateExpiryInfo(expiryDate);
+          // Safely parse the expiry date
+          const expiryDate = data.expires_at ? new Date(data.expires_at) : null;
           
-          if (intervalId === null) {
-            const id = window.setInterval(() => {
-              updateExpiryInfo(expiryDate);
-            }, 60000);
-            setIntervalId(id);
+          if (expiryDate && !isNaN(expiryDate.getTime())) {
+            setLastAuth(expiryDate.toLocaleString());
+            updateExpiryInfo(expiryDate);
+            DebugLogger.info('SimplePodioSetupPage', 'Token expiry updated', {
+              expiryDate: expiryDate.toISOString(),
+              timeUntilExpiry: expiryDate.getTime() - Date.now()
+            });
+          } else {
+            DebugLogger.warn('SimplePodioSetupPage', 'Invalid or missing expires_at date', data.expires_at);
+            setLastAuth('Unknown');
+            setTimeUntilExpiry('Unknown');
+          }
+          
+          if (expiryDate && !isNaN(expiryDate.getTime())) {
+            // Set up interval for time updates if not already set
+            if (intervalId === null) {
+              const id = window.setInterval(() => {
+                updateExpiryInfo(expiryDate);
+              }, 60000);
+              setIntervalId(id);
+            }
           }
         } else {
+          // Handle error cases or invalid token responses
+          console.log('Podio not connected - missing token or error in response:', data);
           setPodioConnected(false);
+          setLastAuth(null);
+          setTimeUntilExpiry(null);
+          
+          // Check for specific error conditions that require reauth
+          if (data && (data.needs_reauth || data.needs_setup)) {
+            toast({
+              title: "Reauthorization Required",
+              description: data.error || "Please reconnect to Podio",
+              variant: "destructive"
+            });
+          }
         }
       } catch (error) {
         setPodioConnected(false);
@@ -110,24 +156,46 @@ const SimplePodioSetupPage = () => {
   }, [supabaseConnected, toast, intervalId]);
 
   const updateExpiryInfo = (expiryDate: Date) => {
+    // Validate the expiry date
+    if (!expiryDate || isNaN(expiryDate.getTime())) {
+      console.warn('Invalid expiry date provided to updateExpiryInfo:', expiryDate);
+      setTimeUntilExpiry("Invalid Date");
+      setExpiryPercentage(0);
+      return;
+    }
+    
     const now = new Date();
     const diffMs = expiryDate.getTime() - now.getTime();
     
     if (diffMs <= 0) {
       setTimeUntilExpiry("Expired");
       setExpiryPercentage(0);
+      setPodioConnected(false); // Mark as disconnected if expired
       return;
     }
     
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     
+    // Ensure we don't get negative values
+    if (diffHrs < 0 || diffMins < 0) {
+      setTimeUntilExpiry("Expired");
+      setExpiryPercentage(0);
+      setPodioConnected(false);
+      return;
+    }
+    
     setTimeUntilExpiry(`${diffHrs}h ${diffMins}m`);
     
-    const totalMs = 8 * 60 * 60 * 1000;
-    const elapsed = totalMs - diffMs;
-    const percentage = Math.max(0, Math.min(100, 100 - (elapsed / totalMs * 100)));
+    // Calculate percentage remaining (assuming 8-hour token lifespan)
+    const totalMs = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+    const percentage = Math.max(0, Math.min(100, (diffMs / totalMs) * 100));
     setExpiryPercentage(percentage);
+    
+    // Auto-disconnect if less than 5 minutes remaining
+    if (diffMs < 5 * 60 * 1000) {
+      setPodioConnected(false);
+    }
   };
 
   useEffect(() => {
@@ -213,12 +281,20 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      if (data) {
+      if (data && data.access_token && !data.error) {
         setPodioConnected(true);
-        const expiryDate = new Date(data.expires_at);
-        setLastAuth(expiryDate.toLocaleString());
         
-        updateExpiryInfo(expiryDate);
+        // Safely parse the expiry date
+        const expiryDate = data.expires_at ? new Date(data.expires_at) : null;
+        
+        if (expiryDate && !isNaN(expiryDate.getTime())) {
+          setLastAuth(expiryDate.toLocaleString());
+          updateExpiryInfo(expiryDate);
+        } else {
+          console.warn('Invalid or missing expires_at date in refresh:', data.expires_at);
+          setLastAuth('Unknown');
+          setTimeUntilExpiry('Unknown');
+        }
         
         toast({
           title: "Status Refreshed",
@@ -229,9 +305,17 @@ const SimplePodioSetupPage = () => {
         });
       } else {
         setPodioConnected(false);
+        setLastAuth(null);
+        setTimeUntilExpiry(null);
+        
+        let errorMessage = "No valid Podio connection found";
+        if (data && data.error) {
+          errorMessage = data.error;
+        }
+        
         toast({
           title: "Not Connected",
-          description: "No valid Podio connection found",
+          description: errorMessage,
           variant: "destructive"
         });
       }
