@@ -1,6 +1,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
+// Force redeploy 2025-07-09-14:23:01 to pick up updated PODIO_CLIENT_SECRET
+
 // CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

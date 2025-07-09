@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
-// Force redeploy 2025-07-09 to pick up updated environment variables
+// Force redeploy 2025-07-09-14:23:11 to pick up updated PODIO_CLIENT_SECRET
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
