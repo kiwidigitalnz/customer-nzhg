@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.podio-connection-test]
 verify_jwt = false
+
+[functions.podio-env-test]
+verify_jwt = false
