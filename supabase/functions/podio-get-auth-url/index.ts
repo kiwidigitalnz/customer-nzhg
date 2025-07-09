@@ -15,13 +15,35 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Auth URL request received', {
+      method: req.method,
+      url: req.url,
+      headers: Object.fromEntries(req.headers.entries())
+    });
+
     // Get Podio credentials from environment variables
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
+    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     
-    if (!clientId) {
-      console.error('Podio client ID not configured');
+    console.log('Environment check:', {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      clientIdLength: clientId ? clientId.length : 0,
+      clientSecretLength: clientSecret ? clientSecret.length : 0
+    });
+    
+    if (!clientId || !clientSecret) {
+      const error = 'Podio client credentials not configured';
+      console.error(error, {
+        missingClientId: !clientId,
+        missingClientSecret: !clientSecret
+      });
       return new Response(
-        JSON.stringify({ error: 'Podio client ID not configured' }),
+        JSON.stringify({ 
+          error: error,
+          details: 'Missing PODIO_CLIENT_ID or PODIO_CLIENT_SECRET environment variables',
+          needs_setup: true
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -34,21 +56,36 @@ serve(async (req) => {
     const url = new URL(req.url);
     let redirectUri = url.origin;
     
+    console.log('OAuth URL generation:', {
+      clientId: clientId.substring(0, 8) + '...',
+      redirectUri,
+      state
+    });
+    
     // Build the Podio authorization URL
     const authUrl = `https://podio.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    
+    console.log('Auth URL generated successfully', {
+      authUrlLength: authUrl.length,
+      redirectUri
+    });
     
     // Return the auth URL to the client
     return new Response(
       JSON.stringify({ 
         authUrl: authUrl,
-        state: state
+        state: state,
+        success: true
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error generating auth URL:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error occurred',
+        stack: error.stack
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

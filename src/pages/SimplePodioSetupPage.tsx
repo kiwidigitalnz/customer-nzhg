@@ -64,6 +64,38 @@ const SimplePodioSetupPage = () => {
     const checkPodioConnection = async () => {
       DebugLogger.info('SimplePodioSetupPage', 'Checking Podio connection status');
       
+      // First test if auth URL generation works (this validates credentials)
+      try {
+        const { data: authData, error: authError } = await supabase.functions.invoke('podio-get-auth-url', {
+          method: 'GET'
+        });
+        
+        DebugLogger.info('SimplePodioSetupPage', 'Auth URL test response', { 
+          hasError: !!authError, 
+          hasData: !!authData,
+          success: authData?.success
+        });
+        
+        if (authError || !authData?.success) {
+          DebugLogger.error('SimplePodioSetupPage', 'Auth URL generation failed', authError || authData);
+          setPodioConnected(false);
+          
+          if (authData?.needs_setup) {
+            toast({
+              title: "Podio Configuration Required",
+              description: authData.error || "Podio credentials need to be configured. Please contact support.",
+              variant: "destructive"
+            });
+          }
+          return;
+        }
+      } catch (error) {
+        DebugLogger.error('SimplePodioSetupPage', 'Auth URL test failed', error);
+        setPodioConnected(false);
+        return;
+      }
+      
+      // Now check for existing tokens
       try {
         const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
           method: 'POST'
@@ -233,30 +265,52 @@ const SimplePodioSetupPage = () => {
     }
 
     setIsLoading(true);
+    DebugLogger.info('SimplePodioSetupPage', 'Starting Podio OAuth connection flow');
     
     try {
       const { data, error } = await supabase.functions.invoke('podio-get-auth-url', {
         method: 'GET'
       });
       
+      DebugLogger.info('SimplePodioSetupPage', 'Auth URL response received', { 
+        hasError: !!error, 
+        hasData: !!data,
+        dataKeys: data ? Object.keys(data) : []
+      });
+      
       if (error) {
+        DebugLogger.error('SimplePodioSetupPage', 'Failed to get auth URL', error);
         toast({
-          title: "Error",
-          description: "Failed to initialize Podio connection. Please contact support.",
+          title: "Connection Setup Error",
+          description: `Failed to initialize Podio connection: ${error.message || 'Unknown error'}`,
           variant: "destructive"
         });
         setIsLoading(false);
         return;
       }
       
+      if (!data || !data.authUrl) {
+        const errorMsg = data?.error || 'No auth URL received';
+        DebugLogger.error('SimplePodioSetupPage', 'Invalid auth URL response', data);
+        toast({
+          title: "Configuration Error",
+          description: `Podio configuration issue: ${errorMsg}`,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      DebugLogger.info('SimplePodioSetupPage', 'Redirecting to Podio OAuth', { authUrl: data.authUrl });
       localStorage.setItem('podio_oauth_state', data.state);
       
       window.location.href = data.authUrl;
       
     } catch (error) {
+      DebugLogger.error('SimplePodioSetupPage', 'Error during OAuth flow', error);
       toast({
-        title: "Error",
-        description: "Failed to start Podio OAuth flow. Please contact support.",
+        title: "Connection Error",
+        description: `Failed to start Podio OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
       setIsLoading(false);
