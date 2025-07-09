@@ -30,3 +30,18 @@ verify_jwt = false
 
 [functions.podio-get-auth-url]
 verify_jwt = false
+
+[functions.podio-authenticate]
+verify_jwt = false
+
+[functions.podio-refresh-token]
+verify_jwt = false
+
+[functions.podio-validate-access]
+verify_jwt = false
+
+[functions.env-diagnostics]
+verify_jwt = false
+
+[functions.podio-connection-test]
+verify_jwt = false

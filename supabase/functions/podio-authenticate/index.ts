@@ -16,14 +16,20 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Podio authenticate function called');
+    console.log('=== PODIO AUTHENTICATE FUNCTION START ===');
+    console.log('Request timestamp:', new Date().toISOString());
     
-    // Get environment variables for diagnostics
+    // ENHANCED: Get environment variables for comprehensive diagnostics
     const envObj = Deno.env.toObject();
     const envKeys = Object.keys(envObj);
     const podioKeys = envKeys.filter(key => key.toLowerCase().includes('podio'));
     
-    console.log(`Found ${podioKeys.length} Podio-related keys:`, podioKeys);
+    console.log('Environment diagnostics:', {
+      totalEnvVars: envKeys.length,
+      podioKeysFound: podioKeys.length,
+      podioKeys: podioKeys,
+      allKeys: envKeys.length < 50 ? envKeys : `${envKeys.length} keys (truncated for readability)`
+    });
     
     // Check if we can find the client ID and secret (case insensitive)
     let clientId = Deno.env.get('PODIO_CLIENT_ID');
