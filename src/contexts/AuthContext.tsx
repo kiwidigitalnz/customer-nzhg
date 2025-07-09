@@ -90,8 +90,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(userData);
           setIsAuthenticated(true);
           
-          // Set up token refresh interval
-          setupTokenRefreshInterval();
+          // Only set up token refresh if not on auth/setup pages
+          const currentPath = window.location.pathname;
+          const authPaths = ['/login', '/podio-setup', '/podio-callback', '/auth'];
+          const isAuthPage = authPaths.some(authPath => currentPath.startsWith(authPath));
+          
+          if (!isAuthPage) {
+            console.log('Setting up token refresh for authenticated user');
+            setupTokenRefreshInterval();
+          } else {
+            console.log('Skipping token refresh setup on auth page:', currentPath);
+          }
         } else {
           setIsAuthenticated(false);
           setUser(null);

@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import MainLayout from '../components/MainLayout';
 import { useNavigate } from 'react-router-dom';
-import { isPodioConfigured, authenticateWithClientCredentials, validateContactsAppAccess } from '@/services/podioAuth';
+import { isPodioConfigured, authenticateWithClientCredentials, validateContactsAppAccess, clearTokens } from '@/services/podioAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Info, ExternalLink, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,13 @@ const PodioSetupPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Clear any existing tokens when entering setup page to prevent loops
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reauth') === 'required') {
+      console.log('Reauth required - clearing tokens');
+      clearTokens();
+    }
+    
     // Check if Supabase Edge Functions are available
     const checkSupabaseConnection = async () => {
       try {

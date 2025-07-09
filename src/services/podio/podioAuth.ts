@@ -184,6 +184,7 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         await new Promise(resolve => setTimeout(resolve, backoffTime));
       }
       
+      console.log('Attempting token refresh via edge function...');
       const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
         method: 'POST'
       });
@@ -195,12 +196,15 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         if (error.message && error.message.includes('Edge Function returned a non-2xx status code') && error.data) {
           const errorData = error.data;
           
-          // Check if this is a configuration issue needing setup
-          if (errorData.needs_setup || errorData.needs_reauth) {
-            // Signal to the UI that reauthorization is needed
-            window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
-            return false;
-          }
+        // Check if this is a configuration issue needing setup
+        if (errorData.needs_setup || errorData.needs_reauth) {
+          console.log('Token refresh failed - reauth needed:', errorData.error);
+          // Clear stored tokens to prevent retry loops
+          localStorage.removeItem('podio_token_expiry');
+          // Signal to the UI that reauthorization is needed
+          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+          return false;
+        }
           
           // Log detailed error information for debugging
           console.error('Token refresh specific error:', errorData);
@@ -208,6 +212,9 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         
         // Handle specific error case where reauthorization is needed
         if (error.message && error.message.includes('needs_reauth')) {
+          console.log('Token refresh failed - reauth needed from error message');
+          // Clear stored tokens to prevent retry loops
+          localStorage.removeItem('podio_token_expiry');
           // Signal to the UI that reauthorization is needed
           window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
           return false;
@@ -227,12 +234,15 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       if (data.hasOwnProperty('success') && data.success === false) {
         console.error('Token refresh failed:', data.error);
         
-        // Check if this is a configuration issue needing setup
-        if (data.needs_setup || data.needs_reauth) {
-          // Signal to the UI that reauthorization is needed
-          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
-          return false;
-        }
+    // Check if this is a configuration issue needing setup
+    if (data.needs_setup || data.needs_reauth) {
+      console.log('Token refresh failed - reauth needed:', data.error);
+      // Clear stored tokens to prevent retry loops
+      localStorage.removeItem('podio_token_expiry');
+      // Signal to the UI that reauthorization is needed
+      window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+      return false;
+    }
         
         return false;
       }
@@ -270,6 +280,20 @@ export const refreshPodioToken = async (): Promise<boolean> => {
 
 // Setup automatic token refresh interval
 export const setupTokenRefreshInterval = (): void => {
+  // Skip setup for auth/setup pages to prevent infinite loops
+  const currentPath = window.location.pathname;
+  if (isAuthOrSetupPage(currentPath)) {
+    console.log('Skipping token refresh setup on auth/setup page:', currentPath);
+    return;
+  }
+  
+  // Check if user is authenticated before starting refresh
+  const storedUser = localStorage.getItem('podio_user_data');
+  if (!storedUser) {
+    console.log('No authenticated user found, skipping token refresh setup');
+    return;
+  }
+  
   // Initial token check
   refreshPodioToken();
   
@@ -666,16 +690,53 @@ export const validateContactsAppAccess = async (): Promise<boolean> => {
   }
 };
 
+// Helper function to check if current page is auth/setup related
+export const isAuthOrSetupPage = (path: string): boolean => {
+  const authPaths = ['/login', '/podio-setup', '/podio-callback', '/auth'];
+  return authPaths.some(authPath => path.startsWith(authPath));
+};
+
+// Helper function to check if Podio is properly configured
+export const isPodioProperlyConfigured = (): boolean => {
+  // Check for stored token expiry and user data
+  const tokenExpiry = localStorage.getItem('podio_token_expiry');
+  const userData = localStorage.getItem('podio_user_data');
+  
+  if (!tokenExpiry || !userData) {
+    return false;
+  }
+  
+  // Check if token hasn't expired
+  const expiryTime = parseInt(tokenExpiry, 10);
+  const now = Date.now();
+  
+  return expiryTime > now;
+};
+
 // Initialize Podio authentication on app start
 export const initializePodioAuth = (): void => {
-  // Set up automatic token refresh
-  setupTokenRefreshInterval();
-  
-  // Add event listener for reauth events
+  // Add event listener for reauth events with route checking
   window.addEventListener('podio-reauth-needed', () => {
+    const currentPath = window.location.pathname;
+    
+    // Don't redirect if already on setup/auth pages
+    if (isAuthOrSetupPage(currentPath)) {
+      console.log('Already on auth/setup page, not redirecting:', currentPath);
+      return;
+    }
+    
     // Navigate to setup page for reauthorization
     window.location.href = '/podio-setup?reauth=required';
   });
+  
+  // Conditionally set up token refresh based on current state
+  const currentPath = window.location.pathname;
+  if (!isAuthOrSetupPage(currentPath) && isPodioProperlyConfigured()) {
+    console.log('Setting up token refresh for authenticated user');
+    setupTokenRefreshInterval();
+  } else {
+    console.log('Skipping token refresh setup - not authenticated or on auth page');
+  }
   
   // Cleanup on window unload
   window.addEventListener('beforeunload', () => {

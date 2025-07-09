@@ -21,7 +21,9 @@ export {
   clearRateLimit,
   clearRateLimitInfo,
   cacheUserData,
-  getCachedUserData
+  getCachedUserData,
+  isAuthOrSetupPage,
+  isPodioProperlyConfigured
 } from './podio/podioAuth';
 
 export { getFieldValueByExternalId };
