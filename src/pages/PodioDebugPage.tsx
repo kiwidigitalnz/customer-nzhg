@@ -78,6 +78,32 @@ export default function PodioDebugPage() {
     }
   };
 
+  const testDirectAuthentication = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Testing direct podio-authenticate edge function...');
+      const { data, error } = await supabase.functions.invoke('podio-authenticate');
+      
+      console.log('Direct auth test response:', { data, error });
+      
+      if (error) {
+        console.error('Direct auth test error:', error);
+        throw new Error(error.message);
+      }
+      
+      console.log('Direct auth test successful:', data);
+      alert('Direct authentication test successful! Check console for details.');
+    } catch (err) {
+      console.error('Direct auth test failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to test direct authentication';
+      setError(`Direct auth test: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const runAllTests = async () => {
     await runDiagnostics();
     await runConnectionTests();
@@ -122,6 +148,14 @@ export default function PodioDebugPage() {
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Test Connection
+          </Button>
+          <Button 
+            onClick={testDirectAuthentication} 
+            disabled={loading}
+            variant="outline"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Test Direct Auth
           </Button>
           <Button 
             onClick={runAllTests} 

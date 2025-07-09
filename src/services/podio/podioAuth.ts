@@ -147,6 +147,8 @@ export const isPodioConfigured = (): boolean => {
 
 // Server-side token refresh via Supabase Edge Function with optimized refresh logic
 export const refreshPodioToken = async (): Promise<boolean> => {
+  console.log('=== REFRESH PODIO TOKEN START ===');
+  
   // First, check if we've exceeded the maximum retry attempts
   if (tokenRetryCount >= MAX_TOKEN_RETRIES) {
     console.warn(`Token refresh maximum retries (${MAX_TOKEN_RETRIES}) reached. Waiting for user action.`);
@@ -177,6 +179,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       // Increment retry counter
       tokenRetryCount++;
       
+      console.log(`Token refresh attempt ${tokenRetryCount}/${MAX_TOKEN_RETRIES}`);
+      
       // Apply exponential backoff if this is a retry
       if (tokenRetryCount > 1) {
         const backoffTime = RETRY_BACKOFF_MS * Math.pow(2, tokenRetryCount - 1);
@@ -188,6 +192,8 @@ export const refreshPodioToken = async (): Promise<boolean> => {
       const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
         method: 'POST'
       });
+      
+      console.log('Token refresh response:', { data, error });
       
       if (error) {
         console.error('Token refresh error:', error);
@@ -351,6 +357,9 @@ export const getRetryStatus = (): { authRetries: number, tokenRetries: number, m
 
 // Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
+  console.log('=== AUTHENTICATE USER START ===');
+  console.log('Calling podio-user-auth edge function');
+  
   if (!username || !password) {
     throw new Error('Username and password are required');
   }
@@ -395,6 +404,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     });
     
     const { data, error } = response;
+    console.log('podio-user-auth response:', { data, error, fullResponse: response });
     
     // Enhanced error handling - handle both new structure (with success field) and old structure
     if (error) {
