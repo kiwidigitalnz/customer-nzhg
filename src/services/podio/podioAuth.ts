@@ -346,8 +346,10 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     const { data, error } = response;
     
+    // Enhanced error handling - extract detailed error information from edge function responses
     if (error) {
       console.error('Authentication error from edge function:', error);
+      console.error('Raw response data:', response.data);
       
       // Set connection error state if this is a network error
       if (error.message && 
@@ -357,28 +359,24 @@ export const authenticateUser = async (username: string, password: string): Prom
         connectionErrorDetected = true;
       }
       
-      // If it's a non-2xx status code from the edge function,
-      // try to extract more specific error details from the response
+      // Enhanced edge function error extraction
       let edgeErrorDetails = null;
       
-      if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
-        try {
-          // Check if we have error details in data
-          if (response.data && typeof response.data === 'object') {
-            edgeErrorDetails = response.data;
-          } else if (error.data && typeof error.data === 'object') {
-            edgeErrorDetails = error.data;
-          }
-        } catch (parseError) {
-          console.error('Failed to parse edge function error details:', parseError);
-        }
+      // For edge function errors, the actual error details are often in response.data
+      // even when there's an error object
+      if (response.data && typeof response.data === 'object') {
+        edgeErrorDetails = response.data;
+        console.log('Extracted edge error details from response.data:', edgeErrorDetails);
+      } else if (error.data && typeof error.data === 'object') {
+        edgeErrorDetails = error.data;
+        console.log('Extracted edge error details from error.data:', edgeErrorDetails);
       }
       
       // If we have detailed edge error information, use it
-      if (edgeErrorDetails) {
+      if (edgeErrorDetails && (edgeErrorDetails.error || edgeErrorDetails.message)) {
         const errorObj: PodioAuthError = {
           status: edgeErrorDetails.status || error.status || 500,
-          message: edgeErrorDetails.error || error.message,
+          message: edgeErrorDetails.error || edgeErrorDetails.message || error.message,
           details: edgeErrorDetails.details || null,
           edge: true,
           data: edgeErrorDetails,
@@ -386,15 +384,18 @@ export const authenticateUser = async (username: string, password: string): Prom
                 !(edgeErrorDetails.status === 401 || edgeErrorDetails.status === 404) // Don't retry auth errors
         };
         
-        // Special handling for setup errors
+        // Special handling for setup/reauth errors
         if (edgeErrorDetails.needs_setup) {
           errorObj.message = 'Podio integration requires setup. Please contact admin.';
+          errorObj.retry = false;
+        } else if (edgeErrorDetails.needs_reauth) {
+          errorObj.message = 'Authentication session has expired. Please log in again.';
           errorObj.retry = false;
         }
         
         throw errorObj;
       } else {
-        // Otherwise use the generic error
+        // Fallback to generic error handling
         throw {
           status: error.status || 500,
           message: error.message || 'Authentication failed',
