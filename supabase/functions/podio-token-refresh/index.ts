@@ -29,12 +29,13 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({
+          success: false,
           error: 'Supabase credentials not configured',
           status: 500,
           details: 'Missing required environment variables'
         }),
         { 
-          status: 500, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -52,13 +53,14 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({
+          success: false,
           error: 'Podio client credentials not configured',
           status: 500,
           details: 'Missing Podio API credentials',
           needs_setup: true
         }),
         { 
-          status: 500, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -78,12 +80,13 @@ serve(async (req) => {
       console.error('Error fetching Podio token:', fetchError);
       return new Response(
         JSON.stringify({
+          success: false,
           error: 'Failed to retrieve Podio token',
           status: 500,
           details: fetchError
         }),
         { 
-          status: 500, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -93,13 +96,14 @@ serve(async (req) => {
       console.error('No Podio tokens found');
       return new Response(
         JSON.stringify({
+          success: false,
           error: 'No Podio token found',
           status: 404,
           details: 'Admin must authenticate with Podio first',
           needs_setup: true
         }),
         { 
-          status: 404, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -118,6 +122,7 @@ serve(async (req) => {
       console.log('Token still valid, not refreshing');
       return new Response(
         JSON.stringify({
+          success: true,
           access_token: token.access_token,
           refresh_token: token.refresh_token,
           expires_at: token.expires_at,
@@ -176,13 +181,14 @@ serve(async (req) => {
             (errorDetails && errorDetails.error === 'invalid_grant')) {
           return new Response(
             JSON.stringify({
+              success: false,
               error: 'Podio authentication has expired',
               status: 401,
               details: errorDetails,
               needs_reauth: true
             }),
             { 
-              status: 401, 
+              status: 200, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
@@ -192,13 +198,14 @@ serve(async (req) => {
         if (refreshResponse.status === 429) {
           return new Response(
             JSON.stringify({
+              success: false,
               error: 'Podio API rate limit exceeded',
               status: 429,
               details: errorDetails,
               retry_after: refreshResponse.headers.get('Retry-After') || '60'
             }),
             { 
-              status: 429, 
+              status: 200, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
@@ -206,13 +213,14 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({
+            success: false,
             error: 'Failed to refresh Podio token',
             status: refreshResponse.status,
             details: errorDetails,
             needs_reauth: refreshResponse.status === 401
           }),
           { 
-            status: refreshResponse.status, 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -238,12 +246,13 @@ serve(async (req) => {
         console.error('Error updating token in database:', updateError);
         return new Response(
           JSON.stringify({
+            success: false,
             error: 'Failed to update token in database',
             details: updateError,
             status: 500
           }),
           { 
-            status: 500, 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -254,6 +263,7 @@ serve(async (req) => {
       // Return the new token
       return new Response(
         JSON.stringify({
+          success: true,
           access_token: refreshData.access_token,
           refresh_token: refreshData.refresh_token,
           expires_at: newExpiryDate.toISOString(),
@@ -271,12 +281,13 @@ serve(async (req) => {
         console.error('Token refresh request timed out');
         return new Response(
           JSON.stringify({
+            success: false,
             error: 'Token refresh request timed out',
             details: 'Request to Podio API exceeded timeout limit',
             status: 408
           }),
           { 
-            status: 408, 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -285,12 +296,13 @@ serve(async (req) => {
       console.error('Error during token refresh:', refreshError);
       return new Response(
         JSON.stringify({
+          success: false,
           error: 'Error during token refresh',
           details: refreshError.message || 'Unknown error',
           status: 500
         }),
         { 
-          status: 500, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -299,12 +311,13 @@ serve(async (req) => {
     console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({
+        success: false,
         error: 'Unexpected error',
         details: error.message || 'Unknown error',
         status: 500
       }),
       { 
-        status: 500, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

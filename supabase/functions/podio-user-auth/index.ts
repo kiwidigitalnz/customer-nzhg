@@ -37,6 +37,7 @@ function getFieldValueByExternalId(item: any, externalId: string): any {
 // Helper to create consistent error responses
 function errorResponse(status: number, message: string, details: any = null) {
   const errorBody = { 
+    success: false,
     error: message,
     details: details,
     status
@@ -44,10 +45,11 @@ function errorResponse(status: number, message: string, details: any = null) {
   
   console.error(`Error ${status}: ${message}`, details);
   
+  // Return 200 status with error in body for better client-side handling
   return new Response(
     JSON.stringify(errorBody),
     { 
-      status, 
+      status: 200, 
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'application/json' 
@@ -355,7 +357,10 @@ serve(async (req) => {
     };
 
     return new Response(
-      JSON.stringify(userData),
+      JSON.stringify({
+        success: true,
+        ...userData
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

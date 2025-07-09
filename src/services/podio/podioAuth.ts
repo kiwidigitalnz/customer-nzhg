@@ -218,8 +218,28 @@ export const refreshPodioToken = async (): Promise<boolean> => {
         return false;
       }
       
-      if (!data || !data.access_token) {
-        console.error('Invalid token response:', data);
+      if (!data) {
+        console.error('Invalid token response: no data');
+        return false;
+      }
+      
+      // Handle new response structure with success field
+      if (data.hasOwnProperty('success') && data.success === false) {
+        console.error('Token refresh failed:', data.error);
+        
+        // Check if this is a configuration issue needing setup
+        if (data.needs_setup || data.needs_reauth) {
+          // Signal to the UI that reauthorization is needed
+          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+          return false;
+        }
+        
+        return false;
+      }
+      
+      // Check if we have an access token (for both new and old structures)
+      if (!data.access_token) {
+        console.error('Invalid token response: no access_token');
         return false;
       }
       
@@ -346,7 +366,7 @@ export const authenticateUser = async (username: string, password: string): Prom
     
     const { data, error } = response;
     
-    // Enhanced error handling - extract detailed error information from edge function responses
+    // Enhanced error handling - handle both new structure (with success field) and old structure
     if (error) {
       console.error('Authentication error from edge function:', error);
       console.error('Raw response data:', response.data);
@@ -410,8 +430,23 @@ export const authenticateUser = async (username: string, password: string): Prom
       throw new Error('Empty response from authentication service');
     }
     
+    // Handle new response structure with success field
+    if (data.hasOwnProperty('success') && data.success === false) {
+      // New structure: success=false indicates error
+      throw {
+        status: data.status || 401,
+        message: data.error || 'Authentication failed',
+        details: data.details || null,
+        data: data,
+        retry: authRetryCount < MAX_AUTH_RETRIES && 
+               data.status !== 401 && // Don't retry invalid credentials
+               data.status !== 404    // Don't retry user not found
+      } as PodioAuthError;
+    }
+    
+    // Handle legacy response structure
     if (data.error) {
-      // If the server returns a structured error
+      // Old structure: error field indicates error
       throw {
         status: data.status || 401,
         message: data.error || 'Authentication failed',
