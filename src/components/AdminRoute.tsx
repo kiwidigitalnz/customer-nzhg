@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Lazy load admin pages to reduce initial bundle size
 const PodioSetupPage = lazy(() => import('../pages/PodioSetupPage'));
-const PodioCallbackPage = lazy(() => import('../pages/PodioCallbackPage'));
 
 const AdminRoute = () => {
   const { user, isAuthenticated } = useAuth();
@@ -23,14 +22,6 @@ const AdminRoute = () => {
         element={
           <Suspense fallback={<LoadingSpinner size="md" text="Loading admin page..." />}>
             <PodioSetupPage />
-          </Suspense>
-        } 
-      />
-      <Route 
-        path="podio-callback" 
-        element={
-          <Suspense fallback={<LoadingSpinner size="md" text="Loading callback handler..." />}>
-            <PodioCallbackPage />
           </Suspense>
         } 
       />

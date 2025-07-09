@@ -6,7 +6,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PackingSpecPage from './pages/PackingSpecDetailsPage';
 import SimplePodioSetupPage from './pages/SimplePodioSetupPage';
-import PodioCallbackPage from './pages/PodioCallbackPage';
 import PodioCallbackHandler from './pages/PodioCallbackHandler';
 import PodioDebugPage from './pages/PodioDebugPage';
 import { useEffect } from 'react';

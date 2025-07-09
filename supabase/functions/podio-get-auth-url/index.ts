@@ -37,8 +37,8 @@ serve(async (req) => {
     });
 
     // Get Podio credentials from environment variables with detailed logging
-    const clientId = Deno.env.get('PODIO_CLIENT_ID');
-    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+    const clientId = Deno.env.get('PODIO_CLIENT_ID')?.trim();
+    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET')?.trim();
     
     console.log('Credential check details:', {
       hasClientId: !!clientId,

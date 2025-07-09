@@ -95,8 +95,8 @@ serve(async (req) => {
     }
 
     // Get Podio credentials from environment
-    const clientId = Deno.env.get('PODIO_CLIENT_ID');
-    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+    const clientId = Deno.env.get('PODIO_CLIENT_ID')?.trim();
+    const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET')?.trim();
     
     if (!clientId || !clientSecret) {
       console.error('Missing Podio credentials');
