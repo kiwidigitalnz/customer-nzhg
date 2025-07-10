@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { PodioTokenExchangeDebug } from './PodioTokenExchangeDebug';
 
 interface TestResult {
   name: string;
@@ -136,14 +137,15 @@ export const PodioDebugPanel = () => {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Podio OAuth Debug Panel</CardTitle>
-        <CardDescription>
-          Test edge function deployment and accessibility
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Podio OAuth Debug Panel</CardTitle>
+          <CardDescription>
+            Test edge function deployment and accessibility
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Button 
             onClick={runAllTests} 
@@ -209,7 +211,10 @@ export const PodioDebugPanel = () => {
             </ol>
           </AlertDescription>
         </Alert>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      <PodioTokenExchangeDebug />
+    </div>
   );
 };
