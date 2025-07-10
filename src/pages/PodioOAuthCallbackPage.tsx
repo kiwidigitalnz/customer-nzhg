@@ -48,7 +48,9 @@ export default function PodioOAuthCallbackPage() {
         if (callbackError) {
           console.error('OAuth callback failed:', callbackError);
           setStatus('error');
-          setMessage(`Connection failed: ${callbackError.message || 'Unknown error'}`);
+          // Extract more detailed error information
+          const errorDetails = callbackError.details || callbackError.message || 'Unknown error';
+          setMessage(`Connection failed: ${errorDetails}`);
           return;
         }
 
