@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     // Get Podio OAuth configuration from secrets
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     // Use the exact redirect URI that should be configured in Podio
-    const redirectUri = 'https://customer.nzhg.com/podio-oauth-success';
+    const redirectUri = 'https://customer.nzhg.com/podio-oauth-callback';
 
     console.log('OAuth URL Generation - Configuration:', {
       clientId: clientId ? 'Present' : 'Missing',
