@@ -35,8 +35,8 @@ serve(async (req) => {
     
     console.log('Generating OAuth URL with redirect URI:', redirectUri);
     
-    // Construct Podio OAuth authorization URL with required scope
-    const authUrl = `https://podio.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent('read write')}`;
+    // Construct Podio OAuth authorization URL with global scope
+    const authUrl = `https://podio.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent('global:all')}`;
     
     return new Response(
       JSON.stringify({ 
