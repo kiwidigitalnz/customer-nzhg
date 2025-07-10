@@ -14,13 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      podio_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          state: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      podio_oauth_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          scope: string | null
+          token_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          token_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          token_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      podio_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          podio_user_id: number
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          podio_user_id: number
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          podio_user_id?: number
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_oauth_states: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

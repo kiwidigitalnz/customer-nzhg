@@ -1,4 +1,5 @@
 // Legacy Podio configuration - kept for compatibility
+import { podioAuthService } from './newPodioAuth';
 
 // Constants
 export const PODIO_CONTACTS_APP_ID = '26969025';
@@ -74,14 +75,14 @@ export const PACKING_SPEC_FIELD_IDS = {
   updatedBy2: 271320234
 };
 
-// Check if Podio is configured (legacy function)
+// Check if Podio is configured (updated to use new auth service)
 export const isPodioConfigured = (): boolean => {
-  return false; // Always false since OAuth is removed
+  return podioAuthService.getState().isConfigured;
 };
 
 // Check if Podio is properly configured for authentication
 export const isPodioProperlyConfigured = (): boolean => {
-  return false; // Always return false since OAuth is removed
+  return podioAuthService.getState().isConfigured && podioAuthService.getState().isAuthenticated;
 };
 
 // Legacy token refresh function - no longer functional
@@ -132,9 +133,11 @@ export const getCachedUserData = (key: string): any => {
   return null;
 };
 
-// Legacy API call function - no longer functional
+// Updated API call function using new auth service
 export const callPodioApi = async (endpoint: string, options: any = {}): Promise<any> => {
-  throw new Error('Podio API calls disabled - OAuth removed. Please contact administrator.');
+  const method = options.method || 'GET';
+  const body = options.body;
+  return podioAuthService.callPodioAPI(endpoint, method, body);
 };
 
 // Rate limiting functions (kept for compatibility)
