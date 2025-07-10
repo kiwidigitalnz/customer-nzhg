@@ -41,10 +41,29 @@ serve(async (req) => {
     console.log('Generated state for CSRF protection:', state);
     
     // Get the origin from the request to construct redirect URI
+    // Extract from the request headers to ensure consistency
     const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
-    const redirectUri = `${origin}/podio-callback`;
+    let redirectUri = `${origin}/podio-callback`;
+    
+    // If we can't determine origin from headers, check if we're on the deployed domain
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // For deployed environment, try to extract from the actual function URL
+      const url = new URL(req.url);
+      // Check if this looks like a Supabase function URL
+      if (url.hostname.includes('supabase.co')) {
+        // We're being called from the deployed app, use a known domain pattern
+        redirectUri = `https://customer.nzhg.com/podio-callback`;
+      } else {
+        const requestOrigin = `${url.protocol}//${url.host}`;
+        redirectUri = `${requestOrigin}/podio-callback`;
+      }
+    }
     
     console.log('Constructed redirect URI:', redirectUri);
+    console.log('Request origin header:', req.headers.get('origin'));
+    console.log('Request referer header:', req.headers.get('referer'));
+    console.log('Request URL:', req.url);
+    console.log('Determined redirect URI:', redirectUri);
     console.log('Using client ID:', clientId.substring(0, 8) + '...');
     
     // Construct Podio OAuth authorization URL with global scope

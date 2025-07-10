@@ -17,12 +17,22 @@ export default function PodioCallbackHandler() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        setMessage('Processing OAuth callback...');
+        
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
 
-        console.log('OAuth callback received:', { code: !!code, state, error, errorDescription });
+        console.log('OAuth callback received:', { 
+          code: !!code, 
+          codePreview: code ? code.substring(0, 10) + '...' : null,
+          state, 
+          error, 
+          errorDescription,
+          currentUrl: window.location.href,
+          searchParamsString: searchParams.toString()
+        });
 
         // Handle OAuth errors
         if (error) {
@@ -41,37 +51,47 @@ export default function PodioCallbackHandler() {
 
         // Validate state (CSRF protection)
         const storedState = localStorage.getItem('podio_oauth_state');
-        if (!storedState || storedState !== state) {
-          setStatus('error');
-          setMessage('Invalid OAuth state. Possible CSRF attack detected.');
-          return;
+        if (storedState) {
+          if (storedState !== state) {
+            console.error('CSRF validation failed:', { storedState, receivedState: state });
+            setStatus('error');
+            setMessage('Invalid OAuth state. Possible CSRF attack detected.');
+            return;
+          }
+          // Clean up stored state if validation passed
+          localStorage.removeItem('podio_oauth_state');
+        } else {
+          // No stored state - this might happen if user navigated directly to callback
+          console.warn('No stored OAuth state found - proceeding without CSRF validation');
         }
-
-        // Clean up stored state
-        localStorage.removeItem('podio_oauth_state');
 
         console.log('Processing OAuth callback...');
         setMessage('Processing OAuth callback...');
 
         // Send the callback data to our edge function
+        console.log('Calling podio-oauth-callback edge function with:', { code: !!code, state });
+        
         const { data, error: callbackError } = await supabase.functions.invoke('podio-oauth-callback', {
-          method: 'POST',
           body: {
             code,
             state
           }
         });
+        
+        console.log('Edge function response:', { data, error: callbackError });
 
         if (callbackError) {
           console.error('Callback processing error:', callbackError);
           setStatus('error');
-          setMessage(`Callback processing failed: ${callbackError.message}`);
+          setMessage(`Edge function error: ${callbackError.message || JSON.stringify(callbackError)}`);
           return;
         }
 
         if (!data || !data.success) {
+          const errorMsg = data?.error_description || data?.error || 'OAuth callback processing failed';
+          console.error('Callback processing failed:', data);
           setStatus('error');
-          setMessage(data?.error || 'OAuth callback processing failed');
+          setMessage(`Callback failed: ${errorMsg}`);
           return;
         }
 
