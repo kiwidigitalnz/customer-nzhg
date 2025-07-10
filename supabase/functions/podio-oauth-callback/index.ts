@@ -6,6 +6,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Standardized redirect URI determination function (matches oauth-url function)
+function determineRedirectUri(req: Request): string {
+  const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
+  
+  console.log('Determining redirect URI from origin:', origin);
+  console.log('Request URL:', req.url);
+  console.log('Request origin header:', req.headers.get('origin'));
+  console.log('Request referer header:', req.headers.get('referer'));
+  
+  let redirectUri: string;
+  
+  // Check if we're in development or production environment
+  if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('supabase.co')) {
+    // For development or direct Supabase access, use the deployed domain
+    redirectUri = 'https://customer.nzhg.com/podio-callback';
+    console.log('Using deployed domain for development/supabase access');
+  } else {
+    // For production custom domains, construct the redirect URI
+    redirectUri = `${origin}/podio-callback`;
+    console.log('Using origin-based redirect URI for custom domain');
+  }
+  
+  console.log('Final redirect URI:', redirectUri);
+  return redirectUri;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -94,11 +120,25 @@ serve(async (req) => {
       );
     }
 
-    // Determine redirect URI based on request origin
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
-    const redirectUri = origin || `${new URL(req.url).origin}`;
-
+    // Use standardized redirect URI determination (same logic as oauth-url function)
+    const redirectUri = determineRedirectUri(req);
+    
     console.log('Using redirect URI:', redirectUri);
+    
+    // Validate that redirect URI is consistent with what would be generated
+    if (!redirectUri || (!redirectUri.includes('customer.nzhg.com') && !redirectUri.includes('localhost'))) {
+      console.error('Invalid redirect URI generated:', redirectUri);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid redirect URI',
+          details: 'Could not determine a valid redirect URI from request headers' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     // Prepare form data for token exchange
     const formData = new URLSearchParams({
