@@ -45,8 +45,52 @@ function PodioCallbackHandlerComponent() {
           return;
         }
 
-        // Since we now use edge function callback URL directly,
-        // the frontend should only receive success/error states
+        // Handle OAuth callback with code and state parameters
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+        const podioError = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
+
+        if (podioError) {
+          setStatus('error');
+          setMessage(`OAuth error: ${podioError}${errorDescription ? ` - ${errorDescription}` : ''}`);
+          return;
+        }
+
+        if (code && state) {
+          setMessage('Exchanging authorization code for tokens...');
+          
+          try {
+            // Call the edge function to exchange the code for tokens
+            const { error: exchangeError } = await supabase.functions.invoke('podio-oauth-callback', {
+              body: { code, state }
+            });
+
+            if (exchangeError) {
+              setStatus('error');
+              setMessage(`Token exchange failed: ${exchangeError.message}`);
+              return;
+            }
+
+            setStatus('success');
+            setMessage('OAuth setup completed successfully!');
+
+            toast({
+              title: 'OAuth Setup Complete',
+              description: 'Successfully connected to Podio',
+              variant: 'default'
+            });
+
+            setTimeout(() => {
+              navigate('/podio-setup?success=oauth_complete');
+            }, 2000);
+            
+          } catch (error) {
+            setStatus('error');
+            setMessage(error instanceof Error ? error.message : 'Token exchange failed');
+          }
+          return;
+        }
 
         // If we get here without any parameters, it's an invalid callback
         setStatus('error');

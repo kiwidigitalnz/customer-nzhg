@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 function getRedirectUri(): string {
-  // Use the edge function callback URL instead of frontend route
-  return 'https://qpswgrmvepttnfetpopk.supabase.co/functions/v1/podio-oauth-callback';
+  // Use the registered domain from Podio OAuth app settings
+  return 'https://customer.nzhg.com/podio-callback';
 }
 
 serve(async (req) => {
