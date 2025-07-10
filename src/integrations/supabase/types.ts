@@ -14,33 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      podio_auth_tokens: {
-        Row: {
-          access_token: string
-          created_at: string
-          expires_at: string
-          id: string
-          refresh_token: string
-          updated_at: string
-        }
-        Insert: {
-          access_token: string
-          created_at?: string
-          expires_at: string
-          id?: string
-          refresh_token: string
-          updated_at?: string
-        }
-        Update: {
-          access_token?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          refresh_token?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never

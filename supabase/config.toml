@@ -14,21 +14,3 @@ enabled = true
 [functions]
 [functions.health-check]
 verify_jwt = false
-
-[functions.podio-user-auth]
-verify_jwt = false
-
-[functions.podio-oauth-callback]
-verify_jwt = false
-
-[functions.podio-proxy]
-verify_jwt = false
-
-[functions.podio-oauth-url]
-verify_jwt = false
-
-[functions.podio-authenticate]
-verify_jwt = false
-
-[functions.podio-debug-token-exchange]
-verify_jwt = false
