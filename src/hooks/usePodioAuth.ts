@@ -10,7 +10,8 @@ export const usePodioAuth = () => {
   }, []);
 
   const initiateOAuth = async (): Promise<string> => {
-    return podioAuthService.initiateOAuth();
+    const response = await podioAuthService.initiateOAuth();
+    return response.url || response;
   };
 
   const disconnect = async (): Promise<void> => {

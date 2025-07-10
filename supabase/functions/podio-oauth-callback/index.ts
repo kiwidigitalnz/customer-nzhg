@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
     // Use the exact redirect URI that should match Podio app configuration
-    const redirectUri = 'https://customer.nzhg.com';
+    const redirectUri = 'https://customer.nzhg.com/podio-oauth-success';
 
     console.log('OAuth Callback - Configuration check:', {
       clientId: clientId ? 'Present' : 'Missing',
@@ -401,6 +401,23 @@ Deno.serve(async (req) => {
     };
 
     console.log('=== Podio OAuth Callback Completed Successfully ===');
+    
+    // For GET requests (direct from Podio), redirect to success page
+    if (req.method === 'GET') {
+      const successUrl = new URL('https://customer.nzhg.com/podio-oauth-success');
+      successUrl.searchParams.set('success', 'true');
+      successUrl.searchParams.set('user_id', userData.user_id.toString());
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': successUrl.toString()
+        }
+      });
+    }
+    
+    // For POST requests (from our frontend), return JSON
     return new Response(
       JSON.stringify(response), 
       { 

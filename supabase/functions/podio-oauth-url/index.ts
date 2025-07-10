@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     // Get Podio OAuth configuration from secrets
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     // Use the exact redirect URI that should be configured in Podio
-    const redirectUri = 'https://customer.nzhg.com';
+    const redirectUri = 'https://customer.nzhg.com/podio-oauth-success';
 
     console.log('OAuth URL Generation - Configuration:', {
       clientId: clientId ? 'Present' : 'Missing',
@@ -85,18 +85,16 @@ Deno.serve(async (req) => {
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('response_type', 'code');
 
-    console.log('OAuth URL Generation - Details:', {
-      baseUrl: 'https://podio.com/oauth/authorize',
-      clientId,
-      redirectUri,
-      state,
-      responseType: 'code',
-      fullUrl: authUrl.toString()
-    });
+    console.log('=== OAuth URL Generation ===');
+    console.log('Client ID:', clientId ? 'Set' : 'Not set');
+    console.log('Redirect URI:', redirectUri);
+    console.log('State:', state);
+    console.log('Generated OAuth URL:', authUrl.toString());
+    console.log('=== End OAuth URL Generation ===');
 
     return new Response(
       JSON.stringify({ 
-        authUrl: authUrl.toString(),
+        url: authUrl.toString(),
         state,
         redirectUri 
       }), 

@@ -148,7 +148,7 @@ class PodioAuthService {
     }
   }
 
-  async initiateOAuth(): Promise<string> {
+  async initiateOAuth(): Promise<any> {
     try {
       this.updateState({ isLoading: true, error: undefined });
 
@@ -168,7 +168,7 @@ class PodioAuthService {
       }
 
       this.updateState({ isLoading: false });
-      return data.authUrl;
+      return data;
     } catch (error) {
       console.error('OAuth initiation error:', error);
       this.updateState({ 
