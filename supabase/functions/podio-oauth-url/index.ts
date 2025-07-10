@@ -33,8 +33,10 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
     const redirectUri = `${origin}/podio-callback`;
     
-    // Construct Podio OAuth authorization URL
-    const authUrl = `https://podio.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    console.log('Generating OAuth URL with redirect URI:', redirectUri);
+    
+    // Construct Podio OAuth authorization URL with required scope
+    const authUrl = `https://podio.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent('read write')}`;
     
     return new Response(
       JSON.stringify({ 

@@ -110,35 +110,56 @@ serve(async (req) => {
       );
     }
 
-    // Get the redirect URI from the request headers or use default
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://qpswgrmvepttnfetpopk.supabase.co';
-    const redirectUri = origin;
+    // Get the redirect URI - ensure consistency with OAuth URL generation
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
+    const redirectUri = `${origin}/podio-callback`;
+    
+    console.log('Using redirect URI for token exchange:', redirectUri);
 
-    // Exchange the code for an access token - update to use JSON
-    console.log('Exchanging code for access token');
+    // Prepare URL-encoded form data for token exchange (Podio requires this format)
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'authorization_code');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    formData.append('code', code);
+    formData.append('redirect_uri', redirectUri);
+
+    console.log('Exchanging code for access token with URL-encoded data');
     const tokenResponse = await fetch(PODIO_TOKEN_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-      }),
+      body: formData.toString(),
     });
 
     if (!tokenResponse.ok) {
       const tokenError = await tokenResponse.text();
-      console.error('Failed to exchange code for token:', tokenError);
+      console.error('Failed to exchange code for token:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        body: tokenError
+      });
+      
+      // Handle rate limiting from Podio
+      if (tokenResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'rate_limited',
+            error_description: 'Too many requests to Podio API. Please try again later.',
+            retryAfter: tokenResponse.headers.get('Retry-After')
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'token_exchange_failed',
-          error_description: tokenError
+          error_description: tokenError,
+          status: tokenResponse.status
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
