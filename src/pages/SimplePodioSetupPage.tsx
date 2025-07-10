@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
-import { PodioDebugPanel } from '@/components/PodioDebugPanel';
+
 
 const SimplePodioSetupPage = () => {
   const [podioConnected, setPodioConnected] = useState(false);
@@ -307,10 +307,6 @@ const SimplePodioSetupPage = () => {
           </CardFooter>
         </Card>
         
-        {/* Debug Panel for troubleshooting */}
-        <div className="mt-8">
-          <PodioDebugPanel />
-        </div>
       </div>
     </MainLayout>
   );

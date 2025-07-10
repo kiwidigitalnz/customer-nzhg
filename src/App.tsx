@@ -6,7 +6,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PackingSpecPage from './pages/PackingSpecDetailsPage';
 import SimplePodioSetupPage from './pages/SimplePodioSetupPage';
-import PodioCallbackHandler from './pages/PodioCallbackHandler';
+
 import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
 import Index from './pages/Index';
@@ -38,7 +38,7 @@ const App: React.FC = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
-      <Route path="/podio-callback" element={<PodioCallbackHandler />} />
+      
       <Route
         path="/dashboard"
         element={
