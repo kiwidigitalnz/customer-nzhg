@@ -165,7 +165,7 @@ const SimplePodioSetupPage = () => {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('podio-get-auth-url', {
+      const { data, error } = await supabase.functions.invoke('podio-oauth-url', {
         method: 'GET'
       });
       
@@ -179,8 +179,10 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      // Store state and redirect
+      // Store state for validation
       localStorage.setItem('podio_oauth_state', data.state);
+      
+      // Redirect to Podio OAuth
       window.location.href = data.authUrl;
       
     } catch (error) {

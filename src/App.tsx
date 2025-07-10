@@ -7,7 +7,6 @@ import DashboardPage from './pages/DashboardPage';
 import PackingSpecPage from './pages/PackingSpecDetailsPage';
 import SimplePodioSetupPage from './pages/SimplePodioSetupPage';
 import PodioCallbackHandler from './pages/PodioCallbackHandler';
-import PodioDebugPage from './pages/PodioDebugPage';
 import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
 import Index from './pages/Index';
@@ -56,7 +55,6 @@ const App: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      <Route path="/podio-debug" element={<PodioDebugPage />} />
       <Route path="/admin/*" element={<AdminRoute />} />
     </Routes>
   );

@@ -1,11 +1,6 @@
 
-import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuth } from '../contexts/AuthContext';
-
-// Lazy load admin pages to reduce initial bundle size
-const PodioSetupPage = lazy(() => import('../pages/PodioSetupPage'));
 
 const AdminRoute = () => {
   const { user, isAuthenticated } = useAuth();
@@ -17,14 +12,8 @@ const AdminRoute = () => {
   
   return (
     <Routes>
-      <Route 
-        path="podio-setup" 
-        element={
-          <Suspense fallback={<LoadingSpinner size="md" text="Loading admin page..." />}>
-            <PodioSetupPage />
-          </Suspense>
-        } 
-      />
+      {/* Admin routes can be added here in the future */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
