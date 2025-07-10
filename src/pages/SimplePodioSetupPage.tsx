@@ -27,33 +27,13 @@ export default function SimplePodioSetupPage() {
     try {
       const authUrl = await initiateOAuth();
       
-      // Open popup window
-      const popup = window.open(
-        authUrl,
-        'podio-oauth',
-        'width=600,height=700,scrollbars=yes,resizable=yes'
-      );
-
-      // Poll for popup closure
-      const pollTimer = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(pollTimer);
-          // Check authentication after popup closes
-          checkAuthentication();
-          toast({
-            title: "Connection completed",
-            description: "Please wait while we verify your connection...",
-          });
-        }
-      }, 1000);
-
-      // Cleanup after 5 minutes
-      setTimeout(() => {
-        clearInterval(pollTimer);
-        if (popup && !popup.closed) {
-          popup.close();
-        }
-      }, 5 * 60 * 1000);
+      toast({
+        title: "Redirecting to Podio",
+        description: "You will be redirected to Podio for authentication...",
+      });
+      
+      // Navigate to Podio OAuth in the same window
+      window.location.href = authUrl;
     } catch (error) {
       console.error('Connection failed:', error);
       toast({

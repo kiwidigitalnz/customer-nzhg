@@ -56,18 +56,10 @@ export default function PodioOAuthCallbackPage() {
         // Update auth state
         await checkAuthentication();
 
-        // Check if we're in a popup window
-        if (window.opener) {
-          // We're in a popup, close it
-          setTimeout(() => {
-            window.close();
-          }, 2000);
-        } else {
-          // We're not in a popup, redirect to setup page or dashboard
-          setTimeout(() => {
-            navigate('/podio-setup');
-          }, 2000);
-        }
+        // Redirect to setup page after successful authentication
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
       } catch (error) {
         console.error('OAuth callback error:', error);
         setStatus('error');
@@ -124,7 +116,7 @@ export default function PodioOAuthCallbackPage() {
           {status === 'error' && (
             <div className="space-y-3">
               <Button 
-                onClick={() => navigate('/podio-setup')} 
+                onClick={() => navigate('/')} 
                 className="w-full"
               >
                 Back to Setup
@@ -138,12 +130,7 @@ export default function PodioOAuthCallbackPage() {
               </Button>
             </div>
           )}
-          {status === 'success' && window.opener && (
-            <p className="text-sm text-muted-foreground text-center">
-              This window will close automatically...
-            </p>
-          )}
-          {status === 'success' && !window.opener && (
+          {status === 'success' && (
             <p className="text-sm text-muted-foreground text-center">
               Redirecting to setup page...
             </p>
