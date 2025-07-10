@@ -6,9 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function getRedirectUri(req: Request): string {
-  const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
-  return origin ? `${origin}/podio-callback` : 'https://customer.nzhg.com/podio-callback';
+function getRedirectUri(): string {
+  return 'https://customer.nzhg.com';
+}
+
+function getAppRedirectUrl(success: boolean, error?: string): string {
+  const baseUrl = 'https://customer.nzhg.com';
+  if (success) {
+    return `${baseUrl}/?podio_auth=success`;
+  } else {
+    const errorParam = error ? `&error=${encodeURIComponent(error)}` : '';
+    return `${baseUrl}/?podio_auth=error${errorParam}`;
+  }
 }
 
 serve(async (req) => {
@@ -17,40 +26,46 @@ serve(async (req) => {
   }
 
   try {
-    if (req.method !== 'POST') {
+    if (req.method !== 'GET') {
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
         { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { code, state, error: podioError } = await req.json();
+    const url = new URL(req.url);
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+    const podioError = url.searchParams.get('error');
 
     if (podioError) {
-      return new Response(
-        JSON.stringify({ error: 'Podio OAuth error', details: podioError }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, `Podio OAuth error: ${podioError}`);
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
     if (!code || !state) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, 'Missing required parameters');
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
     const podioClientId = Deno.env.get('PODIO_CLIENT_ID');
     const podioClientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
 
     if (!podioClientId || !podioClientSecret) {
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, 'Server configuration error');
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
-    const redirectUri = getRedirectUri(req);
+    const redirectUri = getRedirectUri();
     
     const formData = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -72,17 +87,19 @@ serve(async (req) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok) {
-      return new Response(
-        JSON.stringify({ error: 'Token exchange failed', details: tokenData.error || 'Unknown error' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, `Token exchange failed: ${tokenData.error || 'Unknown error'}`);
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
     if (!tokenData.access_token || !tokenData.refresh_token) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, 'Invalid token response');
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
     const expiresIn = tokenData.expires_in || 3600;
@@ -104,21 +121,24 @@ serve(async (req) => {
       });
 
     if (dbError) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to store tokens' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const redirectUrl = getAppRedirectUrl(false, 'Failed to store tokens');
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': redirectUrl }
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'OAuth callback processed successfully', expires_at: expiresAt }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const redirectUrl = getAppRedirectUrl(true);
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, 'Location': redirectUrl }
+    });
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const redirectUrl = getAppRedirectUrl(false, 'Internal server error');
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, 'Location': redirectUrl }
+    });
   }
 });
