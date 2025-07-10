@@ -64,13 +64,15 @@ Deno.serve(async (req) => {
     // Get Podio OAuth configuration with better validation
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const redirectUri = 'https://customer.nzhg.com/podio-oauth-callback';
+    // Use the exact redirect URI that should match Podio app configuration
+    const redirectUri = 'https://customer.nzhg.com';
 
-    console.log('Configuration check:', {
+    console.log('OAuth Callback - Configuration check:', {
       clientId: clientId ? 'Present' : 'Missing',
       clientSecret: clientSecret ? 'Present' : 'Missing',
       supabaseUrl: supabaseUrl ? 'Present' : 'Missing',
-      redirectUri
+      redirectUri: redirectUri,
+      originalUrl: req.url
     });
 
     if (!clientId || !clientSecret || !supabaseUrl) {
@@ -200,8 +202,8 @@ Deno.serve(async (req) => {
       expiresAt: stateData.expires_at 
     });
 
-    // Exchange code for tokens using exact Podio documentation format
-    console.log('Exchanging authorization code for tokens...');
+    // Exchange code for tokens using multiple approaches
+    console.log('OAuth Callback - Exchanging authorization code for tokens...');
     
     const tokenRequestData = {
       grant_type: "authorization_code",
@@ -211,15 +213,18 @@ Deno.serve(async (req) => {
       code: code
     };
 
-    console.log('Token request details:', {
+    console.log('OAuth Callback - Token request details:', {
       endpoint: 'https://api.podio.com/oauth/token/v2',
+      alternateEndpoint: 'https://podio.com/oauth/token',
       grant_type: 'authorization_code',
       client_id: clientId,
       redirect_uri: redirectUri,
-      code_length: code.length
+      code_length: code.length,
+      client_secret: clientSecret ? 'Present' : 'Missing'
     });
 
-    const tokenResponse = await fetch('https://api.podio.com/oauth/token/v2', {
+    // Try the main Podio API endpoint first
+    let tokenResponse = await fetch('https://api.podio.com/oauth/token/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -227,32 +232,56 @@ Deno.serve(async (req) => {
       body: JSON.stringify(tokenRequestData)
     });
 
-    console.log('Token response status:', tokenResponse.status, tokenResponse.statusText);
+    console.log('OAuth Callback - API v2 response status:', tokenResponse.status, tokenResponse.statusText);
 
+    // If the main endpoint fails, try the legacy endpoint with form encoding
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Token exchange failed:', {
-        status: tokenResponse.status,
-        statusText: tokenResponse.statusText,
-        errorText: errorText,
-        endpoint: 'https://api.podio.com/oauth/token/v2',
-        redirectUri
+      const apiV2Error = await tokenResponse.text();
+      console.log('OAuth Callback - API v2 failed, trying legacy endpoint with form encoding...');
+      
+      const formData = new URLSearchParams();
+      formData.append('grant_type', 'authorization_code');
+      formData.append('client_id', clientId);
+      formData.append('redirect_uri', redirectUri);
+      formData.append('client_secret', clientSecret);
+      formData.append('code', code);
+
+      tokenResponse = await fetch('https://podio.com/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString()
       });
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to exchange authorization code for tokens',
-          details: { 
-            status: tokenResponse.status, 
-            statusText: tokenResponse.statusText,
-            endpoint: 'https://api.podio.com/oauth/token/v2',
-            errorText: errorText
+
+      console.log('OAuth Callback - Legacy endpoint response status:', tokenResponse.status, tokenResponse.statusText);
+
+      if (!tokenResponse.ok) {
+        const legacyError = await tokenResponse.text();
+        console.error('OAuth Callback - Both token endpoints failed:', {
+          apiV2Status: tokenResponse.status,
+          apiV2Error: apiV2Error,
+          legacyStatus: tokenResponse.status,
+          legacyError: legacyError,
+          redirectUri: redirectUri
+        });
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to exchange authorization code for tokens',
+            details: { 
+              apiV2Status: tokenResponse.status,
+              apiV2Error: apiV2Error,
+              legacyStatus: tokenResponse.status,
+              legacyError: legacyError,
+              redirectUri: redirectUri
+            }
+          }), 
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
-        }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+        );
+      }
     }
 
     const tokenData: TokenResponse = await tokenResponse.json();
