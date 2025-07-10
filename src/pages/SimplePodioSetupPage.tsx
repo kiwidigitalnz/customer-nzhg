@@ -12,7 +12,6 @@ import { Progress } from '@/components/ui/progress';
 import { PodioDebugPanel } from '@/components/PodioDebugPanel';
 
 const SimplePodioSetupPage = () => {
-  const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [podioConnected, setPodioConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAuth, setLastAuth] = useState<string | null>(null);
@@ -27,41 +26,8 @@ const SimplePodioSetupPage = () => {
   const errorDescription = searchParams.get('error_description');
 
   useEffect(() => {
-    const checkSupabaseConnection = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('health-check', {
-          method: 'GET'
-        });
-        
-        if (error) {
-          setSupabaseConnected(false);
-          toast({
-            title: "Connection Issue",
-            description: "Unable to connect to backend services. Please contact support.",
-            variant: "destructive"
-          });
-        } else {
-          setSupabaseConnected(true);
-        }
-      } catch (error) {
-        setSupabaseConnected(false);
-        toast({
-          title: "Connection Issue",
-          description: "Unable to connect to backend services. Please contact support.",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    checkSupabaseConnection();
-  }, [toast]);
-
-  useEffect(() => {
-    if (!supabaseConnected) return;
-    
     const checkPodioConnection = async () => {
       try {
-        // Check for existing tokens
         const { data, error } = await supabase.functions.invoke('podio-authenticate', {
           method: 'GET'
         });
@@ -73,7 +39,6 @@ const SimplePodioSetupPage = () => {
           return;
         }
         
-        // Valid token found
         setPodioConnected(true);
         
         if (data.expires_at) {
@@ -82,7 +47,6 @@ const SimplePodioSetupPage = () => {
             setLastAuth(expiryDate.toLocaleString());
             updateExpiryInfo(expiryDate);
             
-            // Set up interval for time updates
             const intervalId = setInterval(() => {
               updateExpiryInfo(expiryDate);
             }, 60000);
@@ -98,7 +62,7 @@ const SimplePodioSetupPage = () => {
     };
     
     checkPodioConnection();
-  }, [supabaseConnected]);
+  }, []);
 
   const updateExpiryInfo = (expiryDate: Date) => {
     if (!expiryDate || isNaN(expiryDate.getTime())) {
@@ -154,15 +118,6 @@ const SimplePodioSetupPage = () => {
   }, [success, error, errorDescription, toast]);
 
   const handleConnectPodio = async () => {
-    if (!supabaseConnected) {
-      toast({
-        title: "Connection Error",
-        description: "Backend services are not available. Please contact support.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
     
     try {
@@ -180,10 +135,7 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      // Store state for validation
       localStorage.setItem('podio_oauth_state', data.state);
-      
-      // Redirect to Podio OAuth
       window.location.href = data.authUrl;
       
     } catch (error) {
@@ -258,13 +210,6 @@ const SimplePodioSetupPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="mb-4 flex items-center justify-between">
-              <span>Backend Connection:</span>
-              <Badge variant={supabaseConnected ? "default" : "destructive"}>
-                {supabaseConnected ? "Connected" : "Unavailable"}
-              </Badge>
-            </div>
-            
-            <div className="mb-4 flex items-center justify-between">
               <span>Podio OAuth Status:</span>
               <Badge variant={podioConnected ? "default" : "outline"} className={podioConnected ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
                 {podioConnected ? "Authorized" : "Not Authorized"}
@@ -292,15 +237,6 @@ const SimplePodioSetupPage = () => {
               </div>
             )}
             
-            {!supabaseConnected && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Connection Error</AlertTitle>
-                <AlertDescription>
-                  Backend services are currently unavailable. Please try again later or contact support.
-                </AlertDescription>
-              </Alert>
-            )}
           
             {podioConnected && (
               <Alert className="mb-4">
@@ -327,7 +263,7 @@ const SimplePodioSetupPage = () => {
               <Button 
                 variant="outline" 
                 onClick={handleRefreshStatus}
-                disabled={isLoading || !supabaseConnected}
+                disabled={isLoading}
                 className="w-full sm:w-auto"
               >
                 {isLoading ? (
@@ -350,7 +286,7 @@ const SimplePodioSetupPage = () => {
                 
                 <Button 
                   onClick={handleConnectPodio}
-                  disabled={isLoading || !supabaseConnected}
+                  disabled={isLoading}
                   variant={podioConnected ? 'outline' : 'default'}
                   className="w-full sm:w-auto"
                 >

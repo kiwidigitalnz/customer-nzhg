@@ -29,7 +29,6 @@ export {
   getPodioClientSecret,
   getPodioRedirectUri,
   generatePodioAuthState,
-  getPodioAuthUrl,
   validatePodioAuthState
 } from './podio/podioOAuth';
 

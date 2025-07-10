@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import MainLayout from '../components/MainLayout';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
@@ -12,159 +12,69 @@ function PodioCallbackHandlerComponent() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [status, setStatus] = useState<'processing' | 'success' | 'error' | 'testing'>('testing');
-  const [message, setMessage] = useState('Initializing callback handler...');
-  const [debugInfo, setDebugInfo] = useState<any[]>([]);
-
-  const addDebugInfo = (step: string, data: any) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[DEBUG ${timestamp}] ${step}:`, data);
-    setDebugInfo(prev => [...prev, { step, data, timestamp }]);
-  };
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
+  const [message, setMessage] = useState('Processing OAuth callback...');
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        addDebugInfo('Callback Handler Started', {
-          userAgent: navigator.userAgent,
-          currentUrl: window.location.href,
-          searchParamsRaw: searchParams.toString()
-        });
-
-        // Step 1: Test Supabase Connection
-        setStatus('testing');
-        setMessage('Testing Supabase connection...');
-        
-        try {
-          const { error: healthError } = await supabase.functions.invoke('health-check');
-          addDebugInfo('Supabase Health Check', { 
-            success: !healthError, 
-            error: healthError?.message 
-          });
-          
-          if (healthError) {
-            throw new Error(`Supabase connection failed: ${healthError.message}`);
-          }
-        } catch (connectionError) {
-          addDebugInfo('Supabase Connection Failed', connectionError);
-          setStatus('error');
-          setMessage('Cannot connect to Supabase. Please check your internet connection.');
-          return;
-        }
-
-        // Step 2: Parse OAuth Parameters
-        setStatus('processing');
-        setMessage('Processing OAuth callback...');
-        
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
 
-        addDebugInfo('OAuth Parameters Parsed', { 
-          hasCode: !!code, 
-          codeLength: code?.length,
-          codePreview: code ? code.substring(0, 10) + '...' : null,
-          state, 
-          error, 
-          errorDescription,
-          allParams: Object.fromEntries(searchParams.entries())
-        });
-
-        // Step 3: Handle OAuth Errors
         if (error) {
-          addDebugInfo('OAuth Error Received', { error, errorDescription });
           setStatus('error');
           setMessage(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`);
           return;
         }
 
-        // Step 4: Validate Required Parameters
         if (!code || !state) {
-          addDebugInfo('Missing Parameters', { hasCode: !!code, hasState: !!state });
           setStatus('error');
-          setMessage('Missing required OAuth parameters (code or state)');
+          setMessage('Missing required OAuth parameters');
           return;
         }
 
-        // Step 5: CSRF Protection
+        // CSRF Protection
         const storedState = localStorage.getItem('podio_oauth_state');
-        addDebugInfo('CSRF Validation', { 
-          hasStoredState: !!storedState, 
-          storedState: storedState?.substring(0, 10) + '...',
-          receivedState: state?.substring(0, 10) + '...',
-          statesMatch: storedState === state
-        });
-
-        if (storedState) {
-          if (storedState !== state) {
-            setStatus('error');
-            setMessage('Invalid OAuth state. Possible CSRF attack detected.');
-            return;
-          }
-          localStorage.removeItem('podio_oauth_state');
-        } else {
-          console.warn('No stored OAuth state found - proceeding without CSRF validation');
+        if (storedState && storedState !== state) {
+          setStatus('error');
+          setMessage('Invalid OAuth state. Please try again.');
+          return;
         }
+        localStorage.removeItem('podio_oauth_state');
 
-        // Step 6: Call Edge Function
-        setMessage('Exchanging authorization code for tokens...');
-        addDebugInfo('Calling Edge Function', { 
-          functionName: 'podio-oauth-callback',
-          hasCode: !!code,
-          hasState: !!state 
-        });
-
-        const startTime = performance.now();
+        // Exchange code for tokens
         const { data, error: callbackError } = await supabase.functions.invoke('podio-oauth-callback', {
           body: { code, state }
         });
-        const endTime = performance.now();
-        
-        addDebugInfo('Edge Function Response', { 
-          success: !callbackError,
-          responseTime: `${(endTime - startTime).toFixed(2)}ms`,
-          data: data ? { ...data, access_token: data.access_token ? '[REDACTED]' : undefined } : null,
-          error: callbackError 
-        });
 
-        // Step 7: Handle Edge Function Response
         if (callbackError) {
-          addDebugInfo('Edge Function Error', callbackError);
           setStatus('error');
-          setMessage(`Edge function error: ${callbackError.message || JSON.stringify(callbackError)}`);
+          setMessage(`Error: ${callbackError.message}`);
           return;
         }
 
         if (!data || !data.success) {
-          const errorMsg = data?.error_description || data?.error || 'OAuth callback processing failed';
-          addDebugInfo('Callback Processing Failed', { data, errorMsg });
           setStatus('error');
-          setMessage(`Callback failed: ${errorMsg}`);
+          setMessage(data?.error || 'OAuth callback processing failed');
           return;
         }
 
-        // Step 8: Success
-        addDebugInfo('OAuth Success', { success: true });
         setStatus('success');
-        setMessage('OAuth setup completed successfully! You can now use the Podio integration.');
+        setMessage('OAuth setup completed successfully!');
 
         toast({
           title: 'OAuth Setup Complete',
-          description: 'Successfully connected to Podio via OAuth',
+          description: 'Successfully connected to Podio',
           variant: 'default'
         });
 
-        // Redirect to setup page with success status after a short delay
         setTimeout(() => {
           navigate('/podio-setup?success=oauth_complete');
         }, 2000);
 
       } catch (error) {
-        addDebugInfo('Unexpected Error', { 
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        });
         setStatus('error');
         setMessage(error instanceof Error ? error.message : 'Unexpected error occurred');
       }
@@ -175,8 +85,6 @@ function PodioCallbackHandlerComponent() {
 
   const getStatusIcon = () => {
     switch (status) {
-      case 'testing':
-        return <AlertTriangle className="h-8 w-8 text-yellow-500" />;
       case 'processing':
         return <Loader2 className="h-8 w-8 animate-spin text-blue-500" />;
       case 'success':
@@ -188,8 +96,6 @@ function PodioCallbackHandlerComponent() {
 
   const getStatusColor = () => {
     switch (status) {
-      case 'testing':
-        return 'text-yellow-600';
       case 'processing':
         return 'text-blue-600';
       case 'success':
@@ -202,7 +108,7 @@ function PodioCallbackHandlerComponent() {
   return (
     <MainLayout>
       <div className="container mx-auto py-10">
-        <Card className="max-w-2xl mx-auto">
+        <Card className="max-w-lg mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {getStatusIcon()}
@@ -215,12 +121,6 @@ function PodioCallbackHandlerComponent() {
                 {message}
               </AlertDescription>
             </Alert>
-
-            {status === 'testing' && (
-              <div className="text-sm text-yellow-600">
-                Running connection tests...
-              </div>
-            )}
 
             {status === 'processing' && (
               <div className="text-sm text-muted-foreground">
@@ -243,27 +143,6 @@ function PodioCallbackHandlerComponent() {
                   </a>
                 </p>
               </div>
-            )}
-
-            {/* Debug Information Panel */}
-            {debugInfo.length > 0 && (
-              <details className="mt-4 text-xs">
-                <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">
-                  Debug Information ({debugInfo.length} steps)
-                </summary>
-                <div className="mt-2 bg-gray-50 p-3 rounded max-h-60 overflow-y-auto">
-                  {debugInfo.map((info, index) => (
-                    <div key={index} className="mb-2 border-b border-gray-200 pb-2 last:border-b-0">
-                      <div className="font-medium text-gray-700">
-                        {info.step} <span className="text-gray-500">({info.timestamp.split('T')[1]?.split('.')[0]})</span>
-                      </div>
-                      <pre className="mt-1 text-gray-600 whitespace-pre-wrap">
-                        {JSON.stringify(info.data, null, 2)}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              </details>
             )}
           </CardContent>
         </Card>
