@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // Get Podio OAuth configuration
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const redirectUri = `${new URL(req.url).origin}/podio-oauth-callback`;
+    const redirectUri = 'https://customer.nzhg.com/podio-oauth-callback';
 
     if (!clientId || !clientSecret) {
       console.error('Missing Podio OAuth configuration');
