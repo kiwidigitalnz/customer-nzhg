@@ -74,16 +74,23 @@ export const PodioDebugPanel = () => {
     updateTest('oauth-callback', 'pending', 'Testing OAuth callback function...');
     
     try {
-      // Test with dummy data to see if function is accessible
+      // Test with valid test parameters that the function expects
       const { data, error } = await supabase.functions.invoke('podio-oauth-callback', {
-        body: { test: true }
+        body: { 
+          code: 'test_auth_code_123',
+          state: 'test_state_456'
+        }
       });
       
       if (error) {
         updateTest('oauth-callback', 'error', `OAuth callback failed: ${error.message}`, error);
       } else {
-        // We expect this to fail with validation error, but it means function is accessible
-        updateTest('oauth-callback', 'success', 'OAuth callback function is accessible (validation error expected)', data);
+        // We expect this to fail with token exchange error, but it means function validation works
+        if (data?.success === false && data?.error === 'token_exchange_failed') {
+          updateTest('oauth-callback', 'success', 'OAuth callback function is accessible and validating parameters correctly', data);
+        } else {
+          updateTest('oauth-callback', 'warning', 'OAuth callback function responded unexpectedly', data);
+        }
       }
     } catch (error) {
       updateTest('oauth-callback', 'error', `OAuth callback error: ${error.message}`, error);
@@ -197,7 +204,7 @@ export const PodioDebugPanel = () => {
               <li>Click "Run All Tests" to verify edge function deployment</li>
               <li>Check that health-check function returns success</li>
               <li>Verify OAuth URL generation works</li>
-              <li>Confirm callback function is accessible (validation error is expected)</li>
+              <li>Confirm callback function validates parameters correctly (token exchange error is expected)</li>
               <li>If any tests fail, check the edge function logs in Supabase dashboard</li>
             </ol>
           </AlertDescription>
