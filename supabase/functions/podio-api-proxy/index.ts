@@ -62,43 +62,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the user from the Authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing Authorization header' }), 
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Extract user from JWT token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }), 
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Get user's Podio tokens
+    // Get app-level Podio tokens (no user authentication required)
     const { data: tokenData, error: tokenError } = await supabase
       .from('podio_oauth_tokens')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('app_level', true)
       .single();
 
     if (tokenError || !tokenData) {
       return new Response(
-        JSON.stringify({ error: 'No Podio OAuth tokens found. Please reconnect your Podio account.' }), 
+        JSON.stringify({ error: 'No Podio app-level tokens found. Please connect the app to Podio first.' }), 
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -128,7 +101,7 @@ Deno.serve(async (req) => {
             expires_at: newExpiresAt.toISOString(),
             token_type: refreshedTokens.token_type
           })
-          .eq('user_id', user.id);
+          .eq('app_level', true);
 
         if (updateError) {
           console.error('Error updating refreshed tokens:', updateError);

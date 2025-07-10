@@ -154,39 +154,28 @@ Deno.serve(async (req) => {
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
 
-    // If we have a user_id from the state, save the tokens
-    if (stateData.user_id) {
-      // Save/update OAuth tokens
-      const { error: tokenError } = await supabase
-        .from('podio_oauth_tokens')
-        .upsert({
-          user_id: stateData.user_id,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: expiresAt.toISOString(),
-          token_type: tokenData.token_type,
-          scope: tokenData.scope
-        }, { onConflict: 'user_id' });
+    // Save app-level OAuth tokens (no user_id)
+    const { error: tokenError } = await supabase
+      .from('podio_oauth_tokens')
+      .upsert({
+        user_id: null, // App-level tokens don't have a user_id
+        app_level: true,
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_at: expiresAt.toISOString(),
+        token_type: tokenData.token_type,
+        scope: tokenData.scope
+      }, { onConflict: 'app_level' });
 
-      if (tokenError) {
-        console.error('Error saving OAuth tokens:', tokenError);
-      }
-
-      // Save/update Podio user data
-      const { error: userError } = await supabase
-        .from('podio_users')
-        .upsert({
-          user_id: stateData.user_id,
-          podio_user_id: userData.user_id,
-          name: userData.name,
-          email: userData.mail,
-          username: userData.username,
-          avatar_url: userData.avatar
-        }, { onConflict: 'user_id' });
-
-      if (userError) {
-        console.error('Error saving Podio user data:', userError);
-      }
+    if (tokenError) {
+      console.error('Error saving OAuth tokens:', tokenError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save OAuth tokens' }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     // Clean up the used state

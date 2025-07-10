@@ -36,7 +36,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route path="/" element={<SimplePodioSetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/podio-setup" element={<SimplePodioSetupPage />} />
       <Route path="/podio-oauth-callback" element={<PodioOAuthCallbackPage />} />

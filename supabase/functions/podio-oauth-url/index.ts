@@ -7,6 +7,7 @@ const corsHeaders = {
 
 interface RequestBody {
   userId?: string;
+  appLevel?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -38,9 +39,11 @@ Deno.serve(async (req) => {
 
     // Parse request body
     let userId: string | undefined;
+    let appLevel = false;
     if (req.method === 'POST') {
       const body: RequestBody = await req.json();
       userId = body.userId;
+      appLevel = body.appLevel || false;
     }
 
     // Generate a unique state parameter for security

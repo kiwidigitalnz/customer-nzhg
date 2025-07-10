@@ -41,6 +41,7 @@ export type Database = {
       podio_oauth_tokens: {
         Row: {
           access_token: string
+          app_level: boolean
           created_at: string
           expires_at: string
           id: string
@@ -48,10 +49,11 @@ export type Database = {
           scope: string | null
           token_type: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           access_token: string
+          app_level?: boolean
           created_at?: string
           expires_at: string
           id?: string
@@ -59,10 +61,11 @@ export type Database = {
           scope?: string | null
           token_type?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           access_token?: string
+          app_level?: boolean
           created_at?: string
           expires_at?: string
           id?: string
@@ -70,7 +73,7 @@ export type Database = {
           scope?: string | null
           token_type?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

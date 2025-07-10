@@ -101,63 +101,43 @@ class PodioAuthService {
     try {
       this.updateState({ isLoading: true, error: undefined });
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        this.updateState({ 
-          isAuthenticated: false, 
-          isLoading: false,
-          user: undefined
-        });
-        return;
-      }
-
-      // Check if user has Podio tokens
-      const { data: tokens, error: tokenError } = await supabase
+      // Check for app-level tokens (no user authentication required)
+      const { data: appTokens, error: tokenError } = await supabase
         .from('podio_oauth_tokens')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('app_level', true)
         .maybeSingle();
 
       if (tokenError && tokenError.code !== 'PGRST116') {
-        console.error('Token check failed:', tokenError);
+        console.error('App token check failed:', tokenError);
         this.updateState({ 
           isAuthenticated: false, 
           isLoading: false,
-          error: 'Failed to check authentication'
+          error: 'Failed to check app authentication'
         });
         return;
       }
 
-      // Check if user has Podio user data
-      const { data: podioUser, error: userError } = await supabase
-        .from('podio_users')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (userError && userError.code !== 'PGRST116') {
-        console.error('User data check failed:', userError);
-        this.updateState({ 
-          isAuthenticated: false, 
+      if (appTokens) {
+        this.updateState({
+          isAuthenticated: true,
           isLoading: false,
-          error: 'Failed to check user data'
+          user: {
+            name: 'App Authentication',
+            email: 'app@system',
+            podio_user_id: 0,
+            avatar_url: undefined,
+          },
+          error: undefined
         });
-        return;
+      } else {
+        this.updateState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: undefined,
+          error: undefined
+        });
       }
-
-      const isAuthenticated = !!(tokens && podioUser);
-      
-      this.updateState({
-        isAuthenticated,
-        isLoading: false,
-        user: podioUser ? {
-          name: podioUser.name,
-          email: podioUser.email,
-          podio_user_id: podioUser.podio_user_id,
-          avatar_url: podioUser.avatar_url || undefined,
-        } : undefined,
-        error: undefined
-      });
     } catch (error) {
       console.error('Authentication check error:', error);
       this.updateState({ 
@@ -172,12 +152,10 @@ class PodioAuthService {
     try {
       this.updateState({ isLoading: true, error: undefined });
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-
+      // For app-level OAuth, we don't need user ID
       const { data, error } = await supabase.functions.invoke('podio-oauth-url', {
         method: 'POST',
-        body: { userId },
+        body: { appLevel: true },
       });
 
       if (error) {
@@ -205,34 +183,14 @@ class PodioAuthService {
     try {
       this.updateState({ isLoading: true, error: undefined });
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        this.updateState({ 
-          isAuthenticated: false, 
-          isLoading: false,
-          user: undefined
-        });
-        return;
-      }
-
-      // Delete tokens
+      // Delete app-level tokens
       const { error: tokenError } = await supabase
         .from('podio_oauth_tokens')
         .delete()
-        .eq('user_id', user.id);
+        .eq('app_level', true);
 
       if (tokenError) {
-        console.error('Failed to delete tokens:', tokenError);
-      }
-
-      // Delete user data
-      const { error: userError } = await supabase
-        .from('podio_users')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (userError) {
-        console.error('Failed to delete user data:', userError);
+        console.error('Failed to delete app tokens:', tokenError);
       }
 
       this.updateState({
