@@ -7,16 +7,16 @@ const corsHeaders = {
 };
 
 function getRedirectUri(): string {
-  return 'https://customer.nzhg.com';
+  return 'https://customer.nzhg.com/podio-callback';
 }
 
 function getAppRedirectUrl(success: boolean, error?: string): string {
   const baseUrl = 'https://customer.nzhg.com';
   if (success) {
-    return `${baseUrl}/?podio_auth=success`;
+    return `${baseUrl}/podio-callback?podio_auth=success`;
   } else {
     const errorParam = error ? `&error=${encodeURIComponent(error)}` : '';
-    return `${baseUrl}/?podio_auth=error${errorParam}`;
+    return `${baseUrl}/podio-callback?podio_auth=error${errorParam}`;
   }
 }
 

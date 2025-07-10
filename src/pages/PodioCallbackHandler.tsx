@@ -18,61 +18,69 @@ function PodioCallbackHandlerComponent() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // Check if this is a redirect from the OAuth flow
+        const podioAuthStatus = searchParams.get('podio_auth');
+        const error = searchParams.get('error');
+
+        if (podioAuthStatus === 'success') {
+          setStatus('success');
+          setMessage('OAuth setup completed successfully!');
+
+          toast({
+            title: 'OAuth Setup Complete',
+            description: 'Successfully connected to Podio',
+            variant: 'default'
+          });
+
+          setTimeout(() => {
+            navigate('/podio-setup?success=oauth_complete');
+          }, 2000);
+          return;
+        }
+
+        if (podioAuthStatus === 'error' || error) {
+          setStatus('error');
+          const errorMessage = error ? decodeURIComponent(error) : 'OAuth authentication failed';
+          setMessage(`OAuth error: ${errorMessage}`);
+          return;
+        }
+
+        // Handle direct callback with code and state (fallback for direct access)
         const code = searchParams.get('code');
         const state = searchParams.get('state');
-        const error = searchParams.get('error');
+        const podioError = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
 
-        if (error) {
+        if (podioError) {
           setStatus('error');
-          setMessage(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`);
+          setMessage(`OAuth error: ${podioError}${errorDescription ? ` - ${errorDescription}` : ''}`);
           return;
         }
 
-        if (!code || !state) {
-          setStatus('error');
-          setMessage('Missing required OAuth parameters');
+        if (code && state) {
+          // CSRF Protection
+          const storedState = localStorage.getItem('podio_oauth_state');
+          if (storedState && storedState !== state) {
+            setStatus('error');
+            setMessage('Invalid OAuth state. Please try again.');
+            return;
+          }
+          localStorage.removeItem('podio_oauth_state');
+
+          // Direct processing is handled by the edge function redirect
+          // This is a fallback in case the redirect doesn't work
+          setMessage('Processing OAuth callback...');
+          
+          // Redirect to the edge function endpoint with the parameters
+          const callbackUrl = `https://qpswgrmvepttnfetpopk.supabase.co/functions/v1/podio-oauth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+          
+          window.location.href = callbackUrl;
           return;
         }
 
-        // CSRF Protection
-        const storedState = localStorage.getItem('podio_oauth_state');
-        if (storedState && storedState !== state) {
-          setStatus('error');
-          setMessage('Invalid OAuth state. Please try again.');
-          return;
-        }
-        localStorage.removeItem('podio_oauth_state');
-
-        // Exchange code for tokens
-        const { data, error: callbackError } = await supabase.functions.invoke('podio-oauth-callback', {
-          body: { code, state }
-        });
-
-        if (callbackError) {
-          setStatus('error');
-          setMessage(`Error: ${callbackError.message}`);
-          return;
-        }
-
-        if (!data || !data.success) {
-          setStatus('error');
-          setMessage(data?.error || 'OAuth callback processing failed');
-          return;
-        }
-
-        setStatus('success');
-        setMessage('OAuth setup completed successfully!');
-
-        toast({
-          title: 'OAuth Setup Complete',
-          description: 'Successfully connected to Podio',
-          variant: 'default'
-        });
-
-        setTimeout(() => {
-          navigate('/podio-setup?success=oauth_complete');
-        }, 2000);
+        // If we get here without any parameters, it's an invalid callback
+        setStatus('error');
+        setMessage('Invalid OAuth callback. Missing required parameters.');
 
       } catch (error) {
         setStatus('error');
