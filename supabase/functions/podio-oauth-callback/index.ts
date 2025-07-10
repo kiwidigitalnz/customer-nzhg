@@ -18,7 +18,9 @@ interface PodioUserResponse {
   name: string;
   mail: string;
   username?: string;
-  avatar?: string;
+  image?: {
+    link: string;
+  };
 }
 
 Deno.serve(async (req) => {
@@ -37,19 +39,51 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Podio OAuth configuration
+    // Test database connectivity first
+    console.log('Testing database connectivity...');
+    const { data: testData, error: testError } = await supabase
+      .from('podio_oauth_states')
+      .select('count')
+      .limit(1);
+    
+    if (testError) {
+      console.error('Database connectivity test failed:', testError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Database connection failed',
+          details: testError.message
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    console.log('Database connectivity test passed');
+
+    // Get Podio OAuth configuration with better validation
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    const redirectUri = 'https://customer.nzhg.com/podio-oauth-callback';
+    const redirectUri = `${supabaseUrl}/functions/v1/podio-oauth-callback`;
 
-    console.log('OAuth config check - Client ID exists:', !!clientId);
-    console.log('OAuth config check - Client Secret exists:', !!clientSecret);
-    console.log('Redirect URI:', redirectUri);
+    console.log('Configuration check:', {
+      clientId: clientId ? 'Present' : 'Missing',
+      clientSecret: clientSecret ? 'Present' : 'Missing',
+      supabaseUrl: supabaseUrl ? 'Present' : 'Missing',
+      redirectUri
+    });
 
-    if (!clientId || !clientSecret) {
-      console.error('Missing Podio OAuth configuration');
+    if (!clientId || !clientSecret || !supabaseUrl) {
+      console.error('Missing required OAuth configuration');
       return new Response(
-        JSON.stringify({ error: 'OAuth configuration missing' }), 
+        JSON.stringify({ 
+          error: 'OAuth configuration incomplete',
+          missing: [
+            !clientId && 'PODIO_CLIENT_ID',
+            !clientSecret && 'PODIO_CLIENT_SECRET',
+            !supabaseUrl && 'SUPABASE_URL'
+          ].filter(Boolean)
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -125,25 +159,34 @@ Deno.serve(async (req) => {
       stateLength: state.length 
     });
 
-    // Verify state parameter
+    // Verify state parameter with better error handling
     console.log('Verifying state parameter in database...');
     const { data: stateData, error: stateError } = await supabase
       .from('podio_oauth_states')
       .select('*')
       .eq('state', state)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle();
 
-    if (stateError || !stateData) {
-      console.error('State verification failed:', {
-        error: stateError,
-        hasStateData: !!stateData,
-        state: state
-      });
+    if (stateError) {
+      console.error('State verification database error:', stateError);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid or expired OAuth state',
-          details: { errorCode: stateError?.code, message: stateError?.message }
+          error: 'State verification failed',
+          details: stateError.message
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!stateData) {
+      console.error('Invalid or expired state parameter');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid or expired OAuth state'
         }), 
         { 
           status: 400, 
@@ -157,30 +200,31 @@ Deno.serve(async (req) => {
       expiresAt: stateData.expires_at 
     });
 
-    // Exchange code for tokens
+    // Exchange code for tokens using correct Podio API v2 endpoint
     console.log('Exchanging authorization code for tokens...');
-    const tokenRequestBody = new URLSearchParams({
+    
+    const tokenRequestData = {
       grant_type: 'authorization_code',
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri,
       code: code
-    });
+    };
 
     console.log('Token request details:', {
-      endpoint: 'https://podio.com/oauth/token',
+      endpoint: 'https://api.podio.com/oauth/token/v2',
       grant_type: 'authorization_code',
       client_id: clientId,
       redirect_uri: redirectUri,
       code_length: code.length
     });
 
-    const tokenResponse = await fetch('https://podio.com/oauth/token', {
+    const tokenResponse = await fetch('https://api.podio.com/oauth/token/v2', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: tokenRequestBody
+      body: JSON.stringify(tokenRequestData)
     });
 
     console.log('Token response status:', tokenResponse.status, tokenResponse.statusText);
@@ -190,15 +234,22 @@ Deno.serve(async (req) => {
       console.error('Token exchange failed:', {
         status: tokenResponse.status,
         statusText: tokenResponse.statusText,
-        errorText: errorText
+        errorText: errorText,
+        endpoint: 'https://api.podio.com/oauth/token/v2',
+        redirectUri
       });
       return new Response(
         JSON.stringify({ 
           error: 'Failed to exchange authorization code for tokens',
-          details: { status: tokenResponse.status, statusText: tokenResponse.statusText }
+          details: { 
+            status: tokenResponse.status, 
+            statusText: tokenResponse.statusText,
+            endpoint: 'https://api.podio.com/oauth/token/v2',
+            errorText: errorText
+          }
         }), 
         { 
-          status: 400, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -213,9 +264,9 @@ Deno.serve(async (req) => {
       has_refresh_token: !!tokenData.refresh_token
     });
 
-    // Get user info from Podio
+    // Get user info from Podio using the status endpoint
     console.log('Fetching user info from Podio...');
-    const userResponse = await fetch('https://api.podio.com/user', {
+    const userResponse = await fetch('https://api.podio.com/user/status', {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json'
@@ -234,10 +285,14 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Failed to fetch user information',
-          details: { status: userResponse.status, statusText: userResponse.statusText }
+          details: { 
+            status: userResponse.status, 
+            statusText: userResponse.statusText,
+            errorText: userErrorText
+          }
         }), 
         { 
-          status: 400, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -249,7 +304,7 @@ Deno.serve(async (req) => {
       name: userData.name,
       email: userData.mail,
       username: userData.username,
-      has_avatar: !!userData.avatar
+      has_avatar: !!userData.image
     });
 
     // Calculate token expiry
@@ -308,7 +363,7 @@ Deno.serve(async (req) => {
         name: userData.name,
         email: userData.mail,
         username: userData.username,
-        avatar_url: userData.avatar
+        avatar_url: userData.image?.link || null
       },
       token_info: {
         expires_at: expiresAt.toISOString(),
