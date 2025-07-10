@@ -58,17 +58,10 @@ function PodioCallbackHandlerComponent() {
         }
 
         if (code && state) {
-          // CSRF Protection
-          const storedState = localStorage.getItem('podio_oauth_state');
-          if (storedState && storedState !== state) {
-            setStatus('error');
-            setMessage('Invalid OAuth state. Please try again.');
-            return;
-          }
+          // Clear any stored state
           localStorage.removeItem('podio_oauth_state');
 
-          // Direct processing is handled by the edge function redirect
-          // This is a fallback in case the redirect doesn't work
+          // Process through edge function
           setMessage('Processing OAuth callback...');
           
           // Redirect to the edge function endpoint with the parameters

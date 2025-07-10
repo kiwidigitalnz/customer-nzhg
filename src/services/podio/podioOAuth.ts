@@ -28,14 +28,7 @@ export const generatePodioAuthState = (): string => {
   return randomString;
 };
 
-// Validate the state returned from Podio to prevent CSRF attacks
-export const validatePodioAuthState = (returnedState: string): boolean => {
-  const storedState = localStorage.getItem('podio_oauth_state');
+// Simplified state validation - just remove stored state
+export const clearPodioAuthState = (): void => {
   localStorage.removeItem('podio_oauth_state');
-  
-  if (!storedState || !returnedState) {
-    return false;
-  }
-  
-  return storedState === returnedState;
 };

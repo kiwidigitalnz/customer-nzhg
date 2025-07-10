@@ -29,7 +29,7 @@ export {
   getPodioClientSecret,
   getPodioRedirectUri,
   generatePodioAuthState,
-  validatePodioAuthState
+  clearPodioAuthState
 } from './podio/podioOAuth';
 
 // Export packing specs related functions, types and constants

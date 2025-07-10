@@ -1,13 +1,13 @@
 
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isPodioConfigured } from '../services/podioAuth';
+import { isPodioProperlyConfigured } from '../services/podio/podioAuth';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import LandingPage from './LandingPage';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
-  const podioConfigured = isPodioConfigured();
+  const podioConfigured = isPodioProperlyConfigured();
   
   // Show loading spinner while checking auth
   if (loading) {
