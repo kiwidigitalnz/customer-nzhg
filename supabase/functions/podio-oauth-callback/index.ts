@@ -18,6 +18,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response('ok', { headers: corsHeaders });
   }
 
@@ -25,6 +26,10 @@ serve(async (req) => {
     console.log('=== PODIO OAUTH CALLBACK FUNCTION START ===');
     console.log('Request timestamp:', new Date().toISOString());
     console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Request headers origin:', req.headers.get('origin'));
+    console.log('Request headers referer:', req.headers.get('referer'));
+    console.log('Deployment verification: Function is running and accessible');
     
     // Get Supabase URL and key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -58,14 +63,31 @@ serve(async (req) => {
     }
 
     // Extract parameters from the POST body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+      console.log('Successfully parsed request body');
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'invalid_request_body',
+          error_description: 'Failed to parse JSON body'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const { code, state, error, error_description: errorDescription } = body;
     
-    console.log('Callback parameters:', {
+    console.log('Callback parameters received:', {
       hasCode: !!code,
+      codeLength: code ? code.length : 0,
       state: state,
       error: error || 'none',
-      errorDescription: errorDescription || 'none'
+      errorDescription: errorDescription || 'none',
+      bodyKeys: Object.keys(body)
     });
 
     // Handle errors from Podio
@@ -125,12 +147,25 @@ serve(async (req) => {
     formData.append('redirect_uri', redirectUri);
 
     console.log('Exchanging code for access token with URL-encoded data');
+    console.log('Token exchange request details:', {
+      url: PODIO_TOKEN_URL,
+      method: 'POST',
+      contentType: 'application/x-www-form-urlencoded',
+      formDataKeys: Array.from(formData.keys())
+    });
+    
     const tokenResponse = await fetch(PODIO_TOKEN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: formData.toString(),
+    });
+    
+    console.log('Token exchange response received:', {
+      status: tokenResponse.status,
+      statusText: tokenResponse.statusText,
+      headers: Object.fromEntries(tokenResponse.headers.entries())
     });
 
     if (!tokenResponse.ok) {
@@ -175,12 +210,21 @@ serve(async (req) => {
     try {
       // Try to insert the token data into the database
       console.log('Storing token in database');
+      console.log('Database connection test - attempting to query podio_auth_tokens table');
       
       // First check if a token already exists and update it, otherwise insert
       const { data: existingTokens, error: fetchError } = await supabase
         .from('podio_auth_tokens')
         .select('id')
         .limit(1);
+        
+      console.log('Database query result:', {
+        hasData: !!existingTokens,
+        dataLength: existingTokens ? existingTokens.length : 0,
+        hasError: !!fetchError,
+        errorCode: fetchError?.code,
+        errorMessage: fetchError?.message
+      });
 
       if (fetchError) {
         console.error('Error fetching existing tokens:', fetchError);
@@ -251,12 +295,14 @@ serve(async (req) => {
       }
 
       console.log('Podio tokens successfully stored in the database');
+      console.log('=== PODIO OAUTH CALLBACK FUNCTION SUCCESS ===');
 
       // Return success response
       return new Response(
         JSON.stringify({ 
           success: true,
-          message: 'Podio tokens successfully stored'
+          message: 'Podio tokens successfully stored',
+          timestamp: new Date().toISOString()
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -274,13 +320,18 @@ serve(async (req) => {
       );
     }
   } catch (error) {
-    console.error('Unexpected error in OAuth callback:', error);
+    console.error('=== PODIO OAUTH CALLBACK FUNCTION ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error occurred at:', new Date().toISOString());
     
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: 'unexpected_error',
-        error_description: error.message || 'Unknown error'
+        error_description: error.message || 'Unknown error',
+        timestamp: new Date().toISOString()
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
