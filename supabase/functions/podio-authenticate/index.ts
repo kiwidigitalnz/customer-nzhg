@@ -1,13 +1,10 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
-
-// Updated 2025-07-09 - Replaced client credentials with proper OAuth flow
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -18,10 +15,10 @@ serve(async (req) => {
 
   try {
     console.log('=== PODIO AUTHENTICATE FUNCTION START ===');
-    console.log('Request timestamp:', new Date().toISOString());
     console.log('Request method:', req.method);
-    
-    // Initialize Supabase client
+    console.log('Request timestamp:', new Date().toISOString());
+
+    // Get Supabase credentials
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -29,8 +26,8 @@ serve(async (req) => {
       console.error('Supabase credentials not configured');
       return new Response(
         JSON.stringify({ 
-          error: 'Supabase credentials not configured',
-          needs_setup: true
+          success: false,
+          error: 'Supabase credentials not configured' 
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -38,188 +35,167 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check for stored OAuth tokens first
-    console.log('Checking for stored OAuth tokens...');
-    const { data: tokenData, error: tokenError } = await supabase
+    // Check for existing tokens
+    const { data: tokens, error: fetchError } = await supabase
       .from('podio_auth_tokens')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (tokenError) {
-      console.error('Error fetching tokens from database:', tokenError);
-      
-      // Check if table doesn't exist
-      if (tokenError.message.includes('relation "podio_auth_tokens" does not exist')) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'OAuth tokens table not found. Please complete OAuth setup first.',
-            needs_oauth_setup: true,
-            setup_url: '/podio-setup'
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+    if (fetchError) {
+      console.error('Error fetching tokens:', fetchError);
       return new Response(
         JSON.stringify({ 
-          error: 'Database error while fetching tokens',
-          details: tokenError.message,
-          needs_oauth_setup: true
+          success: false,
+          error: 'database_error',
+          error_description: fetchError.message
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!tokenData || tokenData.length === 0) {
-      console.log('No OAuth tokens found in database');
+    if (!tokens || tokens.length === 0) {
+      console.log('No tokens found in database');
       return new Response(
         JSON.stringify({ 
-          error: 'No OAuth tokens found. Please complete OAuth setup first.',
-          needs_oauth_setup: true,
-          setup_url: '/podio-setup'
+          success: false,
+          error: 'no_tokens',
+          error_description: 'No authentication tokens found. Please complete OAuth flow.'
         }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = tokenData[0];
+    const token = tokens[0];
     const now = new Date();
     const expiresAt = new Date(token.expires_at);
     
     console.log('Token status:', {
-      hasToken: !!token.access_token,
-      expiresAt: token.expires_at,
-      isExpired: now >= expiresAt,
-      timeUntilExpiry: expiresAt.getTime() - now.getTime()
+      expires_at: token.expires_at,
+      current_time: now.toISOString(),
+      is_expired: now >= expiresAt,
+      minutes_until_expiry: Math.round((expiresAt.getTime() - now.getTime()) / 60000)
     });
 
-    // Check if token is expired and needs refresh
-    if (now >= expiresAt) {
-      console.log('Token is expired, attempting refresh...');
+    // If token is expired and we have a refresh token, try to refresh
+    if (now >= expiresAt && token.refresh_token) {
+      console.log('Token expired, attempting refresh...');
       
-      if (!token.refresh_token) {
-        console.error('No refresh token available');
-        return new Response(
-          JSON.stringify({ 
-            error: 'Token expired and no refresh token available. Please re-authenticate.',
-            needs_oauth_setup: true,
-            setup_url: '/podio-setup'
-          }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Get Podio credentials for token refresh
       const clientId = Deno.env.get('PODIO_CLIENT_ID')?.trim();
       const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET')?.trim();
       
       if (!clientId || !clientSecret) {
-        console.error('Podio credentials not configured for token refresh');
+        console.error('Missing Podio credentials for token refresh');
         return new Response(
           JSON.stringify({ 
-            error: 'Podio credentials not configured',
-            needs_setup: true
+            success: false,
+            error: 'configuration_error',
+            error_description: 'Podio credentials not configured'
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Refresh the token
+      const refreshData = new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: token.refresh_token
+      });
+
       const refreshResponse = await fetch('https://podio.com/oauth/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          'grant_type': 'refresh_token',
-          'client_id': clientId,
-          'client_secret': clientSecret,
-          'refresh_token': token.refresh_token,
-        }),
+        body: refreshData.toString(),
       });
 
-      if (!refreshResponse.ok) {
-        const errorText = await refreshResponse.text();
-        console.error('Token refresh failed:', errorText);
+      if (refreshResponse.ok) {
+        const newTokenData = await refreshResponse.json();
+        const newExpiresAt = new Date(Date.now() + (newTokenData.expires_in * 1000)).toISOString();
         
+        // Update tokens in database
+        const { error: updateError } = await supabase
+          .from('podio_auth_tokens')
+          .update({
+            access_token: newTokenData.access_token,
+            refresh_token: newTokenData.refresh_token || token.refresh_token,
+            expires_at: newExpiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', token.id);
+
+        if (updateError) {
+          console.error('Error updating refreshed tokens:', updateError);
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'database_error',
+              error_description: updateError.message
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Token successfully refreshed');
         return new Response(
           JSON.stringify({ 
-            error: 'Token refresh failed. Please re-authenticate.',
-            details: errorText,
-            needs_oauth_setup: true,
-            setup_url: '/podio-setup'
+            success: true,
+            authenticated: true,
+            token_refreshed: true,
+            expires_at: newExpiresAt
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.error('Failed to refresh token:', refreshResponse.status, refreshResponse.statusText);
+        // If refresh fails, we need to re-authenticate
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'refresh_failed',
+            error_description: 'Token refresh failed. Re-authentication required.'
           }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    }
 
-      const refreshData = await refreshResponse.json();
-      const newExpiresAt = new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString();
-      
-      // Update token in database
-      const { error: updateError } = await supabase
-        .from('podio_auth_tokens')
-        .update({
-          access_token: refreshData.access_token,
-          refresh_token: refreshData.refresh_token,
-          expires_at: newExpiresAt,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', token.id);
-
-      if (updateError) {
-        console.error('Error updating refreshed token:', updateError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to store refreshed token',
-            details: updateError.message
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log('Token refreshed successfully');
-      
-      // Return the refreshed token
+    // Token is valid
+    if (now < expiresAt) {
+      console.log('Valid token found');
       return new Response(
-        JSON.stringify({
+        JSON.stringify({ 
           success: true,
-          access_token: refreshData.access_token,
-          token_type: refreshData.token_type || 'bearer',
-          expires_in: refreshData.expires_in,
-          expires_at: newExpiresAt,
-          received_at: new Date().toISOString(),
-          refreshed: true
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } else {
-      console.log('Token is still valid, returning current token');
-      
-      // Return the current valid token
-      return new Response(
-        JSON.stringify({
-          success: true,
-          access_token: token.access_token,
-          token_type: 'bearer',
-          expires_in: Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
+          authenticated: true,
           expires_at: token.expires_at,
-          received_at: new Date().toISOString(),
-          refreshed: false
+          time_until_expiry: Math.round((expiresAt.getTime() - now.getTime()) / 60000)
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Token expired and no refresh token
+    console.log('Token expired and no refresh available');
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: 'token_expired',
+        error_description: 'Authentication token expired. Re-authentication required.'
+      }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
   } catch (error) {
-    console.error('Error in authentication:', error);
+    console.error('=== PODIO AUTHENTICATE FUNCTION ERROR ===');
+    console.error('Error:', error);
     
     return new Response(
       JSON.stringify({ 
-        error: 'Authentication failed', 
-        details: error.message,
-        stack: error.stack
+        success: false,
+        error: 'unexpected_error',
+        error_description: error.message || 'Unknown error'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

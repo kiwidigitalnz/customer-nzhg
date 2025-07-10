@@ -1,8 +1,5 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
-
-// Force redeploy 2025-07-09-14:23:09 to pick up updated PODIO_CLIENT_SECRET
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,193 +13,146 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: 'method_not_allowed',
+        error_description: 'Only POST method is supported'
+      }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
-    // Get Supabase URL and key from environment variables
+    console.log('=== PODIO PROXY FUNCTION START ===');
+    console.log('Request timestamp:', new Date().toISOString());
+
+    // Get Supabase credentials
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Supabase credentials not configured');
       return new Response(
-        JSON.stringify({ error: 'Supabase credentials not configured' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Supabase credentials not configured' 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create Supabase client with service key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
-    const requestData = await req.json();
-    const { endpoint, options } = requestData;
-
-    if (!endpoint) {
+    const { method, url, headers: requestHeaders, body: requestBody } = await req.json();
+    
+    if (!method || !url) {
       return new Response(
-        JSON.stringify({ error: 'Podio API endpoint is required' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'missing_parameters',
+          error_description: 'Method and URL are required'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Ensure the endpoint starts with a slash
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    console.log(`Normalized endpoint: ${normalizedEndpoint}`);
+    console.log('Proxy request:', { method, url: url.replace(/\/\d+/g, '/***') });
 
-    // Extract headers and options
-    const method = options?.method || 'GET';
-    const body = options?.body;
-    
-    // Determine which app token to use based on the endpoint
-    let appToken = null;
-    
-    // Check if this is a Packing Spec API call
-    if (normalizedEndpoint.includes('/app/29797638/')) {
-      appToken = Deno.env.get('PODIO_PACKING_SPEC_APP_TOKEN');
-      console.log('Using Packing Spec app token');
-    }
-    // Check if this is a Contacts API call
-    else if (normalizedEndpoint.includes('/app/26969025/')) {
-      appToken = Deno.env.get('PODIO_CONTACTS_APP_TOKEN');
-      console.log('Using Contacts app token');
-    }
-
-    // Get the latest valid token from the database
-    console.log('Fetching latest token from database');
-    const { data: tokens, error: fetchError } = await supabase
+    // Get current access token
+    const { data: tokens, error: tokenError } = await supabase
       .from('podio_auth_tokens')
-      .select('*')
-      .order('updated_at', { ascending: false })
+      .select('access_token, expires_at')
+      .order('created_at', { ascending: false })
       .limit(1);
 
-    if (fetchError) {
-      console.error('Error fetching token:', fetchError);
+    if (tokenError || !tokens || tokens.length === 0) {
       return new Response(
-        JSON.stringify({ error: fetchError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // If no tokens found, return auth error
-    if (!tokens || tokens.length === 0) {
-      console.log('No tokens found in database');
-      return new Response(
-        JSON.stringify({ error: 'No authentication token available. Please connect to Podio first.' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'no_auth_token',
+          error_description: 'No valid authentication token found. Please complete OAuth first.'
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const token = tokens[0];
     const now = new Date();
-    const tokenExpiry = new Date(token.expires_at);
+    const expiresAt = new Date(token.expires_at);
 
     // Check if token is expired
-    if (tokenExpiry <= now) {
-      console.log('Token is expired. Return auth error.');
+    if (now >= expiresAt) {
       return new Response(
-        JSON.stringify({ error: 'Authentication token is expired. Refreshing required.' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'token_expired',
+          error_description: 'Authentication token expired. Please re-authenticate.'
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prepare headers with OAuth2 authorization
-    const headers = {
-      'Authorization': `OAuth2 ${token.access_token}`,
+    // Prepare headers for Podio API call
+    const podioHeaders = {
+      'Authorization': `Bearer ${token.access_token}`,
       'Content-Type': 'application/json',
+      ...requestHeaders
     };
 
-    // Add app token if available
-    if (appToken) {
-      headers['X-Podio-App'] = appToken;
+    // Make the proxied request to Podio API
+    const podioResponse = await fetch(url, {
+      method: method,
+      headers: podioHeaders,
+      body: requestBody ? JSON.stringify(requestBody) : undefined,
+    });
+
+    console.log('Podio API response:', {
+      status: podioResponse.status,
+      statusText: podioResponse.statusText
+    });
+
+    // Get response body
+    let responseData;
+    const contentType = podioResponse.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        responseData = await podioResponse.json();
+      } catch (parseError) {
+        responseData = { error: 'Failed to parse JSON response' };
+      }
+    } else {
+      responseData = { text: await podioResponse.text() };
     }
 
-    // Format the Podio API URL
-    const apiUrl = `https://api.podio.com${normalizedEndpoint}`;
-    console.log(`Calling Podio API: ${method} ${apiUrl}`);
-
-    // Make the request to Podio API
-    const requestOptions: RequestInit = {
-      method,
-      headers,
-    };
-
-    // Add body for non-GET requests if provided
-    if (method !== 'GET' && body) {
-      requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
-    }
-
-    try {
-      const response = await fetch(apiUrl, requestOptions);
-      
-      // Log response status
-      console.log(`Podio API response status: ${response.status}`);
-      
-      // Check for rate limiting
-      if (response.status === 429) {
-        console.error('Rate limit reached');
-        
-        // Get rate limit headers if available
-        const rateLimit = response.headers.get('X-Rate-Limit-Limit');
-        const rateRemaining = response.headers.get('X-Rate-Limit-Remaining');
-        const rateReset = response.headers.get('X-Rate-Limit-Reset');
-        
-        return new Response(
-          JSON.stringify({
-            error: 'Rate limit reached',
-            rateLimit: {
-              limit: rateLimit,
-              remaining: rateRemaining,
-              reset: rateReset
-            }
-          }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Handle auth errors
-      if (response.status === 401 || response.status === 403) {
-        console.error('Authentication error');
-        const responseBody = await response.text();
-        
-        return new Response(
-          JSON.stringify({
-            error: 'Authentication error',
-            details: responseBody
-          }),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Parse response body based on content type
-      let responseBody;
-      const contentType = response.headers.get('content-type');
-      
-      if (contentType && contentType.includes('application/json')) {
-        responseBody = await response.json();
-      } else {
-        responseBody = await response.text();
-      }
-
-      // Return the response data
-      return new Response(
-        JSON.stringify(responseBody),
-        { 
-          status: response.status, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          } 
-        }
-      );
-    } catch (fetchError) {
-      console.error('Error making request to Podio API:', fetchError);
-      return new Response(
-        JSON.stringify({ error: fetchError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-  } catch (error) {
-    console.error('Unexpected error:', error);
+    // Return the proxied response
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        success: podioResponse.ok,
+        status: podioResponse.status,
+        statusText: podioResponse.statusText,
+        data: responseData,
+        headers: Object.fromEntries(podioResponse.headers.entries())
+      }),
+      { 
+        status: podioResponse.ok ? 200 : podioResponse.status, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error) {
+    console.error('=== PODIO PROXY FUNCTION ERROR ===');
+    console.error('Error:', error);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: 'unexpected_error',
+        error_description: error.message || 'Unknown error'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

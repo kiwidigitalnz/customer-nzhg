@@ -52,17 +52,22 @@ serve(async (req) => {
 
     // Prepare the token exchange request
     const tokenUrl = 'https://podio.com/oauth/token';
+    
+    // Ensure consistent redirect URI - default to the deployed domain
+    const finalRedirectUri = redirectUri || 'https://customer.nzhg.com/podio-callback';
+    
     const formData = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: clientId,
       client_secret: clientSecret,
       code: code,
-      redirect_uri: redirectUri || 'https://customer.nzhg.com/podio-callback'
+      redirect_uri: finalRedirectUri
     });
 
     console.log('🚀 Making token exchange request to Podio');
     console.log('URL:', tokenUrl);
     console.log('Form data keys:', Array.from(formData.keys()));
+    console.log('Using redirect URI:', finalRedirectUri);
 
     const startTime = Date.now();
     

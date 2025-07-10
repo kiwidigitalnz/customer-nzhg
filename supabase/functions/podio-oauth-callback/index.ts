@@ -154,20 +154,15 @@ serve(async (req) => {
     // Get the redirect URI - ensure consistency with OAuth URL generation
     // Extract from the request headers to ensure we match what was used in the authorization step
     const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
-    let redirectUri = `${origin}/podio-callback`;
+    let redirectUri;
     
-    // If we can't determine origin from headers, check if we're on the deployed domain
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      // For deployed environment, try to extract from the actual function URL
-      const url = new URL(req.url);
-      // Check if this looks like a Supabase function URL
-      if (url.hostname.includes('supabase.co')) {
-        // We're being called from the deployed app, use a known domain pattern
-        redirectUri = `https://customer.nzhg.com/podio-callback`;
-      } else {
-        const requestOrigin = `${url.protocol}//${url.host}`;
-        redirectUri = `${requestOrigin}/podio-callback`;
-      }
+    // Always use the deployed domain for consistency unless explicitly in development
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('supabase.co')) {
+      // Use the deployed domain for consistency
+      redirectUri = 'https://customer.nzhg.com/podio-callback';
+    } else {
+      // For custom domains, construct the redirect URI
+      redirectUri = `${origin}/podio-callback`;
     }
     
     console.log('Using redirect URI for token exchange:', redirectUri);

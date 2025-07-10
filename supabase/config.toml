@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.podio-authenticate]
 verify_jwt = false
+
+[functions.podio-debug-token-exchange]
+verify_jwt = false
