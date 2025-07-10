@@ -200,14 +200,14 @@ Deno.serve(async (req) => {
       expiresAt: stateData.expires_at 
     });
 
-    // Exchange code for tokens using correct Podio API v2 endpoint
+    // Exchange code for tokens using exact Podio documentation format
     console.log('Exchanging authorization code for tokens...');
     
     const tokenRequestData = {
-      grant_type: 'authorization_code',
+      grant_type: "authorization_code",
       client_id: clientId,
-      client_secret: clientSecret,
       redirect_uri: redirectUri,
+      client_secret: clientSecret,
       code: code
     };
 
