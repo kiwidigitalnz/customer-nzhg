@@ -33,19 +33,29 @@ export default function PodioOAuthCallbackPage() {
       }
 
       try {
+        console.log('Calling Podio OAuth callback with:', { code: code?.substring(0, 10) + '...', state: state?.substring(0, 10) + '...' });
+        
         // Call the OAuth callback function
         const { data, error: callbackError } = await supabase.functions.invoke('podio-oauth-callback', {
-          method: 'POST',
           body: {
             code,
             state,
           },
         });
 
+        console.log('OAuth callback response:', { data, error: callbackError });
+
         if (callbackError) {
           console.error('OAuth callback failed:', callbackError);
           setStatus('error');
-          setMessage('Failed to complete OAuth process. Please try again.');
+          setMessage(`Connection failed: ${callbackError.message || 'Unknown error'}`);
+          return;
+        }
+
+        if (!data || !data.success) {
+          console.error('OAuth callback returned unsuccessful response:', data);
+          setStatus('error');
+          setMessage('OAuth process completed but was not successful. Please try again.');
           return;
         }
 
