@@ -45,31 +45,8 @@ function PodioCallbackHandlerComponent() {
           return;
         }
 
-        // Handle direct callback with code and state (fallback for direct access)
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-        const podioError = searchParams.get('error');
-        const errorDescription = searchParams.get('error_description');
-
-        if (podioError) {
-          setStatus('error');
-          setMessage(`OAuth error: ${podioError}${errorDescription ? ` - ${errorDescription}` : ''}`);
-          return;
-        }
-
-        if (code && state) {
-          // Clear any stored state
-          localStorage.removeItem('podio_oauth_state');
-
-          // Process through edge function
-          setMessage('Processing OAuth callback...');
-          
-          // Redirect to the edge function endpoint with the parameters
-          const callbackUrl = `https://qpswgrmvepttnfetpopk.supabase.co/functions/v1/podio-oauth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-          
-          window.location.href = callbackUrl;
-          return;
-        }
+        // Since we now use edge function callback URL directly,
+        // the frontend should only receive success/error states
 
         // If we get here without any parameters, it's an invalid callback
         setStatus('error');

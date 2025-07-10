@@ -6,9 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function getRedirectUri(req: Request): string {
-  const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
-  return origin ? `${origin}/podio-callback` : 'https://customer.nzhg.com/podio-callback';
+function getRedirectUri(): string {
+  // Use the edge function callback URL - this must match what was used in OAuth URL
+  return 'https://qpswgrmvepttnfetpopk.supabase.co/functions/v1/podio-oauth-callback';
 }
 
 function getAppRedirectUrl(req: Request, success: boolean, error?: string): string {
@@ -67,7 +67,7 @@ serve(async (req) => {
       });
     }
 
-    const redirectUri = getRedirectUri(req);
+    const redirectUri = getRedirectUri();
     
     const formData = new URLSearchParams({
       grant_type: 'authorization_code',
