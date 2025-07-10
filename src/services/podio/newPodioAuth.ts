@@ -1,49 +1,56 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface PodioTokenInfo {
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  token_type: string;
+  scope?: string;
+}
+
 export interface PodioOAuthState {
   isAuthenticated: boolean;
   isConfigured: boolean;
   user?: {
-    podio_user_id: number;
     name: string;
     email: string;
-    username?: string;
+    podio_user_id: number;
     avatar_url?: string;
   };
-  loading: boolean;
+  isLoading: boolean;
   error?: string;
 }
 
-export interface PodioTokenInfo {
-  expires_at: string;
-  scope?: string;
-}
-
-export class PodioAuthService {
+class PodioAuthService {
   private static instance: PodioAuthService;
   private state: PodioOAuthState = {
     isAuthenticated: false,
     isConfigured: false,
-    loading: false
+    isLoading: false,
   };
   private listeners: ((state: PodioOAuthState) => void)[] = [];
 
-  private constructor() {
-    this.checkConfiguration();
-  }
-
-  public static getInstance(): PodioAuthService {
+  static getInstance(): PodioAuthService {
     if (!PodioAuthService.instance) {
       PodioAuthService.instance = new PodioAuthService();
     }
     return PodioAuthService.instance;
   }
 
-  public subscribe(listener: (state: PodioOAuthState) => void): () => void {
+  constructor() {
+    // Initialize by checking configuration and authentication
+    this.initialize();
+  }
+
+  private async initialize() {
+    await this.checkConfiguration();
+    if (this.state.isConfigured) {
+      await this.checkAuthentication();
+    }
+  }
+
+  subscribe(listener: (state: PodioOAuthState) => void): () => void {
     this.listeners.push(listener);
-    // Send current state immediately
-    listener(this.state);
-    
     return () => {
       const index = this.listeners.indexOf(listener);
       if (index > -1) {
@@ -52,203 +59,224 @@ export class PodioAuthService {
     };
   }
 
-  private notify() {
+  private updateState(updates: Partial<PodioOAuthState>) {
+    this.state = { ...this.state, ...updates };
     this.listeners.forEach(listener => listener(this.state));
   }
 
-  private updateState(updates: Partial<PodioOAuthState>) {
-    this.state = { ...this.state, ...updates };
-    this.notify();
-  }
-
-  private async checkConfiguration(): Promise<void> {
-    // Check if Podio OAuth is configured by trying to generate an auth URL
+  async checkConfiguration(): Promise<void> {
     try {
-      const { data } = await supabase.functions.invoke('podio-oauth-url', {
-        method: 'POST',
-        body: {}
+      this.updateState({ isLoading: true, error: undefined });
+      
+      const { data, error } = await supabase.functions.invoke('podio-oauth-url', {
+        method: 'GET',
       });
 
-      if (data && !data.error) {
-        this.updateState({ isConfigured: true });
-        await this.checkAuthentication();
-      } else {
-        this.updateState({ isConfigured: false, error: 'Podio OAuth not configured' });
+      if (error) {
+        console.error('Configuration check failed:', error);
+        this.updateState({ 
+          isConfigured: false, 
+          isLoading: false,
+          error: 'Podio OAuth not configured'
+        });
+        return;
       }
+
+      this.updateState({ 
+        isConfigured: true, 
+        isLoading: false,
+        error: undefined
+      });
     } catch (error) {
-      console.error('Error checking Podio configuration:', error);
-      this.updateState({ isConfigured: false, error: 'Failed to check Podio configuration' });
+      console.error('Configuration check error:', error);
+      this.updateState({ 
+        isConfigured: false, 
+        isLoading: false,
+        error: 'Failed to check configuration'
+      });
     }
   }
 
-  public async checkAuthentication(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      this.updateState({ isAuthenticated: false, user: undefined });
-      return;
-    }
-
-    this.updateState({ loading: true });
-
+  async checkAuthentication(): Promise<void> {
     try {
+      this.updateState({ isLoading: true, error: undefined });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        this.updateState({ 
+          isAuthenticated: false, 
+          isLoading: false,
+          user: undefined
+        });
+        return;
+      }
+
       // Check if user has Podio tokens
-      const { data: tokenData, error: tokenError } = await supabase
+      const { data: tokens, error: tokenError } = await supabase
         .from('podio_oauth_tokens')
-        .select('expires_at')
+        .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (tokenError || !tokenData) {
+      if (tokenError && tokenError.code !== 'PGRST116') {
+        console.error('Token check failed:', tokenError);
         this.updateState({ 
           isAuthenticated: false, 
-          user: undefined, 
-          loading: false 
+          isLoading: false,
+          error: 'Failed to check authentication'
         });
         return;
       }
 
-      // Check if token is still valid
-      const expiresAt = new Date(tokenData.expires_at);
-      const now = new Date();
-      
-      if (expiresAt <= now) {
-        this.updateState({ 
-          isAuthenticated: false, 
-          user: undefined, 
-          loading: false,
-          error: 'Podio token expired. Please reconnect.'
-        });
-        return;
-      }
-
-      // Get user's Podio data
-      const { data: userData, error: userError } = await supabase
+      // Check if user has Podio user data
+      const { data: podioUser, error: userError } = await supabase
         .from('podio_users')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError || !userData) {
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('User data check failed:', userError);
         this.updateState({ 
           isAuthenticated: false, 
-          user: undefined, 
-          loading: false,
-          error: 'Podio user data not found'
+          isLoading: false,
+          error: 'Failed to check user data'
         });
         return;
       }
 
+      const isAuthenticated = !!(tokens && podioUser);
+      
       this.updateState({
-        isAuthenticated: true,
-        user: {
-          podio_user_id: userData.podio_user_id,
-          name: userData.name,
-          email: userData.email,
-          username: userData.username,
-          avatar_url: userData.avatar_url
-        },
-        loading: false,
+        isAuthenticated,
+        isLoading: false,
+        user: podioUser ? {
+          name: podioUser.name,
+          email: podioUser.email,
+          podio_user_id: podioUser.podio_user_id,
+          avatar_url: podioUser.avatar_url || undefined,
+        } : undefined,
         error: undefined
       });
-
     } catch (error) {
-      console.error('Error checking Podio authentication:', error);
+      console.error('Authentication check error:', error);
       this.updateState({ 
         isAuthenticated: false, 
-        user: undefined, 
-        loading: false,
-        error: 'Failed to check authentication status'
+        isLoading: false,
+        error: 'Failed to check authentication'
       });
     }
   }
 
-  public async initiateOAuth(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User must be logged in to connect Podio');
-    }
-
+  async initiateOAuth(): Promise<string> {
     try {
+      this.updateState({ isLoading: true, error: undefined });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const { data, error } = await supabase.functions.invoke('podio-oauth-url', {
         method: 'POST',
-        body: { userId: user.id }
+        body: { userId },
       });
 
-      if (error || data.error) {
-        throw new Error(data?.error || 'Failed to generate OAuth URL');
+      if (error) {
+        console.error('OAuth initiation failed:', error);
+        this.updateState({ 
+          isLoading: false,
+          error: 'Failed to initiate OAuth flow'
+        });
+        throw new Error('Failed to initiate OAuth flow');
       }
 
+      this.updateState({ isLoading: false });
       return data.authUrl;
     } catch (error) {
-      console.error('Error initiating OAuth:', error);
+      console.error('OAuth initiation error:', error);
+      this.updateState({ 
+        isLoading: false,
+        error: 'Failed to initiate OAuth flow'
+      });
       throw error;
     }
   }
 
-  public async disconnect(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
+  async disconnect(): Promise<void> {
     try {
-      // Delete user's Podio tokens and data
-      await Promise.all([
-        supabase.from('podio_oauth_tokens').delete().eq('user_id', user.id),
-        supabase.from('podio_users').delete().eq('user_id', user.id)
-      ]);
+      this.updateState({ isLoading: true, error: undefined });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        this.updateState({ 
+          isAuthenticated: false, 
+          isLoading: false,
+          user: undefined
+        });
+        return;
+      }
+
+      // Delete tokens
+      const { error: tokenError } = await supabase
+        .from('podio_oauth_tokens')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (tokenError) {
+        console.error('Failed to delete tokens:', tokenError);
+      }
+
+      // Delete user data
+      const { error: userError } = await supabase
+        .from('podio_users')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (userError) {
+        console.error('Failed to delete user data:', userError);
+      }
 
       this.updateState({
         isAuthenticated: false,
+        isLoading: false,
         user: undefined,
         error: undefined
       });
     } catch (error) {
-      console.error('Error disconnecting Podio:', error);
-      throw new Error('Failed to disconnect Podio account');
+      console.error('Disconnect error:', error);
+      this.updateState({ 
+        isLoading: false,
+        error: 'Failed to disconnect'
+      });
+      throw error;
     }
   }
 
-  public getState(): PodioOAuthState {
-    return this.state;
+  getState(): PodioOAuthState {
+    return { ...this.state };
   }
 
-  public async callPodioAPI(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
-    if (!this.state.isAuthenticated) {
-      throw new Error('Not authenticated with Podio');
-    }
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No active session');
-    }
-
+  async callPodioAPI(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
     try {
       const { data, error } = await supabase.functions.invoke('podio-api-proxy', {
         method: 'POST',
         body: {
           endpoint,
           method,
-          body
+          body,
         },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
       });
 
       if (error) {
-        throw new Error(error.message || 'API request failed');
+        console.error('Podio API call failed:', error);
+        throw new Error('Podio API call failed');
       }
 
-      if (data.status >= 400) {
-        throw new Error(data.data?.error_description || data.data?.error || `API request failed with status ${data.status}`);
-      }
-
-      return data.data;
+      return data;
     } catch (error) {
-      console.error('Podio API call failed:', error);
+      console.error('Podio API call error:', error);
       throw error;
     }
   }
 }
 
-// Export a singleton instance
 export const podioAuthService = PodioAuthService.getInstance();
