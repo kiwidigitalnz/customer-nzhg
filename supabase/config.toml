@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.podio-api-proxy]
 verify_jwt = true
+
+[functions.test-env]
+verify_jwt = false

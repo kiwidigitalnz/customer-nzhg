@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
     console.log('=== Podio OAuth Callback Started ===');
     console.log('Request method:', req.method);
     console.log('Request URL:', req.url);
+    console.log('Timestamp:', new Date().toISOString());
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -103,6 +104,25 @@ Deno.serve(async (req) => {
       try {
         const body = await req.json();
         console.log('Request body received:', { code: !!body.code, state: !!body.state, error: !!body.error });
+        
+        // Special test mode to check environment variables
+        if (body.test === 'env') {
+          const envCheck = {
+            PODIO_CLIENT_ID: clientId ? 'Present' : 'Missing',
+            PODIO_CLIENT_SECRET: clientSecret ? 'Present' : 'Missing',
+            SUPABASE_URL: supabaseUrl ? 'Present' : 'Missing',
+            timestamp: new Date().toISOString()
+          };
+          console.log('Environment test requested:', envCheck);
+          return new Response(
+            JSON.stringify(envCheck),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        
         code = body.code;
         state = body.state;
         error = body.error;
