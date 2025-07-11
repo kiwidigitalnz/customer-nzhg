@@ -55,69 +55,44 @@ const LoginForm = () => {
     if (typeof error === 'string') return { message: error };
     
     if (typeof error === 'object') {
-      // Enhanced handling for edge function errors
-      if (error.edge && error.data) {
-        // This is an error from our edge function with detailed information
-        const errorData = error.data;
-        
-        let message = error.message || errorData.error || 'Authentication failed';
-        
-        // Handle specific Podio error cases
-        if (errorData.needs_reauth) {
-          message = 'Your session has expired. Please log in again.';
-        } else if (errorData.needs_setup) {
-          message = 'System configuration required. Please contact support.';
-        } else if (errorData.details && errorData.details.error_description) {
-          // Use Podio's error description if available
-          message = errorData.details.error_description;
-        }
-        
-        return {
-          message,
-          details: errorData.details ? JSON.stringify(errorData.details, null, 2) : undefined
-        };
-      }
-      
-      // Handle data object errors
       if (error.data && typeof error.data === 'object') {
         if (error.data.error) {
           return { 
             message: error.data.error,
-            details: error.data.details ? JSON.stringify(error.data.details, null, 2) : undefined
+            details: error.data.details ? JSON.stringify(error.data.details) : undefined
           };
         }
         
         if (error.data.message) {
           return { 
             message: error.data.message,
-            details: error.data.details ? JSON.stringify(error.data.details, null, 2) : undefined
+            details: error.data.details ? JSON.stringify(error.data.details) : undefined
           };
         }
       }
       
-      // Handle message-based errors
       if (error.message) {
-        // Special handling for edge function errors
         if (error.message.includes('Edge Function returned a non-2xx status code')) {
-          // Try to extract meaningful error from various sources
-          if (error.details && typeof error.details === 'object' && error.details.error) {
+          if (error.details) {
             return { 
-              message: error.details.error,
-              details: JSON.stringify(error.details, null, 2)
+              message: 'Authentication failed',
+              details: typeof error.details === 'string' 
+                ? error.details 
+                : JSON.stringify(error.details)
             };
           }
           
-          if (error.data && typeof error.data === 'object') {
-            const dataMessage = error.data.error || error.data.message;
-            if (dataMessage) {
-              return { 
-                message: dataMessage,
-                details: JSON.stringify(error.data, null, 2)
-              };
-            }
+          if (error.data) {
+            const dataMessage = typeof error.data === 'object' ? 
+              (error.data.error || error.data.message || JSON.stringify(error.data)) : 
+              String(error.data);
+              
+            return { 
+              message: 'Authentication failed: ' + dataMessage,
+              details: typeof error.data === 'object' ? JSON.stringify(error.data) : undefined
+            };
           }
           
-          // Status-based fallback messages
           if (error.status) {
             switch(error.status) {
               case 401:
@@ -128,63 +103,47 @@ const LoginForm = () => {
                 return { message: 'Too many login attempts. Please try again later.' };
               default:
                 return { 
-                  message: `Authentication error (${error.status})`,
-                  details: error.details ? JSON.stringify(error.details, null, 2) : undefined
+                  message: `Error ${error.status}: ${error.message}`,
+                  details: error.details ? JSON.stringify(error.details) : undefined
                 };
             }
           }
           
           return { 
-            message: 'Server connection error. Please try again later.',
-            details: 'The authentication service returned an error. Contact support if this persists.'
+            message: 'Server error. Please try again later.', 
+            details: 'Edge function returned a non-2xx status code. The server may need configuration.'
           };
         }
         
         return { message: error.message };
       }
       
-      // Handle direct error field
       if (error.error) {
         return { 
           message: typeof error.error === 'string' ? error.error : 'Authentication failed',
-          details: typeof error.error !== 'string' ? JSON.stringify(error.error, null, 2) : undefined
+          details: typeof error.error !== 'string' ? JSON.stringify(error.error) : undefined
         };
       }
       
-      // Handle details-only errors
       if (error.details) {
         return { 
           message: 'Authentication failed', 
-          details: typeof error.details === 'string' ? error.details : JSON.stringify(error.details, null, 2)
+          details: typeof error.details === 'string' ? error.details : JSON.stringify(error.details)
         };
       }
       
-      // Status-based error handling
       if (error.status) {
-        switch(error.status) {
-          case 404:
-            return { message: 'User not found. Please check your username.' };
-          case 401:
-            return { message: 'Invalid credentials. Please try again.' };
-          case 429:
-            return { message: 'Too many login attempts. Please try again later.' };
-          case 500:
-          case 502:
-          case 503:
-            return { message: 'Server error. Please try again later.' };
-          default:
-            return {
-              message: `Error ${error.status}: ${error.statusText || 'Something went wrong'}`,
-              details: error.details ? JSON.stringify(error.details, null, 2) : undefined
-            };
-        }
+        if (error.status === 404) return { message: 'User not found. Please check your username.' };
+        if (error.status === 401) return { message: 'Invalid credentials. Please try again.' };
+        if (error.status === 429) return { message: 'Too many login attempts. Please try again later.' };
+        if (error.status >= 500) return { message: 'Server error. Please try again later.' };
+        return {
+          message: `Error ${error.status}: ${error.statusText || 'Something went wrong'}`,
+          details: error.details ? JSON.stringify(error.details) : undefined
+        };
       }
       
-      // Fallback for unstructured error objects
-      return { 
-        message: 'Login failed', 
-        details: JSON.stringify(error, null, 2)
-      };
+      return { message: 'Login failed', details: JSON.stringify(error) };
     }
     
     return { message: 'Login failed. Please try again.' };

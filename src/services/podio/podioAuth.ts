@@ -1,5 +1,5 @@
-// Legacy Podio configuration - kept for compatibility
-import { podioAuthService } from './newPodioAuth';
+// Core authentication service for Podio integration
+import { supabase } from '@/integrations/supabase/client';
 
 // Constants
 export const PODIO_CONTACTS_APP_ID = '26969025';
@@ -75,119 +75,574 @@ export const PACKING_SPEC_FIELD_IDS = {
   updatedBy2: 271320234
 };
 
-// Check if Podio is configured (updated to use new auth service)
+// Rate limiting management
+const RATE_LIMIT_KEY = 'podio_rate_limited';
+const RATE_LIMIT_UNTIL_KEY = 'podio_rate_limited_until';
+const RATE_LIMIT_ENDPOINT_KEY = 'podio_rate_limited_endpoint';
+const RATE_LIMIT_DURATION = 10 * 60 * 1000;
+
+// Last successful token refresh time
+let lastTokenRefresh = 0;
+// How often to check token (every 10 minutes)
+const TOKEN_CHECK_INTERVAL = 10 * 60 * 1000;
+// Refresh token if it expires within this time (2 hours)
+const TOKEN_REFRESH_BUFFER = 2 * 60 * 60 * 1000;
+
+// Track active token refresh to prevent multiple concurrent attempts
+let tokenRefreshInProgress = false;
+let tokenRefreshPromise: Promise<boolean> | null = null;
+
+// Retry limitations for authentication
+const MAX_AUTH_RETRIES = 3;
+const MAX_TOKEN_RETRIES = 2;
+const RETRY_BACKOFF_MS = 1000; // Start with 1 second, will be multiplied
+
+// Counter for tracking retry attempts
+let authRetryCount = 0;
+let tokenRetryCount = 0;
+let lastAuthRetryTime = 0;
+let connectionErrorDetected = false;
+
+// Global typings needed for global variable
+declare global {
+  interface Window {
+    podioTokenRefreshInterval: number | null;
+  }
+}
+
+// Enhanced error interface
+export interface PodioAuthError {
+  status?: number;
+  message: string;
+  details?: any;
+  retry?: boolean;
+  networkError?: boolean;
+  edge?: boolean;
+  data?: any; // Add data field to capture additional error information
+}
+
+// Clear auth tokens and sensitive data
+export const clearTokens = (): void => {
+  // Remove all Podio-related data from localStorage
+  const keysToRemove = Object.keys(localStorage).filter(key => 
+    key.startsWith('podio_') || 
+    key.includes('token') || 
+    key.includes('auth')
+  );
+  
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  localStorage.removeItem('podio_user_data');
+  
+  // Reset retry counters
+  authRetryCount = 0;
+  tokenRetryCount = 0;
+  lastAuthRetryTime = 0;
+  connectionErrorDetected = false;
+};
+
+// Check if Podio API is configured - always true since we're using edge functions
 export const isPodioConfigured = (): boolean => {
-  return podioAuthService.getState().isConfigured;
+  return true;
 };
 
-// Check if Podio is properly configured for authentication
-export const isPodioProperlyConfigured = (): boolean => {
-  return podioAuthService.getState().isConfigured && podioAuthService.getState().isAuthenticated;
-};
-
-// Legacy token refresh function - no longer functional
+// Server-side token refresh via Supabase Edge Function with optimized refresh logic
 export const refreshPodioToken = async (): Promise<boolean> => {
-  console.warn('Token refresh disabled - OAuth removed');
-  return false;
+  // First, check if we've exceeded the maximum retry attempts
+  if (tokenRetryCount >= MAX_TOKEN_RETRIES) {
+    console.warn(`Token refresh maximum retries (${MAX_TOKEN_RETRIES}) reached. Waiting for user action.`);
+    return false;
+  }
+  
+  // If refresh already in progress, wait for that instead of starting a new one
+  if (tokenRefreshInProgress && tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+  
+  // Check if we've refreshed recently to reduce unnecessary API calls
+  const now = Date.now();
+  if (now - lastTokenRefresh < TOKEN_CHECK_INTERVAL) {
+    // Get cached expiry time
+    const tokenExpiry = localStorage.getItem('podio_token_expiry');
+    // If we have a valid non-expiring token, skip refresh
+    if (tokenExpiry && parseInt(tokenExpiry, 10) > now + TOKEN_REFRESH_BUFFER) {
+      // Reset retry count on successful check
+      tokenRetryCount = 0;
+      return true;
+    }
+  }
+  
+  tokenRefreshInProgress = true;
+  tokenRefreshPromise = (async () => {
+    try {
+      // Increment retry counter
+      tokenRetryCount++;
+      
+      // Apply exponential backoff if this is a retry
+      if (tokenRetryCount > 1) {
+        const backoffTime = RETRY_BACKOFF_MS * Math.pow(2, tokenRetryCount - 1);
+        console.log(`Token refresh retry ${tokenRetryCount}/${MAX_TOKEN_RETRIES}. Waiting ${backoffTime}ms before retry.`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+      }
+      
+      const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
+        method: 'POST'
+      });
+      
+      if (error) {
+        console.error('Token refresh error:', error);
+        
+        // Check for specific error cases in the response data
+        if (error.message && error.message.includes('Edge Function returned a non-2xx status code') && error.data) {
+          const errorData = error.data;
+          
+          // Check if this is a configuration issue needing setup
+          if (errorData.needs_setup || errorData.needs_reauth) {
+            // Signal to the UI that reauthorization is needed
+            window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+            return false;
+          }
+          
+          // Log detailed error information for debugging
+          console.error('Token refresh specific error:', errorData);
+        }
+        
+        // Handle specific error case where reauthorization is needed
+        if (error.message && error.message.includes('needs_reauth')) {
+          // Signal to the UI that reauthorization is needed
+          window.dispatchEvent(new CustomEvent('podio-reauth-needed'));
+          return false;
+        }
+        
+        // If we haven't reached max retries, we'll try again next time
+        // the retry count stays incremented
+        return false;
+      }
+      
+      if (!data || !data.access_token) {
+        console.error('Invalid token response:', data);
+        return false;
+      }
+      
+      // Store token expiry in localStorage for client-side checks
+      if (data.expires_at) {
+        const expiryTime = new Date(data.expires_at).getTime();
+        localStorage.setItem('podio_token_expiry', expiryTime.toString());
+      }
+      
+      // Update last refresh time
+      lastTokenRefresh = now;
+      
+      // Reset retry counter on success
+      tokenRetryCount = 0;
+      
+      return true;
+    } catch (error) {
+      console.error('Unexpected error refreshing token:', error);
+      return false;
+    } finally {
+      tokenRefreshInProgress = false;
+      tokenRefreshPromise = null;
+    }
+  })();
+  
+  return tokenRefreshPromise;
 };
 
-// Legacy token refresh setup - no longer functional
+// Setup automatic token refresh interval
 export const setupTokenRefreshInterval = (): void => {
-  console.warn('Token refresh setup disabled - OAuth removed');
+  // Initial token check
+  refreshPodioToken();
+  
+  // Set up interval to check token every 30 minutes
+  const intervalId = window.setInterval(async () => {
+    await refreshPodioToken();
+  }, 30 * 60 * 1000); // 30 minutes
+  
+  // Store interval ID for cleanup
+  window.podioTokenRefreshInterval = intervalId;
+  
+  // Listen for visibility changes to refresh when tab becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshPodioToken();
+    }
+  });
 };
 
-// Legacy cleanup function
+// Cleanup token refresh interval
 export const cleanupTokenRefreshInterval = (): void => {
-  console.warn('Token refresh cleanup disabled - OAuth removed');
+  if (window.podioTokenRefreshInterval) {
+    clearInterval(window.podioTokenRefreshInterval);
+    window.podioTokenRefreshInterval = null;
+  }
 };
 
-// Legacy connection error functions
+// Reset connection error state
 export const resetConnectionError = (): void => {
-  console.warn('Connection error reset disabled - OAuth removed');
+  connectionErrorDetected = false;
+  authRetryCount = 0;
+  tokenRetryCount = 0;
 };
 
+// Check if we're in a connection error state
 export const isInConnectionErrorState = (): boolean => {
-  return false;
+  return connectionErrorDetected;
 };
 
-export const getRetryStatus = () => {
-  return { authRetries: 0, tokenRetries: 0, maxAuthRetries: 0, maxTokenRetries: 0 };
+// Get current retry counts for debugging
+export const getRetryStatus = (): { authRetries: number, tokenRetries: number, maxAuthRetries: number, maxTokenRetries: number } => {
+  return {
+    authRetries: authRetryCount,
+    tokenRetries: tokenRetryCount,
+    maxAuthRetries: MAX_AUTH_RETRIES,
+    maxTokenRetries: MAX_TOKEN_RETRIES
+  };
 };
 
-// Legacy authentication function - no longer functional
+// Authenticate a user with username/password
 export const authenticateUser = async (username: string, password: string): Promise<any> => {
-  throw new Error('Authentication disabled - OAuth removed. Please contact administrator.');
+  if (!username || !password) {
+    throw new Error('Username and password are required');
+  }
+
+  // Check if we've exceeded maximum retries
+  const now = Date.now();
+  if (authRetryCount >= MAX_AUTH_RETRIES) {
+    // Only retry if sufficient time has passed (30 seconds) since the last retry
+    if (now - lastAuthRetryTime < 30000) {
+      connectionErrorDetected = true;
+      throw {
+        status: 429,
+        message: `Maximum login attempts reached (${MAX_AUTH_RETRIES}). Please try again later.`,
+        retry: false
+      } as PodioAuthError;
+    } else {
+      // Reset counter if enough time has passed
+      console.log('Resetting auth retry counter after timeout');
+      authRetryCount = 0;
+    }
+  }
+
+  try {
+    // Update retry tracking
+    authRetryCount++;
+    lastAuthRetryTime = now;
+    
+    // Apply exponential backoff if this is a retry
+    if (authRetryCount > 1) {
+      const backoffTime = RETRY_BACKOFF_MS * Math.pow(2, authRetryCount - 1);
+      console.log(`Auth retry ${authRetryCount}/${MAX_AUTH_RETRIES}. Waiting ${backoffTime}ms before retry.`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+    }
+
+    // Call the Edge Function to find the user in the Contacts app
+    const response = await supabase.functions.invoke('podio-user-auth', {
+      method: 'POST',
+      body: {
+        username,
+        password
+      }
+    });
+    
+    const { data, error } = response;
+    
+    if (error) {
+      console.error('Authentication error from edge function:', error);
+      
+      // Set connection error state if this is a network error
+      if (error.message && 
+          (error.message.includes('network') || 
+           error.message.includes('failed to fetch') || 
+           error.status === 0)) {
+        connectionErrorDetected = true;
+      }
+      
+      // If it's a non-2xx status code from the edge function,
+      // try to extract more specific error details from the response
+      let edgeErrorDetails = null;
+      
+      if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
+        try {
+          // Check if we have error details in data
+          if (response.data && typeof response.data === 'object') {
+            edgeErrorDetails = response.data;
+          } else if (error.data && typeof error.data === 'object') {
+            edgeErrorDetails = error.data;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse edge function error details:', parseError);
+        }
+      }
+      
+      // If we have detailed edge error information, use it
+      if (edgeErrorDetails) {
+        const errorObj: PodioAuthError = {
+          status: edgeErrorDetails.status || error.status || 500,
+          message: edgeErrorDetails.error || error.message,
+          details: edgeErrorDetails.details || null,
+          edge: true,
+          data: edgeErrorDetails,
+          retry: authRetryCount < MAX_AUTH_RETRIES && 
+                !(edgeErrorDetails.status === 401 || edgeErrorDetails.status === 404) // Don't retry auth errors
+        };
+        
+        // Special handling for setup errors
+        if (edgeErrorDetails.needs_setup) {
+          errorObj.message = 'Podio integration requires setup. Please contact admin.';
+          errorObj.retry = false;
+        }
+        
+        throw errorObj;
+      } else {
+        // Otherwise use the generic error
+        throw {
+          status: error.status || 500,
+          message: error.message || 'Authentication failed',
+          edge: true,
+          data: error.data,
+          retry: authRetryCount < MAX_AUTH_RETRIES
+        } as PodioAuthError;
+      }
+    }
+    
+    if (!data) {
+      throw new Error('Empty response from authentication service');
+    }
+    
+    if (data.error) {
+      // If the server returns a structured error
+      throw {
+        status: data.status || 401,
+        message: data.error || 'Authentication failed',
+        details: data.details || null,
+        data: data,
+        retry: authRetryCount < MAX_AUTH_RETRIES && 
+               data.status !== 401 && // Don't retry invalid credentials
+               data.status !== 404    // Don't retry user not found
+      } as PodioAuthError;
+    }
+    
+    // Reset retry counters on success
+    authRetryCount = 0;
+    connectionErrorDetected = false;
+    
+    // If authentication successful, ensure token refresh is set up
+    setupTokenRefreshInterval();
+    
+    return data;
+  } catch (error) {
+    // Log the error for debugging
+    console.error('Error during authentication:', error);
+    
+    // Format fetch errors better
+    if (error instanceof Error && error.name === 'TypeError' && error.message.includes('fetch')) {
+      connectionErrorDetected = true;
+      throw {
+        status: 0,
+        message: 'Network error: Unable to reach authentication service',
+        networkError: true,
+        retry: authRetryCount < MAX_AUTH_RETRIES
+      } as PodioAuthError;
+    }
+    
+    // Ensure error is properly formatted before rethrowing
+    if (typeof error === 'object' && !(error as PodioAuthError).status) {
+      const formattedError: PodioAuthError = {
+        status: 500,
+        message: error instanceof Error ? error.message : 'Unknown authentication error',
+        retry: authRetryCount < MAX_AUTH_RETRIES
+      };
+      throw formattedError;
+    }
+    
+    // Rethrow the error for the calling code to handle
+    throw error;
+  }
 };
 
-// Legacy authentication check
-export const isAuthenticated = (): boolean => {
-  return false;
+// Generic function to call the Podio API via Edge Function with OAuth2 headers
+export const callPodioApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  // Check for rate limiting
+  if (isRateLimited()) {
+    throw new Error('Rate limit reached. Please try again later.');
+  }
+  
+  // Ensure we have a valid token before proceeding
+  const tokenValid = await refreshPodioToken();
+  if (!tokenValid) {
+    throw new Error('Failed to obtain valid Podio token. Please reauthenticate.');
+  }
+  
+  try {
+    // Normalize endpoint (ensure it starts with a slash)
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    // Prepare the request payload
+    const payload = {
+      endpoint: normalizedEndpoint,
+      options: {
+        method: options.method || 'GET',
+        body: options.body
+      }
+    };
+    
+    // Call the Edge Function
+    const response = await supabase.functions.invoke('podio-proxy', {
+      method: 'POST',
+      body: payload
+    });
+    
+    const { data, error } = response;
+    
+    // Enhanced error handling with detailed logging
+    if (error) {
+      // Handle rate limiting - check for 429 in error or message
+      if (error.message?.includes('429') || response.error?.status === 429) {
+        setRateLimit(endpoint);
+        throw new Error('Rate limit reached. Please try again later.');
+      }
+      
+      // If unauthorized (token expired), try refreshing token once and retry
+      if (error.message?.includes('401') || response.error?.status === 401) {
+        // Force token refresh
+        const refreshed = await refreshPodioToken();
+        
+        if (refreshed) {
+          // Retry the API call with fresh token
+          return callPodioApi(endpoint, options);
+        } else {
+          throw new Error('Authentication failed. Please log in again.');
+        }
+      }
+      
+      throw new Error(error.message || 'Podio API error');
+    }
+    
+    // Return data
+    return data;
+  } catch (error) {
+    throw error;
+  }
 };
 
-// Legacy cache functions
-export const cacheUserData = (key: string, data: any): void => {
-  console.warn('User data caching disabled - OAuth removed');
-};
-
-export const getCachedUserData = (key: string): any => {
-  return null;
-};
-
-// Updated API call function using new auth service
-export const callPodioApi = async (endpoint: string, options: any = {}): Promise<any> => {
-  const method = options.method || 'GET';
-  const body = options.body;
-  return podioAuthService.callPodioAPI(endpoint, method, body);
-};
-
-// Rate limiting functions (kept for compatibility)
+// Rate limiting functions
 export const isRateLimited = (): boolean => {
-  return false;
+  const rateLimited = localStorage.getItem(RATE_LIMIT_KEY);
+  if (!rateLimited) return false;
+  
+  const limitUntil = localStorage.getItem(RATE_LIMIT_UNTIL_KEY);
+  if (!limitUntil) return false;
+  
+  const limitTime = parseInt(limitUntil, 10);
+  return limitTime > Date.now();
 };
 
 export const isRateLimitedWithInfo = (): { isLimited: boolean; limitUntil: number; lastEndpoint: string | null } => {
+  const rateLimited = localStorage.getItem(RATE_LIMIT_KEY);
+  const limitUntil = localStorage.getItem(RATE_LIMIT_UNTIL_KEY);
+  const lastEndpoint = localStorage.getItem(RATE_LIMIT_ENDPOINT_KEY);
+  
+  if (!rateLimited || !limitUntil) {
+    return {
+      isLimited: false,
+      limitUntil: 0,
+      lastEndpoint: null
+    };
+  }
+  
+  const limitTime = parseInt(limitUntil, 10);
   return {
-    isLimited: false,
-    limitUntil: 0,
-    lastEndpoint: null
+    isLimited: limitTime > Date.now(),
+    limitUntil: limitTime,
+    lastEndpoint: lastEndpoint
   };
 };
 
 export const setRateLimit = (endpoint?: string): void => {
-  console.warn('Rate limiting disabled - OAuth removed');
+  const now = Date.now();
+  const limitUntil = now + RATE_LIMIT_DURATION;
+  
+  localStorage.setItem(RATE_LIMIT_KEY, 'true');
+  localStorage.setItem(RATE_LIMIT_UNTIL_KEY, limitUntil.toString());
+  
+  if (endpoint) {
+    localStorage.setItem(RATE_LIMIT_ENDPOINT_KEY, endpoint);
+  }
 };
 
 export const clearRateLimit = (): void => {
-  console.warn('Rate limit clearing disabled - OAuth removed');
+  localStorage.removeItem(RATE_LIMIT_KEY);
+  localStorage.removeItem(RATE_LIMIT_UNTIL_KEY);
 };
 
 export const clearRateLimitInfo = (): void => {
-  console.warn('Rate limit info clearing disabled - OAuth removed');
+  clearRateLimit();
+  localStorage.removeItem(RATE_LIMIT_ENDPOINT_KEY);
 };
 
-// Legacy OAuth functions
+// User data caching with expiration
+export const cacheUserData = (key: string, data: any): void => {
+  try {
+    const cacheItem = {
+      data,
+      timestamp: Date.now(),
+      expires: Date.now() + (24 * 60 * 60 * 1000) // 24 hour expiration
+    };
+    
+    localStorage.setItem(`podio_cache_${key}`, JSON.stringify(cacheItem));
+  } catch (error) {
+    // Silent catch in production
+  }
+};
+
+export const getCachedUserData = (key: string): any => {
+  try {
+    const cachedItem = localStorage.getItem(`podio_cache_${key}`);
+    if (!cachedItem) return null;
+    
+    const { data, expires } = JSON.parse(cachedItem);
+    
+    // Check if cache has expired
+    if (expires < Date.now()) {
+      localStorage.removeItem(`podio_cache_${key}`);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Simplified authorization check functions for client side
 export const authenticateWithClientCredentials = async (): Promise<boolean> => {
-  console.warn('OAuth authentication disabled - OAuth removed');
-  return false;
+  return refreshPodioToken();
 };
 
 export const validateContactsAppAccess = async (): Promise<boolean> => {
-  console.warn('Contacts app validation disabled - OAuth removed');
-  return false;
+  try {
+    // Try to make a simple request to the Contacts app to verify access
+    await callPodioApi(`/app/${PODIO_CONTACTS_APP_ID}`);
+    return true;
+  } catch (error) {
+    console.error('Failed to validate Contacts app access:', error);
+    return false;
+  }
 };
 
-// Helper function to check if current page is auth/setup related
-export const isAuthOrSetupPage = (path: string): boolean => {
-  const authPaths = ['/login', '/podio-setup', '/podio-callback', '/auth'];
-  return authPaths.some(authPath => path.startsWith(authPath));
-};
-
-// Initialize Podio authentication (now disabled)
+// Initialize Podio authentication on app start
 export const initializePodioAuth = (): void => {
-  console.warn('Podio auth initialization disabled - OAuth removed');
-};
-
-// Legacy clear tokens function
-export const clearTokens = (): void => {
-  console.warn('Clear tokens disabled - OAuth removed');
+  // Set up automatic token refresh
+  setupTokenRefreshInterval();
+  
+  // Add event listener for reauth events
+  window.addEventListener('podio-reauth-needed', () => {
+    // Navigate to setup page for reauthorization
+    window.location.href = '/podio-setup?reauth=required';
+  });
+  
+  // Cleanup on window unload
+  window.addEventListener('beforeunload', () => {
+    cleanupTokenRefreshInterval();
+  });
 };

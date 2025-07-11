@@ -23,6 +23,15 @@ export {
   getCachedUserData
 } from './podio/podioAuth';
 
+// Export OAuth-related functions
+export {
+  getPodioClientId,
+  getPodioClientSecret,
+  getPodioRedirectUri,
+  generatePodioAuthState,
+  getPodioAuthUrl,
+  validatePodioAuthState
+} from './podio/podioOAuth';
 
 // Export packing specs related functions, types and constants
 export {

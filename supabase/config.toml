@@ -1,3 +1,4 @@
+
 project_id = "qpswgrmvepttnfetpopk"
 
 [api]
@@ -15,17 +16,17 @@ enabled = true
 [functions.health-check]
 verify_jwt = false
 
-[functions.podio-oauth-url]
+[functions.podio-user-auth]
 verify_jwt = false
 
 [functions.podio-oauth-callback]
 verify_jwt = false
 
-[functions.podio-api-proxy]
-verify_jwt = true
-
-[functions.test-env]
+[functions.podio-token-refresh]
 verify_jwt = false
 
-[functions.test-db-operations]
+[functions.podio-proxy]
+verify_jwt = false
+
+[functions.podio-get-auth-url]
 verify_jwt = false
