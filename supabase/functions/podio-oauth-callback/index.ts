@@ -347,9 +347,21 @@ Deno.serve(async (req) => {
 
     // Save app-level OAuth tokens (no user_id)
     console.log('Saving OAuth tokens to database...');
+    
+    // First, delete any existing app-level tokens
+    const { error: deleteError } = await supabase
+      .from('podio_oauth_tokens')
+      .delete()
+      .eq('app_level', true);
+    
+    if (deleteError) {
+      console.warn('Failed to delete existing app-level tokens (non-critical):', deleteError);
+    }
+    
+    // Then insert the new token
     const { error: tokenError } = await supabase
       .from('podio_oauth_tokens')
-      .upsert({
+      .insert({
         user_id: null, // App-level tokens don't have a user_id
         app_level: true,
         access_token: tokenData.access_token,
@@ -357,7 +369,7 @@ Deno.serve(async (req) => {
         expires_at: expiresAt.toISOString(),
         token_type: tokenData.token_type,
         scope: tokenData.scope
-      }, { onConflict: 'app_level' });
+      });
 
     if (tokenError) {
       console.error('Error saving OAuth tokens:', tokenError);
@@ -377,13 +389,13 @@ Deno.serve(async (req) => {
 
     // Clean up the used state
     console.log('Cleaning up OAuth state...');
-    const { error: deleteError } = await supabase
+    const { error: stateDeleteError } = await supabase
       .from('podio_oauth_states')
       .delete()
       .eq('state', state);
 
-    if (deleteError) {
-      console.warn('Failed to delete OAuth state (non-critical):', deleteError);
+    if (stateDeleteError) {
+      console.warn('Failed to delete OAuth state (non-critical):', stateDeleteError);
     } else {
       console.log('OAuth state cleaned up successfully');
     }
