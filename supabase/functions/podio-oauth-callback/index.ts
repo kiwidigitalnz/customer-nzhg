@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
       client_secret: clientSecret ? 'Present' : 'Missing'
     });
 
-    // Use the correct Podio API endpoint as per documentation
+    // Use the correct Podio API endpoint as per documentation (ensure HTTPS)
     const tokenResponse = await fetch('https://api.podio.com/oauth/token/v2', {
       method: 'POST',
       headers: {
