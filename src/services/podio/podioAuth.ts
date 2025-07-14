@@ -361,14 +361,25 @@ export const authenticateUser = async (username: string, password: string): Prom
       // try to extract more specific error details from the response
       let edgeErrorDetails = null;
       
+      console.log('Authentication error - checking response structure:', {
+        errorMessage: error.message,
+        errorData: error.data,
+        responseData: response.data,
+        fullError: error,
+        fullResponse: response
+      });
+      
       if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
         try {
-          // Check if we have error details in data
-          if (response.data && typeof response.data === 'object') {
-            edgeErrorDetails = response.data;
+          // The error details are typically in the response, not in error.data
+          // Check response first, then error.data as fallback
+          if (response && typeof response === 'object') {
+            edgeErrorDetails = response; // The response itself contains the error details
           } else if (error.data && typeof error.data === 'object') {
             edgeErrorDetails = error.data;
           }
+          
+          console.log('Extracted edge error details:', edgeErrorDetails);
         } catch (parseError) {
           console.error('Failed to parse edge function error details:', parseError);
         }
@@ -376,9 +387,33 @@ export const authenticateUser = async (username: string, password: string): Prom
       
       // If we have detailed edge error information, use it
       if (edgeErrorDetails) {
+        // Create a friendly error message mapping
+        const getErrorMessage = (details: any): string => {
+          const status = details.status || error.status;
+          const originalError = details.error || details.message;
+          
+          switch (status) {
+            case 401:
+              if (originalError && originalError.toLowerCase().includes('password')) {
+                return 'Invalid password. Please check your password and try again.';
+              }
+              return 'Invalid username or password. Please check your credentials.';
+            case 404:
+              return 'User not found. Please check your username.';
+            case 403:
+              return 'Access denied. Please check your permissions.';
+            case 429:
+              return 'Too many login attempts. Please try again later.';
+            case 500:
+              return 'Server error. Please try again later.';
+            default:
+              return originalError || 'Authentication failed. Please try again.';
+          }
+        };
+        
         const errorObj: PodioAuthError = {
           status: edgeErrorDetails.status || error.status || 500,
-          message: edgeErrorDetails.error || error.message,
+          message: getErrorMessage(edgeErrorDetails),
           details: edgeErrorDetails.details || null,
           edge: true,
           data: edgeErrorDetails,
@@ -392,6 +427,7 @@ export const authenticateUser = async (username: string, password: string): Prom
           errorObj.retry = false;
         }
         
+        console.log('Throwing formatted auth error:', errorObj);
         throw errorObj;
       } else {
         // Otherwise use the generic error
