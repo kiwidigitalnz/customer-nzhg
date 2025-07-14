@@ -50,58 +50,11 @@ const LoginForm = () => {
   }, [authenticating]);
 
   const parseErrorMessage = (error: any): { message: string, details?: string } => {
-    console.log('LoginForm - Parsing error:', error);
-    
     if (!error) return { message: 'An unknown error occurred' };
     
     if (typeof error === 'string') return { message: error };
     
     if (typeof error === 'object') {
-      // First check if this is our structured PodioAuthError with a message
-      if (error.message && !error.message.includes('Edge Function returned a non-2xx status code')) {
-        return { 
-          message: error.message, 
-          details: error.details ? (typeof error.details === 'string' ? error.details : JSON.stringify(error.details)) : undefined
-        };
-      }
-      
-      // Handle edge function errors
-      if (error.message && error.message.includes('Edge Function returned a non-2xx status code')) {
-        // The error should already be formatted by podioAuth.ts, but fallback to parsing
-        if (error.data && typeof error.data === 'object') {
-          const errorData = error.data;
-          return { 
-            message: errorData.error || errorData.message || 'Authentication failed',
-            details: errorData.details ? JSON.stringify(errorData.details) : undefined
-          };
-        }
-        
-        // Fallback based on status code
-        if (error.status) {
-          switch(error.status) {
-            case 401:
-              return { message: 'Invalid username or password. Please check your credentials.' };
-            case 404:
-              return { message: 'User not found. Please check your username.' };
-            case 429:
-              return { message: 'Too many login attempts. Please try again later.' };
-            default:
-              return { message: 'Authentication failed. Please try again.' };
-          }
-        }
-        
-        return { message: 'Server error. Please try again later.' };
-      }
-      
-      // Handle network errors
-      if (error.networkError) {
-        return { 
-          message: 'Network error. Please check your connection and try again.',
-          details: 'Unable to connect to the authentication service'
-        };
-      }
-      
-      // Handle other structured error formats
       if (error.data && typeof error.data === 'object') {
         if (error.data.error) {
           return { 
@@ -118,8 +71,50 @@ const LoginForm = () => {
         }
       }
       
-      // Fallback to error message if available
       if (error.message) {
+        if (error.message.includes('Edge Function returned a non-2xx status code')) {
+          if (error.details) {
+            return { 
+              message: 'Authentication failed',
+              details: typeof error.details === 'string' 
+                ? error.details 
+                : JSON.stringify(error.details)
+            };
+          }
+          
+          if (error.data) {
+            const dataMessage = typeof error.data === 'object' ? 
+              (error.data.error || error.data.message || JSON.stringify(error.data)) : 
+              String(error.data);
+              
+            return { 
+              message: 'Authentication failed: ' + dataMessage,
+              details: typeof error.data === 'object' ? JSON.stringify(error.data) : undefined
+            };
+          }
+          
+          if (error.status) {
+            switch(error.status) {
+              case 401:
+                return { message: 'Invalid credentials. Please check your username and password.' };
+              case 404:
+                return { message: 'User not found. Please check your username.' };
+              case 429:
+                return { message: 'Too many login attempts. Please try again later.' };
+              default:
+                return { 
+                  message: `Error ${error.status}: ${error.message}`,
+                  details: error.details ? JSON.stringify(error.details) : undefined
+                };
+            }
+          }
+          
+          return { 
+            message: 'Server error. Please try again later.', 
+            details: 'Edge function returned a non-2xx status code. The server may need configuration.'
+          };
+        }
+        
         return { message: error.message };
       }
       
