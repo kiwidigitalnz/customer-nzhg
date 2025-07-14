@@ -145,12 +145,17 @@ serve(async (req) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const refreshResponse = await fetch('https://podio.com/oauth/token', {
+      const refreshResponse = await fetch('https://api.podio.com/oauth/token/v2', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: refreshParams.toString(),
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken
+        }),
         signal: controller.signal
       });
       

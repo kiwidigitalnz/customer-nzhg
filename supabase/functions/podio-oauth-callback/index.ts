@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 // Constants for Podio OAuth flow
-const PODIO_TOKEN_URL = 'https://podio.com/oauth/token';
+const PODIO_TOKEN_URL = 'https://api.podio.com/oauth/token/v2';
 
 // CORS headers for cross-origin requests
 const corsHeaders = {
@@ -139,22 +139,24 @@ serve(async (req) => {
       });
     }
 
-    // Exchange the code for an access token - use form-encoded data as Podio expects
-    console.log('Exchanging code for access token');
-    const tokenParams = new URLSearchParams({
+    // Exchange the code for an access token - use JSON format as per Podio API v2 documentation
+    console.log('Exchanging code for access token using Podio API v2');
+    const tokenPayload = {
       grant_type: 'authorization_code',
       client_id: clientId,
       client_secret: clientSecret,
       code: code,
       redirect_uri: redirectUri,
-    });
+    };
+    
+    console.log('Token exchange payload:', { ...tokenPayload, client_secret: '[REDACTED]', code: '[REDACTED]' });
     
     const tokenResponse = await fetch(PODIO_TOKEN_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: tokenParams.toString(),
+      body: JSON.stringify(tokenPayload),
     });
 
     if (!tokenResponse.ok) {
