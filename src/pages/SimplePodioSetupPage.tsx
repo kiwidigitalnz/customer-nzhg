@@ -191,8 +191,10 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
+      console.log('SimplePodioSetupPage: Storing OAuth state in localStorage:', data.state);
       localStorage.setItem('podio_oauth_state', data.state);
       
+      console.log('SimplePodioSetupPage: Redirecting to Podio OAuth URL:', data.authUrl);
       window.location.href = data.authUrl;
       
     } catch (error) {

@@ -139,20 +139,22 @@ serve(async (req) => {
       });
     }
 
-    // Exchange the code for an access token - update to use JSON
+    // Exchange the code for an access token - use form-encoded data as Podio expects
     console.log('Exchanging code for access token');
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+      redirect_uri: redirectUri,
+    });
+    
     const tokenResponse = await fetch(PODIO_TOKEN_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-      }),
+      body: tokenParams.toString(),
     });
 
     if (!tokenResponse.ok) {

@@ -21,8 +21,17 @@ const PodioCallbackPage = () => {
   const errorDescription = searchParams.get('error_description');
 
   useEffect(() => {
+    console.log('PodioCallbackPage: OAuth parameters received:', { 
+      code: !!code, 
+      state: !!state, 
+      error, 
+      errorDescription 
+    });
+    
     // Check if this is an OAuth callback
     if (code && state) {
+      console.log('PodioCallbackPage: Processing OAuth callback with code and state');
+      
       // First validate the state parameter to prevent CSRF attacks
       const isValidState = validatePodioAuthState(state);
       
@@ -36,6 +45,8 @@ const PodioCallbackPage = () => {
         navigate('/podio-setup?error=invalid_state');
         return;
       }
+      
+      console.log('PodioCallbackPage: State validation passed');
       
       // Call the Edge Function to handle the token exchange
       const handleOAuthCallback = async () => {

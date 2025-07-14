@@ -37,14 +37,17 @@ export const getPodioAuthUrl = (): string => {
 
 // Validate the state returned from Podio to prevent CSRF attacks
 export const validatePodioAuthState = (returnedState: string): boolean => {
-  const storedState = localStorage.getItem('podio_auth_state');
+  const storedState = localStorage.getItem('podio_oauth_state');
   // Clean up the stored state regardless of validation result
-  localStorage.removeItem('podio_auth_state');
+  localStorage.removeItem('podio_oauth_state');
   
   // Validate that the state matches to prevent CSRF attacks
   if (!storedState || !returnedState) {
+    console.error('State validation failed:', { storedState: !!storedState, returnedState: !!returnedState });
     return false;
   }
   
-  return storedState === returnedState;
+  const isValid = storedState === returnedState;
+  console.log('State validation result:', { isValid, storedState, returnedState });
+  return isValid;
 };
