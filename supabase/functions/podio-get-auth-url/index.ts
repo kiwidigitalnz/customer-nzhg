@@ -30,8 +30,8 @@ serve(async (req) => {
     const state = Math.random().toString(36).substring(2, 15) + 
                   Math.random().toString(36).substring(2, 15);
     
-    // Use the registered domain for Podio OAuth
-    const redirectUri = 'https://customer.nzhg.com';
+    // Use the registered domain with specific callback route for Podio OAuth
+    const redirectUri = 'https://customer.nzhg.com/podio-callback';
     
     // Build the Podio authorization URL
     const authUrl = `https://podio.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;

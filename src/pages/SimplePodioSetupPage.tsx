@@ -15,6 +15,8 @@ const SimplePodioSetupPage = () => {
   const [podioConnected, setPodioConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lastAuth, setLastAuth] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+  const [tokenStored, setTokenStored] = useState<string | null>(null);
   const [timeUntilExpiry, setTimeUntilExpiry] = useState<string | null>(null);
   const [expiryPercentage, setExpiryPercentage] = useState(100);
   const [searchParams] = useSearchParams();
@@ -83,6 +85,14 @@ const SimplePodioSetupPage = () => {
           setPodioConnected(true);
           const expiryDate = new Date(data.expires_at);
           setLastAuth(expiryDate.toLocaleString());
+          
+          // Set additional token information if available
+          if (data.updated_at) {
+            setLastRefresh(new Date(data.updated_at).toLocaleString());
+          }
+          if (data.created_at) {
+            setTokenStored(new Date(data.created_at).toLocaleString());
+          }
           
           updateExpiryInfo(expiryDate);
           
@@ -276,21 +286,42 @@ const SimplePodioSetupPage = () => {
             </div>
             
             {lastAuth && (
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Token valid until: {lastAuth}</span>
+              <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                <div className="text-sm font-medium text-gray-700">Token Information</div>
+                
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Valid until: {lastAuth}</span>
+                  </div>
+                  
+                  {lastRefresh && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Last refreshed: {lastRefresh}</span>
+                    </div>
+                  )}
+                  
+                  {tokenStored && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Info className="h-3 w-3" />
+                      <span>First stored: {tokenStored}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {timeUntilExpiry && (
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
-                      <span>Time remaining:</span>
-                      <span className={expiryPercentage < 20 ? "text-red-500 font-medium" : ""}>
+                      <span className="font-medium">Time remaining:</span>
+                      <span className={expiryPercentage < 20 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
                         {timeUntilExpiry}
                       </span>
                     </div>
-                    <Progress value={expiryPercentage} className="h-1.5" />
+                    <Progress value={expiryPercentage} className="h-2" />
+                    <div className="text-xs text-muted-foreground">
+                      {expiryPercentage < 20 ? "Token will expire soon" : "Token is healthy"}
+                    </div>
                   </div>
                 )}
               </div>

@@ -112,8 +112,8 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    // Use the registered domain for Podio OAuth
-    const redirectUri = 'https://customer.nzhg.com';
+    // Use the registered domain with specific callback route for Podio OAuth
+    const redirectUri = 'https://customer.nzhg.com/podio-callback';
 
     if (!clientId || !clientSecret) {
       console.error('Missing Podio credentials');
@@ -305,7 +305,12 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true,
-            message: 'Podio tokens successfully stored'
+            message: 'Podio tokens successfully stored',
+            tokenInfo: {
+              expires_at: expiresAt,
+              expires_in: tokenData.expires_in,
+              stored_at: new Date().toISOString()
+            }
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
