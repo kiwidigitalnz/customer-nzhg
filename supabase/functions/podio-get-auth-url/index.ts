@@ -30,9 +30,8 @@ serve(async (req) => {
     const state = Math.random().toString(36).substring(2, 15) + 
                   Math.random().toString(36).substring(2, 15);
     
-    // Determine the redirect URI based on the request origin
-    const url = new URL(req.url);
-    let redirectUri = url.origin;
+    // Use the registered domain for Podio OAuth
+    const redirectUri = 'https://customer.nzhg.com';
     
     // Build the Podio authorization URL
     const authUrl = `https://podio.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;

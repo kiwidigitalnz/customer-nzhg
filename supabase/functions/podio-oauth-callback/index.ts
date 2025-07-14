@@ -79,7 +79,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`
         }
       });
     }
@@ -104,7 +104,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?error=missing_params&error_description=Code or state missing from OAuth callback`
+          'Location': `https://customer.nzhg.com/podio-setup?error=missing_params&error_description=Code or state missing from OAuth callback`
         }
       });
     }
@@ -112,8 +112,8 @@ serve(async (req) => {
     // Get Podio credentials from environment
     const clientId = Deno.env.get('PODIO_CLIENT_ID');
     const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
-    // Use domain root as the redirect URI since that's all Podio allows
-    const redirectUri = `${window.location.origin}`;
+    // Use the registered domain for Podio OAuth
+    const redirectUri = 'https://customer.nzhg.com';
 
     if (!clientId || !clientSecret) {
       console.error('Missing Podio credentials');
@@ -134,7 +134,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?error=configuration_error&error_description=Podio credentials not configured`
+          'Location': `https://customer.nzhg.com/podio-setup?error=configuration_error&error_description=Podio credentials not configured`
         }
       });
     }
@@ -175,7 +175,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?error=token_exchange_failed&error_description=${encodeURIComponent(tokenError)}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=token_exchange_failed&error_description=${encodeURIComponent(tokenError)}`
         }
       });
     }
@@ -220,7 +220,7 @@ serve(async (req) => {
             status: 302,
             headers: {
               ...corsHeaders,
-              'Location': `${window.location.origin}/podio-setup?error=database_error&error_description=The podio_auth_tokens table does not exist. Please run the migration.`
+              'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=The podio_auth_tokens table does not exist. Please run the migration.`
             }
           });
         }
@@ -241,7 +241,7 @@ serve(async (req) => {
           status: 302,
           headers: {
             ...corsHeaders,
-            'Location': `${window.location.origin}/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
+            'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(fetchError.message)}`
           }
         });
       }
@@ -293,7 +293,7 @@ serve(async (req) => {
           status: 302,
           headers: {
             ...corsHeaders,
-            'Location': `${window.location.origin}/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
+            'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message)}`
           }
         });
       }
@@ -316,7 +316,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?success=true`
+          'Location': `https://customer.nzhg.com/podio-setup?success=true`
         }
       });
     } catch (dbError) {
@@ -338,7 +338,7 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': `${window.location.origin}/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message || 'Unknown database error')}`
+          'Location': `https://customer.nzhg.com/podio-setup?error=database_error&error_description=${encodeURIComponent(dbError.message || 'Unknown database error')}`
         }
       });
     }
@@ -362,7 +362,7 @@ serve(async (req) => {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': `${window.location.origin}/podio-setup?error=unexpected_error&error_description=${encodeURIComponent(error.message)}`
+        'Location': `https://customer.nzhg.com/podio-setup?error=unexpected_error&error_description=${encodeURIComponent(error.message)}`
       }
     });
   }

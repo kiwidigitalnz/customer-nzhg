@@ -3,11 +3,11 @@ project_id = "qpswgrmvepttnfetpopk"
 
 [api]
 enabled = true
-port = 54321
+port = 54330
 schemas = ["public", "storage", "graphql_public"]
 
 [db]
-port = 54322
+port = 54325
 
 [realtime]
 enabled = true
