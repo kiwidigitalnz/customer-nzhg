@@ -62,6 +62,13 @@ const SimplePodioSetupPage = () => {
   useEffect(() => {
     if (!supabaseConnected) return;
     
+    // Only check connection status if we're not coming from a successful OAuth callback
+    if (success) {
+      // If we just completed OAuth successfully, set connected state without API call
+      setPodioConnected(true);
+      return;
+    }
+    
     const checkPodioConnection = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('podio-token-refresh', {
@@ -117,7 +124,7 @@ const SimplePodioSetupPage = () => {
         window.clearInterval(intervalId);
       }
     };
-  }, [supabaseConnected, toast, intervalId]);
+  }, [supabaseConnected, success, toast, intervalId]);
 
   const updateExpiryInfo = (expiryDate: Date) => {
     const now = new Date();
@@ -191,10 +198,7 @@ const SimplePodioSetupPage = () => {
         return;
       }
       
-      console.log('SimplePodioSetupPage: Storing OAuth state in localStorage:', data.state);
       localStorage.setItem('podio_oauth_state', data.state);
-      
-      console.log('SimplePodioSetupPage: Redirecting to Podio OAuth URL:', data.authUrl);
       window.location.href = data.authUrl;
       
     } catch (error) {
