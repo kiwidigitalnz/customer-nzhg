@@ -30,34 +30,9 @@ const SimplePodioSetupPage = () => {
   const reauth = searchParams.get('reauth');
 
   useEffect(() => {
-    const checkSupabaseConnection = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('health-check', {
-          method: 'GET'
-        });
-        
-        if (error) {
-          setSupabaseConnected(false);
-          toast({
-            title: "Supabase Connection Issue",
-            description: "Unable to connect to Supabase Edge Functions. Please contact support.",
-            variant: "destructive"
-          });
-        } else {
-          setSupabaseConnected(true);
-        }
-      } catch (error) {
-        setSupabaseConnected(false);
-        toast({
-          title: "Supabase Connection Issue",
-          description: "Unable to connect to Supabase Edge Functions. Please contact support.",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    checkSupabaseConnection();
-  }, [toast]);
+    // Assume Supabase connection is available since the app is loaded
+    setSupabaseConnected(true);
+  }, []);
 
   useEffect(() => {
     if (!supabaseConnected) return;

@@ -13,9 +13,6 @@ port = 54325
 enabled = true
 
 [functions]
-[functions.health-check]
-verify_jwt = false
-
 [functions.podio-user-auth]
 verify_jwt = false
 
