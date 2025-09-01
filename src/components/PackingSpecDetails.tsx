@@ -147,10 +147,6 @@ const PackingSpecDetails = () => {
         const userIdFromAuth = user?.id;
         
         if (customerIdFromData && userIdFromAuth && customerIdFromData !== userIdFromAuth) {
-          console.log('Permission check failed:', { 
-            customerId: customerIdFromData, 
-            userId: userIdFromAuth 
-          });
           setError('You do not have permission to view this specification');
           return;
         }
@@ -160,7 +156,6 @@ const PackingSpecDetails = () => {
         }
         
         setSpec(data);
-        console.log('Loaded specification:', data);
       } catch (err) {
         console.error('Error fetching spec details:', err);
         setError('Failed to load specification details');
@@ -212,8 +207,6 @@ const PackingSpecDetails = () => {
     setIsAddingComment(true);
     
     try {
-      console.log(`Attempting to add comment to spec ID ${spec.id}`);
-      
       const companyName = user?.name || "Customer";
       const formattedComment = `[${companyName}] ${newComment}`;
       
@@ -407,7 +400,6 @@ const PackingSpecDetails = () => {
 
   const handleApprove = async (data: z.infer<typeof approvalFormSchema>) => {
     if (!spec) return;
-    console.log('Approving with data:', data);
     
     setIsSubmitting(true);
     setIsApprovalPending(true);
@@ -466,7 +458,6 @@ const PackingSpecDetails = () => {
 
   const handleReject = async (data: z.infer<typeof rejectionFormSchema>) => {
     if (!spec) return;
-    console.log('Rejecting with data:', data);
     
     setIsSubmitting(true);
     setIsUpdatingStatus(true);

@@ -1,7 +1,7 @@
 
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isPodioConfigured } from '../services/podioAuth';
+import { isPodioConfigured } from '../services/podioApi';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import LandingPage from './LandingPage';
 

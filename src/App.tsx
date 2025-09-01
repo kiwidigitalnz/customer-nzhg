@@ -10,6 +10,7 @@ import PodioCallbackPage from './pages/PodioCallbackPage';
 import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
 import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 
@@ -55,7 +56,7 @@ const App: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
