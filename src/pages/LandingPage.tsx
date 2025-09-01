@@ -31,7 +31,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <img 
                 src="/nzhg-logo.png" 
                 alt="NZ Honey Group" 
-                className="h-20 mb-6"
+                className="h-24 mb-6"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
