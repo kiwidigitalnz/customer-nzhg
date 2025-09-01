@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import { useToast } from './components/ui/use-toast';
 import Index from './pages/Index';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import AdminRoute from './components/AdminRoute';
+
 
 // ProtectedRoute component to handle authentication
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -55,7 +55,7 @@ const App: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      <Route path="/admin/*" element={<AdminRoute />} />
+      
     </Routes>
   );
 };
