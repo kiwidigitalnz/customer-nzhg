@@ -269,7 +269,7 @@ const SimplePodioSetupPage = () => {
   return (
     <MainLayout>
       <div className="container mx-auto py-10">
-        <Card className="max-w-md mx-auto">
+        <Card className="w-full max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Podio Connection</CardTitle>
             <CardDescription>
@@ -374,12 +374,12 @@ const SimplePodioSetupPage = () => {
             )}
           </CardContent>
           <CardFooter>
-            <div className="w-full flex flex-col sm:flex-row sm:justify-between gap-2">
+            <div className="w-full flex flex-col sm:flex-row sm:flex-wrap md:justify-between gap-2">
               <Button 
                 variant="outline" 
                 onClick={handleRefreshStatus}
                 disabled={isLoading || !supabaseConnected}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto sm:flex-1 md:flex-none"
               >
                 {isLoading ? (
                   <>
@@ -389,11 +389,11 @@ const SimplePodioSetupPage = () => {
                 ) : 'Refresh Status'}
               </Button>
               
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-wrap">
                 {podioConnected && (
                   <Button 
                     onClick={goToDashboard}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto sm:flex-1 md:flex-none"
                   >
                     Go to Dashboard
                   </Button>
@@ -403,7 +403,7 @@ const SimplePodioSetupPage = () => {
                   onClick={handleConnectPodio}
                   disabled={isLoading || !supabaseConnected}
                   variant={podioConnected ? 'outline' : 'default'}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto sm:flex-1 md:flex-none"
                 >
                   {isLoading ? (
                     <>
