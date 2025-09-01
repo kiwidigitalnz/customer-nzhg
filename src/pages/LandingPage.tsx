@@ -23,93 +23,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       )}
       
-      {/* Hero Section - Melita Honey inspired */}
-      <div className="relative overflow-hidden min-h-[90vh] flex items-center bg-honey-light border-b border-honey-amber/20">
-        {/* Subtle background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-honey-gold/5 rounded-full mix-blend-multiply blur-3xl opacity-50 transform translate-x-1/3 -translate-y-1/3"></div>
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-honey-amber/5 rounded-full mix-blend-multiply blur-3xl opacity-40 animate-blob animation-delay-2000"></div>
-          
-          {/* Enhanced hexagon pattern elements - made more subtle */}
-          <div className="absolute opacity-3">
-            {Array(10).fill(0).map((_, i) => (
-              <Hexagon 
-                key={i} 
-                className="absolute text-honey-amber/10" 
-                style={{
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                  opacity: Math.random() * 0.2,
-                  transform: `scale(${0.5 + Math.random() * 1.5}) rotate(${Math.random() * 90}deg)`,
+      {/* Hero Section - Clean and Simple */}
+      <div className="min-h-[90vh] flex items-center bg-honey-light border-b border-honey-amber/20">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-in">
+            <div className="flex justify-center">
+              <img 
+                src="/nzhg-logo.png" 
+                alt="NZ Honey Group" 
+                className="h-20 mb-6"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
                 }}
-                size={30 + Math.random() * 50}
               />
-            ))}
-          </div>
-          
-          {/* Decorative grid pattern - made more subtle */}
-          <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-        </div>
-        
-        <div className="container mx-auto px-4 py-16 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8 animate-fade-in">
-              <div className="inline-block">
-                <img 
-                  src="https://dl.dropbox.com/scl/fi/ln475joiipgz6wb0vqos8/NZHG-Logo.png?rlkey=yh8katmkzr3h2lnd7mvswilul" 
-                  alt="NZ Honey Group" 
-                  className="h-20 mb-6"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
-                  }}
-                />
-              </div>
-              <div className="melita-accent-bar"></div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl hero-heading font-bold text-honey-dark leading-tight tracking-tight">
-                Leading New Zealand's <span className="text-gradient-primary">Honey</span> Packing Industry
-              </h1>
-              <p className="text-xl text-honey-dark/80 font-open max-w-xl">
-                Your gateway to streamlined product approvals, specifications, and quality management through our intuitive customer portal.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button asChild size="lg" className="melita-btn-primary">
-                  <Link to="/login" className="gap-2">
-                    Sign In <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="melita-btn-secondary">
-                  <a href="#features" className="gap-2">
-                    Discover Features <ArrowUpRight className="h-5 w-5" />
-                  </a>
-                </Button>
-              </div>
             </div>
-            
-            <div className="hidden lg:block">
-              <div className="relative p-4">
-                {/* Multiple layered card effect */}
-                <div className="absolute inset-0 bg-white/50 rounded-3xl border border-honey-amber/10 backdrop-blur-sm transform -rotate-6 scale-105 shadow-md"></div>
-                <div className="absolute inset-0 bg-white/50 rounded-3xl border border-honey-amber/10 backdrop-blur-sm transform rotate-3 scale-105 shadow-md"></div>
-                <div className="relative bg-white/80 backdrop-blur-md rounded-2xl border border-honey-amber/20 p-6 shadow-lg transform rotate-1 overflow-hidden">
-                  <img 
-                    src="https://dl.dropbox.com/scl/fi/9yxbc0w3oyrfyevnulbrt/Honey-Filling-Machine.jpg?rlkey=1vzgtypdp5lbgscwi5cmgs1cy" 
-                    alt="Honey Filling Machine" 
-                    className="w-full h-auto rounded-xl object-cover shadow-md transition-all duration-700 hover:scale-105"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://placehold.co/800x600/D19E43/FFFFFF?text=Premium+Honey';
-                    }}
-                  />
-                  <div className="absolute bottom-12 right-12 bg-white/90 backdrop-blur-md rounded-xl p-4 shadow-md max-w-xs">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-honey-gold" />
-                      <p className="font-medium text-honey-dark">Quality Assurance</p>
-                    </div>
-                    <p className="text-sm text-honey-dark/70">Monitor every aspect of your honey production with our comprehensive quality management system.</p>
-                  </div>
-                </div>
-              </div>
+            <div className="melita-accent-bar mx-auto"></div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl hero-heading font-bold text-honey-dark leading-tight tracking-tight">
+              Leading New Zealand's <span className="text-gradient-primary">Honey</span> Packing Industry
+            </h1>
+            <p className="text-xl text-honey-dark/80 font-open max-w-3xl mx-auto">
+              Your gateway to streamlined product approvals, specifications, and quality management through our intuitive customer portal.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
+              <Button asChild size="lg" className="melita-btn-primary">
+                <Link to="/login" className="gap-2">
+                  Sign In <ArrowRight className="h-5 w-5" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="melita-btn-secondary">
+                <a href="#features" className="gap-2">
+                  Discover Features <ArrowUpRight className="h-5 w-5" />
+                </a>
+              </Button>
             </div>
           </div>
         </div>

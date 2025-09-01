@@ -22,7 +22,7 @@ const LoginPage = () => {
         <div className="w-full max-w-md mb-8">
           <div className="flex flex-col items-center mb-8">
             <img 
-              src="https://dl.dropbox.com/scl/fi/ln475joiipgz6wb0vqos8/NZHG-Logo.png?rlkey=yh8katmkzr3h2lnd7mvswilul" 
+              src="/nzhg-logo.png" 
               alt="NZ Honey Group" 
               className="h-16 mx-auto mb-4"
               onError={(e) => {
