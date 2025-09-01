@@ -234,7 +234,7 @@ const PodioSetupPage = () => {
   return (
     <MainLayout>
       <div className="container mx-auto py-10">
-        <Card className="max-w-md mx-auto">
+        <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Podio API Setup</CardTitle>
             <CardDescription>
