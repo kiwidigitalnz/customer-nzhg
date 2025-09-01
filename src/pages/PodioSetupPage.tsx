@@ -234,7 +234,7 @@ const PodioSetupPage = () => {
   return (
     <MainLayout>
       <div className="container mx-auto py-10">
-        <Card className="max-w-2xl mx-auto">
+        <Card className="max-w-4xl mx-auto">
           <CardHeader>
             <CardTitle>Podio API Setup</CardTitle>
             <CardDescription>
@@ -359,18 +359,19 @@ const PodioSetupPage = () => {
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
+          <CardFooter className="flex flex-col sm:flex-row sm:justify-between gap-4">
             <Button 
               variant="outline" 
               onClick={handleSaveCredentials}
               disabled={saving}
+              className="w-full sm:w-auto"
             >
               {saving ? 'Saving...' : 'Save Credentials Locally'}
             </Button>
             
-            <div className="space-x-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               {connectionStatus === 'success' && (
-                <Button onClick={goToDashboard}>
+                <Button onClick={goToDashboard} className="flex-1 sm:flex-none">
                   Go to Dashboard
                 </Button>
               )}
@@ -379,6 +380,7 @@ const PodioSetupPage = () => {
                 onClick={handleConnectPodio}
                 disabled={connecting || !supabaseConnected}
                 variant={connectionStatus === 'success' ? 'outline' : 'default'}
+                className="flex-1 sm:flex-none"
               >
                 {connecting ? (
                   <>
