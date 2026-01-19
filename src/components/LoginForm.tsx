@@ -373,7 +373,7 @@ const LoginForm = () => {
       </CardContent>
       <CardFooter className="flex justify-center border-t pt-4">
         <p className="text-sm text-muted-foreground">
-          Having trouble logging in? <a href="mailto:support@nzhoneygroup.com" className="text-blue-600 hover:underline">Contact support</a>.
+          Having trouble logging in? <a href="mailto:support@nzgh.com" className="text-blue-600 hover:underline">Contact support</a>.
         </p>
       </CardFooter>
     </Card>

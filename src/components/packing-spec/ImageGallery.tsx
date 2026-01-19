@@ -26,8 +26,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [isLoading, setIsLoading] = useState<Record<number, boolean>>({});
   
   useEffect(() => {
-    console.log(`ImageGallery "${title}" received images:`, images);
-    
     // Reset loading state for all images
     const loadingState: Record<number, boolean> = {};
     
@@ -64,9 +62,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     ? images.filter(img => img?.isUrl ? img.url : getImageUrl(img))
     : [];
   
-  useEffect(() => {
-    console.log(`Found ${validImages.length} valid images out of ${images?.length || 0} total for "${title}"`);
-  }, [validImages, images, title]);
   
   // Get the current URL for a specific image
   const getCurrentUrl = (imageIndex: number) => {
@@ -127,7 +122,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         ...prev,
         [idx]: (prev[idx] || -1) + 1
       }));
-      console.log(`Trying alternative URL for image ${idx}:`, alternatives[currentUrlIndex + 1]);
     } else {
       // If we've tried all alternatives, mark as error
       setHasImageErrors(true);

@@ -120,18 +120,15 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
     try {
       if (type === 'approve' && signature) {
         try {
-          console.log('Converting signature to blob for upload...');
           const res = await fetch(signature);
           const blob = await res.blob();
           
           // Create a file with a proper name and MIME type
           const fileName = `signature-${specId}-${Date.now()}.jpg`;
           const signatureFile = new File([blob], fileName, { type: 'image/jpeg' });
-          console.log(`Created signature file: ${fileName}, size: ${signatureFile.size} bytes`);
           
           try {
             const fileId = await uploadFileToPodio(specId, signatureFile);
-            console.log('Signature uploaded successfully with file ID:', fileId);
           } catch (uploadError) {
             console.error('Error uploading signature:', uploadError);
             // Continue with approval process even if signature upload fails
@@ -153,8 +150,6 @@ const EnhancedApprovalDialog: React.FC<EnhancedApprovalDialogProps> = ({
       }
 
       const statusValue = type === 'approve' ? 'approved-by-customer' : 'changes-requested';
-      
-      console.log(`Updating status to: ${statusValue}, with name: ${name}`);
       
       try {
         const success = await updatePackingSpecStatus(
