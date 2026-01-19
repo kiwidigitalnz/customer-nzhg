@@ -8,6 +8,89 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Helper function to refresh the Podio token
+async function refreshPodioToken(supabase: any, token: any): Promise<{ success: boolean; newToken?: any; error?: string; needsReauth?: boolean }> {
+  const clientId = Deno.env.get('PODIO_CLIENT_ID');
+  const clientSecret = Deno.env.get('PODIO_CLIENT_SECRET');
+
+  if (!clientId || !clientSecret) {
+    return { success: false, error: 'Podio client credentials not configured', needsReauth: true };
+  }
+
+  try {
+    console.log('Attempting to refresh expired token...');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const refreshResponse = await fetch('https://api.podio.com/oauth/token/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: token.refresh_token
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!refreshResponse.ok) {
+      const errorText = await refreshResponse.text();
+      console.error('Failed to refresh token:', errorText);
+
+      // Check for invalid_grant error which means reauth is needed
+      if (refreshResponse.status === 401 || errorText.includes('invalid_grant')) {
+        return { success: false, error: 'Podio authentication has expired', needsReauth: true };
+      }
+
+      return { success: false, error: `Token refresh failed: ${errorText}` };
+    }
+
+    const refreshData = await refreshResponse.json();
+    const now = Date.now();
+    const newExpiryDate = new Date(now + (refreshData.expires_in * 1000));
+
+    // Update token in database
+    const { error: updateError } = await supabase
+      .from('podio_auth_tokens')
+      .update({
+        access_token: refreshData.access_token,
+        refresh_token: refreshData.refresh_token,
+        expires_at: newExpiryDate.toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', token.id);
+
+    if (updateError) {
+      console.error('Error updating token in database:', updateError);
+      return { success: false, error: 'Failed to update token in database' };
+    }
+
+    console.log('Token refreshed successfully');
+
+    return {
+      success: true,
+      newToken: {
+        ...token,
+        access_token: refreshData.access_token,
+        refresh_token: refreshData.refresh_token,
+        expires_at: newExpiryDate.toISOString()
+      }
+    };
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return { success: false, error: 'Token refresh request timed out' };
+    }
+    console.error('Error during token refresh:', error);
+    return { success: false, error: error.message || 'Unknown refresh error' };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -88,17 +171,40 @@ serve(async (req) => {
       );
     }
 
-    const token = tokens[0];
+    let token = tokens[0];
     const now = new Date();
     const tokenExpiry = new Date(token.expires_at);
+    const tokenBuffer = 5 * 60 * 1000; // 5 minute buffer before expiry
 
-    // Check if token is expired
-    if (tokenExpiry <= now) {
-      console.log('Token is expired. Return auth error.');
-      return new Response(
-        JSON.stringify({ error: 'Authentication token is expired. Refreshing required.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check if token is expired or expiring soon - automatically refresh it
+    if (tokenExpiry.getTime() <= now.getTime() + tokenBuffer) {
+      console.log('Token is expired or expiring soon. Attempting automatic refresh...');
+
+      const refreshResult = await refreshPodioToken(supabase, token);
+
+      if (!refreshResult.success) {
+        console.error('Automatic token refresh failed:', refreshResult.error);
+
+        // If reauth is needed, return 401 with needs_reauth flag
+        if (refreshResult.needsReauth) {
+          return new Response(
+            JSON.stringify({
+              error: 'Authentication token has expired and could not be refreshed. Please reconnect to Podio.',
+              needs_reauth: true
+            }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: refreshResult.error || 'Token refresh failed' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Use the new token for this request
+      token = refreshResult.newToken;
+      console.log('Token refreshed successfully, proceeding with API call');
     }
 
     // Prepare headers with OAuth2 authorization
