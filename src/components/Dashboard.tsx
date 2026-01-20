@@ -181,26 +181,29 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative overflow-hidden ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
             onClick={() => handleCardClick('pending')}
           >
-            {/* Decorative gradient orb */}
-            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-amber-200/40 to-amber-400/20 rounded-full blur-2xl pointer-events-none" />
-            <CardContent className="p-6 relative">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-3 flex-shrink-0">
-                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
-                    <PackageCheck className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 font-raleway">Pending</h3>
-                    <p className="text-sm text-gray-500 font-open">Awaiting review</p>
-                  </div>
+            {/* Large overlapping number - top right */}
+            <div className="absolute -top-4 -right-2 pointer-events-none select-none">
+              <span className="text-8xl md:text-9xl font-black tracking-tighter bg-gradient-to-br from-amber-400/30 to-amber-500/15 bg-clip-text text-transparent font-raleway leading-none">
+                {specs.pending.length}
+              </span>
+            </div>
+            <CardContent className="p-6 relative z-10">
+              <div className="space-y-3">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
+                  <PackageCheck className="h-5 w-5 text-amber-600" />
                 </div>
-                <div className="flex items-center justify-end pr-1">
-                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent font-raleway leading-none">
+                <div>
+                  <h3 className="font-semibold text-gray-900 font-raleway text-lg">Pending</h3>
+                  <p className="text-sm text-gray-500 font-open">Awaiting review</p>
+                </div>
+                <div className="pt-2">
+                  <span className="text-3xl font-bold bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent font-raleway">
                     {specs.pending.length}
                   </span>
+                  <span className="text-sm text-gray-400 ml-2 font-open">specs</span>
                 </div>
               </div>
             </CardContent>
@@ -214,26 +217,29 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative overflow-hidden ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
             onClick={() => handleCardClick('approved')}
           >
-            {/* Decorative gradient orb */}
-            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-emerald-200/40 to-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
-            <CardContent className="p-6 relative">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-3 flex-shrink-0">
-                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
-                    <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 font-raleway">Approved</h3>
-                    <p className="text-sm text-gray-500 font-open">Completed specs</p>
-                  </div>
+            {/* Large overlapping number - top right */}
+            <div className="absolute -top-4 -right-2 pointer-events-none select-none">
+              <span className="text-8xl md:text-9xl font-black tracking-tighter bg-gradient-to-br from-emerald-400/30 to-emerald-500/15 bg-clip-text text-transparent font-raleway leading-none">
+                {specs.approved.length}
+              </span>
+            </div>
+            <CardContent className="p-6 relative z-10">
+              <div className="space-y-3">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </div>
-                <div className="flex items-center justify-end pr-1">
-                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent font-raleway leading-none">
+                <div>
+                  <h3 className="font-semibold text-gray-900 font-raleway text-lg">Approved</h3>
+                  <p className="text-sm text-gray-500 font-open">Completed specs</p>
+                </div>
+                <div className="pt-2">
+                  <span className="text-3xl font-bold bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent font-raleway">
                     {specs.approved.length}
                   </span>
+                  <span className="text-sm text-gray-400 ml-2 font-open">specs</span>
                 </div>
               </div>
             </CardContent>
@@ -247,26 +253,29 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative overflow-hidden ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
             onClick={() => handleCardClick('changes')}
           >
-            {/* Decorative gradient orb */}
-            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-rose-200/40 to-rose-400/20 rounded-full blur-2xl pointer-events-none" />
-            <CardContent className="p-6 relative">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-3 flex-shrink-0">
-                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
-                    <AlertCircle className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 font-raleway">Changes</h3>
-                    <p className="text-sm text-gray-500 font-open">Needs attention</p>
-                  </div>
+            {/* Large overlapping number - top right */}
+            <div className="absolute -top-4 -right-2 pointer-events-none select-none">
+              <span className="text-8xl md:text-9xl font-black tracking-tighter bg-gradient-to-br from-rose-400/30 to-rose-500/15 bg-clip-text text-transparent font-raleway leading-none">
+                {specs.changesRequested.length}
+              </span>
+            </div>
+            <CardContent className="p-6 relative z-10">
+              <div className="space-y-3">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
+                  <AlertCircle className="h-5 w-5 text-rose-600" />
                 </div>
-                <div className="flex items-center justify-end pr-1">
-                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent font-raleway leading-none">
+                <div>
+                  <h3 className="font-semibold text-gray-900 font-raleway text-lg">Changes</h3>
+                  <p className="text-sm text-gray-500 font-open">Needs attention</p>
+                </div>
+                <div className="pt-2">
+                  <span className="text-3xl font-bold bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent font-raleway">
                     {specs.changesRequested.length}
                   </span>
+                  <span className="text-sm text-gray-400 ml-2 font-open">specs</span>
                 </div>
               </div>
             </CardContent>
