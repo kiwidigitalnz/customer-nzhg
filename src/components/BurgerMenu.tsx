@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Home, LogIn, LogOut, LayoutDashboard, User } from 'lucide-react';
+import { Menu, X, Home, LogIn, LogOut, LayoutDashboard, User, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -123,6 +123,14 @@ const BurgerMenu: React.FC = () => {
                     </button>
                   </>
                 ) : null}
+
+                <a
+                  href="mailto:support@nzhg.com"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-honey-dark hover:bg-honey-light/50 transition-colors"
+                >
+                  <Mail className="h-5 w-5 text-honey-gold" />
+                  <span className="font-medium">Contact Support</span>
+                </a>
               </nav>
 
               {/* Action Buttons */}

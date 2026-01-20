@@ -1,6 +1,5 @@
-
 import { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Mail } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -8,7 +7,6 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children }: MainLayoutProps) => {
-  const location = useLocation();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -17,11 +15,18 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         <main className="flex-grow">
           {children}
         </main>
-        <footer className="py-4 bg-white border-t border-gray-200 mt-auto">
-          <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-xs text-gray-500 mb-1 sm:mb-0">
+        <footer className="py-6 bg-white border-t border-gray-200 mt-auto">
+          <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p className="text-xs text-gray-500">
               &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
             </p>
+            <a 
+              href="mailto:support@nzhg.com" 
+              className="inline-flex items-center gap-1.5 text-xs text-honey-gold hover:text-honey-amber transition-colors font-medium"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              support@nzhg.com
+            </a>
             <p className="text-xs text-gray-500">
               Customer Portal v2.0
             </p>
