@@ -12,6 +12,8 @@ import productSpecs from '@/assets/product-specs.jpg';
 import qualityApproval from '@/assets/quality-approval.jpg';
 import progressTracking from '@/assets/progress-tracking.jpg';
 import testimonialPerson from '@/assets/testimonial-person.jpg';
+import testimonialMichael from '@/assets/testimonial-michael.jpg';
+import testimonialEmma from '@/assets/testimonial-emma.jpg';
 import BurgerMenu from '@/components/BurgerMenu';
 import CertificationSection from '@/components/CertificationTicker';
 
@@ -22,7 +24,7 @@ const testimonials = [
     name: "Sarah Thompson",
     role: "Export Manager, Canterbury Honey Co.",
     initials: "ST",
-    image: null as string | null
+    image: testimonialPerson
   },
   {
     id: 2,
@@ -30,7 +32,7 @@ const testimonials = [
     name: "Michael Chen",
     role: "Operations Director, Pacific Honey Exports",
     initials: "MC",
-    image: null as string | null
+    image: testimonialMichael
   },
   {
     id: 3,
@@ -38,7 +40,7 @@ const testimonials = [
     name: "Emma Richardson",
     role: "Quality Assurance Lead, Golden Hive Ltd",
     initials: "ER",
-    image: null as string | null
+    image: testimonialEmma
   }
 ];
 
@@ -408,25 +410,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                   {/* Image Section */}
                   <div className="md:col-span-5 relative">
                     <div className="aspect-square md:aspect-auto md:h-full overflow-hidden bg-gradient-to-br from-honey-gold/20 to-honey-amber/20">
-                      {testimonials[currentTestimonial].image ? (
-                        <img 
-                          src={testimonials[currentTestimonial].image!}
-                          alt={`${testimonials[currentTestimonial].name}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : currentTestimonial === 0 ? (
-                        <img 
-                          src={testimonialPerson}
-                          alt={`${testimonials[currentTestimonial].name}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center min-h-[300px]">
-                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-xl">
-                            <span className="text-white font-bold text-4xl">{testimonials[currentTestimonial].initials}</span>
-                          </div>
-                        </div>
-                      )}
+                      <img 
+                        src={testimonials[currentTestimonial].image}
+                        alt={`${testimonials[currentTestimonial].name}`}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                   
@@ -457,38 +445,38 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                   </div>
                 </motion.div>
               </AnimatePresence>
-              
-              {/* Navigation Controls */}
-              <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-3 z-20">
-                <button 
-                  onClick={prevTestimonial}
-                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md"
-                  aria-label="Previous testimonial"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <div className="flex gap-2">
-                  {testimonials.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentTestimonial(idx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        idx === currentTestimonial 
-                          ? 'bg-honey-gold w-6' 
-                          : 'bg-honey-gold/30 hover:bg-honey-gold/50'
-                      }`}
-                      aria-label={`Go to testimonial ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-                <button 
-                  onClick={nextTestimonial}
-                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md"
-                  aria-label="Next testimonial"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+            </div>
+            
+            {/* Navigation Controls - Below the card */}
+            <div className="flex items-center justify-center gap-4 mt-8">
+              <button 
+                onClick={prevTestimonial}
+                className="w-12 h-12 rounded-full bg-white border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md hover:shadow-lg"
+                aria-label="Previous testimonial"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex gap-2">
+                {testimonials.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentTestimonial(idx)}
+                    className={`h-2 rounded-full transition-all ${
+                      idx === currentTestimonial 
+                        ? 'bg-honey-gold w-8' 
+                        : 'bg-honey-gold/30 hover:bg-honey-gold/50 w-2'
+                    }`}
+                    aria-label={`Go to testimonial ${idx + 1}`}
+                  />
+                ))}
               </div>
+              <button 
+                onClick={nextTestimonial}
+                className="w-12 h-12 rounded-full bg-white border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md hover:shadow-lg"
+                aria-label="Next testimonial"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </motion.div>
         </div>
