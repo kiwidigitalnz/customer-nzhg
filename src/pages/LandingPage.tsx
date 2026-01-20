@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
-import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart, AlertTriangle, ArrowUpRight, Hexagon, Award, Leaf, Coffee } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart, AlertTriangle, ArrowUpRight, Hexagon, Award, Leaf, Coffee, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import heroHoney from '@/assets/hero-honey.jpg';
 import honeycomb from '@/assets/honeycomb.jpg';
 import nzLandscape from '@/assets/nz-landscape.jpg';
@@ -14,6 +14,33 @@ import progressTracking from '@/assets/progress-tracking.jpg';
 import testimonialPerson from '@/assets/testimonial-person.jpg';
 import BurgerMenu from '@/components/BurgerMenu';
 import CertificationSection from '@/components/CertificationTicker';
+
+const testimonials = [
+  {
+    id: 1,
+    quote: "The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours.",
+    name: "Sarah Thompson",
+    role: "Export Manager, Canterbury Honey Co.",
+    initials: "ST",
+    image: null as string | null
+  },
+  {
+    id: 2,
+    quote: "Working with NZ Honey Group has been seamless. The real-time tracking and approval system gives us complete visibility over our product specifications.",
+    name: "Michael Chen",
+    role: "Operations Director, Pacific Honey Exports",
+    initials: "MC",
+    image: null as string | null
+  },
+  {
+    id: 3,
+    quote: "Outstanding quality control and documentation. Their portal makes compliance and certification management effortless for our international markets.",
+    name: "Emma Richardson",
+    role: "Quality Assurance Lead, Golden Hive Ltd",
+    initials: "ER",
+    image: null as string | null
+  }
+];
 
 interface LandingPageProps {
   podioAuthError?: string | null;
@@ -54,6 +81,16 @@ const scaleInDelayed2 = {
 };
 
 const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  const nextTestimonial = () => {
+    setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const prevTestimonial = () => {
+    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  };
+
   return (
     <MainLayout>
       <BurgerMenu />
@@ -351,7 +388,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             <p className="text-lg text-honey-dark/70 max-w-2xl mx-auto font-open">Trusted by honey producers and exporters worldwide</p>
           </motion.div>
           
-          {/* Testimonial Card - Modern Glass Design */}
+          {/* Testimonial Slider - Modern Glass Design */}
           <motion.div 
             className="max-w-4xl mx-auto"
             {...scaleIn}
@@ -359,43 +396,98 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             <div className="relative rounded-3xl overflow-hidden bg-white/70 backdrop-blur-md border border-white/50 shadow-2xl">
               <div className="absolute top-0 right-0 w-64 h-64 bg-honey-gold/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
               
-              <div className="grid grid-cols-1 md:grid-cols-12 relative z-10">
-                {/* Image Section */}
-                <div className="md:col-span-5 relative">
-                  <div className="aspect-square md:aspect-auto md:h-full overflow-hidden">
-                    <img 
-                      src={testimonialPerson}
-                      alt="Sarah Thompson - Export Manager"
-                      className="w-full h-full object-cover"
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={currentTestimonial}
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="grid grid-cols-1 md:grid-cols-12 relative z-10"
+                >
+                  {/* Image Section */}
+                  <div className="md:col-span-5 relative">
+                    <div className="aspect-square md:aspect-auto md:h-full overflow-hidden bg-gradient-to-br from-honey-gold/20 to-honey-amber/20">
+                      {testimonials[currentTestimonial].image ? (
+                        <img 
+                          src={testimonials[currentTestimonial].image!}
+                          alt={`${testimonials[currentTestimonial].name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : currentTestimonial === 0 ? (
+                        <img 
+                          src={testimonialPerson}
+                          alt={`${testimonials[currentTestimonial].name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center min-h-[300px]">
+                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-xl">
+                            <span className="text-white font-bold text-4xl">{testimonials[currentTestimonial].initials}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Content Section */}
+                  <div className="md:col-span-7 p-8 md:p-10 flex flex-col justify-center">
+                    {/* Star rating */}
+                    <div className="flex gap-1 mb-6">
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 0L14.6942 8.2918H23.4127L16.3593 13.4164L19.0534 21.7082L12 16.5836L4.94658 21.7082L7.64074 13.4164L0.587322 8.2918H9.30583L12 0Z" fill="#D19E43" />
+                        </svg>
+                      ))}
+                    </div>
+                    
+                    <blockquote className="text-xl md:text-2xl text-honey-dark/80 mb-8 font-open leading-relaxed">
+                      "{testimonials[currentTestimonial].quote}"
+                    </blockquote>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">{testimonials[currentTestimonial].initials}</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-honey-dark font-playfair text-lg">{testimonials[currentTestimonial].name}</p>
+                        <p className="text-honey-dark/60 font-open">{testimonials[currentTestimonial].role}</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+              
+              {/* Navigation Controls */}
+              <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-3 z-20">
+                <button 
+                  onClick={prevTestimonial}
+                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md"
+                  aria-label="Previous testimonial"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="flex gap-2">
+                  {testimonials.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentTestimonial(idx)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        idx === currentTestimonial 
+                          ? 'bg-honey-gold w-6' 
+                          : 'bg-honey-gold/30 hover:bg-honey-gold/50'
+                      }`}
+                      aria-label={`Go to testimonial ${idx + 1}`}
                     />
-                  </div>
+                  ))}
                 </div>
-                
-                {/* Content Section */}
-                <div className="md:col-span-7 p-8 md:p-10 flex flex-col justify-center">
-                  {/* Star rating */}
-                  <div className="flex gap-1 mb-6">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 0L14.6942 8.2918H23.4127L16.3593 13.4164L19.0534 21.7082L12 16.5836L4.94658 21.7082L7.64074 13.4164L0.587322 8.2918H9.30583L12 0Z" fill="#D19E43" />
-                      </svg>
-                    ))}
-                  </div>
-                  
-                  <blockquote className="text-xl md:text-2xl text-honey-dark/80 mb-8 font-open leading-relaxed">
-                    "The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours."
-                  </blockquote>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">ST</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-honey-dark font-playfair text-lg">Sarah Thompson</p>
-                      <p className="text-honey-dark/60 font-open">Export Manager, Canterbury Honey Co.</p>
-                    </div>
-                  </div>
-                </div>
+                <button 
+                  onClick={nextTestimonial}
+                  className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-honey-gold/20 flex items-center justify-center text-honey-dark hover:bg-honey-gold hover:text-white transition-all shadow-md"
+                  aria-label="Next testimonial"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
             </div>
           </motion.div>
