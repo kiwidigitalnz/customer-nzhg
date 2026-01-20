@@ -23,7 +23,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
               &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
             </p>
             <p className="text-xs text-gray-400">
-              Customer Portal v1.0
+              Customer Portal v2.0
             </p>
           </div>
         </footer>
