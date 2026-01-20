@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { getImageUrl, getPodioImageAlternatives } from '@/utils/formatters';
-import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ImageIcon, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import EnhancedImageViewer from './EnhancedImageViewer';
 import { Button } from '@/components/ui/button';
 import { extractPodioFileId } from '@/services/imageProxy';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 interface ImageGalleryProps {
   images: any[];
@@ -203,7 +204,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
             >
               {isLoading[idx] && (
                 <div className="w-full h-full flex items-center justify-center bg-muted/30">
-                  <RefreshCw className="h-4 w-4 text-primary/60 animate-spin" />
+                  <InlineSpinner size={16} className="text-primary/60" />
                 </div>
               )}
               <img 

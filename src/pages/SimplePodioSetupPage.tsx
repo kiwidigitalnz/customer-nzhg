@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Info, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 const SimplePodioSetupPage = () => {
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -354,11 +355,11 @@ const SimplePodioSetupPage = () => {
                 variant="outline" 
                 onClick={handleRefreshStatus}
                 disabled={isLoading || !supabaseConnected}
-                className="w-full sm:w-auto sm:flex-1 md:flex-none"
+                className="w-full sm:w-auto sm:flex-1 md:flex-none font-open"
               >
                 {isLoading ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <InlineSpinner className="mr-2 h-4 w-4" />
                     Checking...
                   </>
                 ) : 'Refresh Status'}
@@ -378,11 +379,11 @@ const SimplePodioSetupPage = () => {
                   onClick={handleConnectPodio}
                   disabled={isLoading || !supabaseConnected}
                   variant={podioConnected ? 'outline' : 'default'}
-                  className="w-full sm:w-auto sm:flex-1 md:flex-none"
+                  className="w-full sm:w-auto sm:flex-1 md:flex-none font-open"
                 >
                   {isLoading ? (
                     <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      <InlineSpinner className="mr-2 h-4 w-4" />
                       Connecting...
                     </>
                   ) : (

@@ -49,7 +49,7 @@ export const LoadingSpinner = ({
   };
 
   const content = (
-    <div className={cn("flex flex-col items-center justify-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center font-open", className)}>
       <div className="relative">
         <Loader2 
           className={cn(
@@ -90,6 +90,24 @@ export const LoadingSpinner = ({
 
   return content;
 };
+
+/**
+ * Inline spinner for use inside buttons and small spaces
+ * This is the standard way to show loading state in buttons
+ */
+export interface InlineSpinnerProps {
+  /** Size of the spinner icon */
+  size?: number;
+  /** Additional class names */
+  className?: string;
+}
+
+export const InlineSpinner = ({ size = 16, className }: InlineSpinnerProps) => (
+  <Loader2 
+    className={cn("animate-spin", className)} 
+    style={{ height: size, width: size }}
+  />
+);
 
 export const LoadingSkeleton = ({ 
   count = 1, 

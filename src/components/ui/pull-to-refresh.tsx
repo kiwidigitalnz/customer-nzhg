@@ -1,7 +1,8 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { ArrowDown, Loader2 } from "lucide-react";
+import { ArrowDown } from "lucide-react";
+import { InlineSpinner } from "@/components/ui/loading-spinner";
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
@@ -132,8 +133,8 @@ export const PullToRefresh = ({
   const defaultRefreshingComponent = (
     <div className="flex items-center justify-center h-16 w-full">
       <div className="flex flex-col items-center">
-        <Loader2 className="h-6 w-6 text-primary animate-spin" />
-        <span className="text-xs mt-1 text-muted-foreground">Refreshing...</span>
+        <InlineSpinner size={24} className="text-primary" />
+        <span className="text-xs mt-1 text-muted-foreground font-open">Refreshing...</span>
       </div>
     </div>
   );

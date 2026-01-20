@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, MessageSquare, Send, Loader2, AlertCircle, InfoIcon } from 'lucide-react';
+import { CheckCircle, MessageSquare, Send, AlertCircle, InfoIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import CommentsList from '../CommentsList';
@@ -14,6 +14,7 @@ import EnhancedApprovalDialog from '@/components/approval/EnhancedApprovalDialog
 import { SpecStatus } from '../StatusBadge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSectionApproval } from '@/contexts/SectionApprovalContext';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 interface FinalApprovalTabProps {
   spec: {
@@ -237,7 +238,7 @@ const FinalApprovalTab: React.FC<FinalApprovalTabProps> = ({
                   >
                     {isAddingComment ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <InlineSpinner className="h-4 w-4 mr-1" />
                         Adding Comment...
                       </>
                     ) : (
