@@ -145,97 +145,110 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Features Section - With Images */}
-      <div id="features" className="bg-white py-20 relative">
+      {/* Features Section - Modern Glass Design */}
+      <div id="features" className="relative py-24 overflow-hidden">
+        {/* Background with subtle gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-honey-cream via-white to-honey-light/30"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-honey-gold/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-honey-amber/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+        
         <div className="melita-container relative z-10">
           <motion.div 
             className="text-center mb-16 max-w-3xl mx-auto"
             {...fadeInUp}
           >
-            <span className="inline-block px-4 py-2 rounded-full bg-honey-light text-honey-dark font-medium text-sm mb-4">WHY CHOOSE US</span>
-            <div className="melita-accent-bar mx-auto"></div>
-            <h2 className="melita-heading mb-4 text-center">Premium Honey Management</h2>
-            <p className="melita-subheading mx-auto">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-honey-gold/10 border border-honey-gold/20 text-honey-dark font-medium text-sm mb-6">
+              <span className="w-2 h-2 rounded-full bg-honey-gold animate-pulse"></span>
+              WHY CHOOSE US
+            </span>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark mb-6 tracking-tight">Premium Honey Management</h2>
+            <p className="text-lg text-honey-dark/70 font-open max-w-2xl mx-auto">
               Our portal brings together everything you need to manage your honey products with ease and precision
             </p>
           </motion.div>
           
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto"
             {...staggerContainer}
           >
             {/* Feature Card 1 */}
-            <motion.div className="feature-card group overflow-hidden" {...scaleIn}>
-              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+            <motion.div 
+              className="group relative rounded-2xl overflow-hidden bg-white/60 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              {...scaleIn}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
+              <div className="h-52 overflow-hidden">
                 <img 
                   src={honeycomb} 
                   alt="Quality Honeycomb" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
-              <div className="feature-card-icon">
-                <FileCheck className="h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-playfair font-semibold mb-3 text-honey-dark">Product Specifications</h3>
-              <p className="text-honey-dark/70 font-open">
-                Access and review all your product specifications in one secure location. Download detailed reports and stay informed.
-              </p>
-              <div className="pt-4 mt-auto">
-                <Button asChild variant="link" className="p-0 text-honey-gold font-medium hover:text-honey-dark">
-                  <a href="#" className="flex items-center gap-2">
-                    Learn More <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
+              <div className="relative z-20 p-6 -mt-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
+                  <FileCheck className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Product Specifications</h3>
+                <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
+                  Access and review all your product specifications in one secure location. Download detailed reports and stay informed.
+                </p>
+                <a href="#" className="inline-flex items-center gap-2 text-honey-gold font-semibold text-sm group/link hover:gap-3 transition-all">
+                  Learn More <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                </a>
               </div>
             </motion.div>
             
             {/* Feature Card 2 */}
-            <motion.div className="feature-card group overflow-hidden" {...scaleInDelayed1}>
-              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+            <motion.div 
+              className="group relative rounded-2xl overflow-hidden bg-white/60 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              {...scaleInDelayed1}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
+              <div className="h-52 overflow-hidden">
                 <img 
                   src={nzLandscape} 
                   alt="New Zealand Landscape" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
-              <div className="feature-card-icon">
-                <Beaker className="h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-playfair font-semibold mb-3 text-honey-dark">Quality Approvals</h3>
-              <p className="text-honey-dark/70 font-open">
-                Approve honey specifications and packaging details with an intuitive interface. Provide feedback directly to our team.
-              </p>
-              <div className="pt-4 mt-auto">
-                <Button asChild variant="link" className="p-0 text-honey-gold font-medium hover:text-honey-dark">
-                  <a href="#" className="flex items-center gap-2">
-                    Learn More <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
+              <div className="relative z-20 p-6 -mt-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
+                  <Beaker className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Quality Approvals</h3>
+                <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
+                  Approve honey specifications and packaging details with an intuitive interface. Provide feedback directly to our team.
+                </p>
+                <a href="#" className="inline-flex items-center gap-2 text-honey-gold font-semibold text-sm group/link hover:gap-3 transition-all">
+                  Learn More <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                </a>
               </div>
             </motion.div>
             
             {/* Feature Card 3 */}
-            <motion.div className="feature-card group overflow-hidden" {...scaleInDelayed2}>
-              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+            <motion.div 
+              className="group relative rounded-2xl overflow-hidden bg-white/60 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              {...scaleInDelayed2}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
+              <div className="h-52 overflow-hidden">
                 <img 
                   src={honeyPour} 
                   alt="Premium Honey" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
-              <div className="feature-card-icon">
-                <LineChart className="h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-playfair font-semibold mb-3 text-honey-dark">Progress Tracking</h3>
-              <p className="text-honey-dark/70 font-open">
-                Monitor the status of your honey products throughout the approval process with real-time updates and notifications.
-              </p>
-              <div className="pt-4 mt-auto">
-                <Button asChild variant="link" className="p-0 text-honey-gold font-medium hover:text-honey-dark">
-                  <a href="#" className="flex items-center gap-2">
-                    Learn More <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
+              <div className="relative z-20 p-6 -mt-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
+                  <LineChart className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Progress Tracking</h3>
+                <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
+                  Monitor the status of your honey products throughout the approval process with real-time updates and notifications.
+                </p>
+                <a href="#" className="inline-flex items-center gap-2 text-honey-gold font-semibold text-sm group/link hover:gap-3 transition-all">
+                  Learn More <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                </a>
               </div>
             </motion.div>
           </motion.div>
