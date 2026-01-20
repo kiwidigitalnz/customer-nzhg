@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
 import MainLayout from '../components/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { validatePodioAuthState } from '@/services/podio/podioOAuth';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const PodioCallbackPage = () => {
   const navigate = useNavigate();
@@ -103,13 +103,13 @@ const PodioCallbackPage = () => {
       <div className="container mx-auto py-10">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Processing Authentication</CardTitle>
+            <CardTitle className="font-raleway">Processing Authentication</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+            <LoadingSpinner size="sm" text="" />
             <Alert className="bg-blue-50 text-blue-700 border-blue-200">
-              <AlertTitle className="font-semibold">Please wait</AlertTitle>
-              <AlertDescription>
+              <AlertTitle className="font-semibold font-raleway">Please wait</AlertTitle>
+              <AlertDescription className="font-open">
                 Completing your Podio authentication...
               </AlertDescription>
             </Alert>

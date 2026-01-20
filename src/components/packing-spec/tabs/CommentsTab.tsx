@@ -3,13 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquare, Send, Loader2, RefreshCcw } from 'lucide-react';
+import { MessageSquare, Send, RefreshCcw } from 'lucide-react';
 import CommentsList from '../CommentsList';
 import { CommentItem } from '@/services/podio/podioComments';
 import { getCommentsFromPodio } from '@/services/podioApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommentPolling } from '@/hooks/useCommentPolling';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 interface CommentsTabProps {
   spec: {
@@ -108,7 +109,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
               >
                 {isAddingComment ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <InlineSpinner className="h-4 w-4 mr-1" />
                     Adding Comment...
                   </>
                 ) : (
@@ -121,7 +122,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
             </div>
             
             <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground font-open">
                 {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
                 {newCommentsCount > 0 && (
                   <span className="ml-2 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
@@ -134,7 +135,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
                 size="sm"
                 onClick={refreshComments}
                 disabled={isLoadingComments}
-                className="flex items-center gap-1 text-xs"
+                className="flex items-center gap-1 text-xs font-open"
               >
                 <RefreshCcw className={`h-3 w-3 ${isLoadingComments ? 'animate-spin' : ''}`} />
                 Refresh

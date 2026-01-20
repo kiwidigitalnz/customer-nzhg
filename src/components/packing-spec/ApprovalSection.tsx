@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SignaturePad from '@/components/SignaturePad';
-import { Loader2 } from 'lucide-react';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 // Form Schemas
 const approvalFormSchema = z.object({
@@ -209,12 +209,12 @@ const ApprovalSection: React.FC<ApprovalSectionProps> = ({
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 font-open"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <InlineSpinner className="mr-2 h-4 w-4" />
                       Processing...
                     </>
                   ) : "Approve Specification"}
@@ -266,12 +266,12 @@ const ApprovalSection: React.FC<ApprovalSectionProps> = ({
                 <Button 
                   type="submit" 
                   variant="outline"
-                  className="border-amber-400 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-100 hover:text-amber-800 font-open"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <InlineSpinner className="mr-2 h-4 w-4" />
                       Processing...
                     </>
                   ) : "Request Changes"}

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import ResponsiveSignaturePad from './ResponsiveSignaturePad';
 import ApprovalChecklist from './ApprovalChecklist';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 // Form Schemas
 export const approvalFormSchema = z.object({
@@ -333,11 +334,11 @@ const ApprovalSharedInterface: React.FC<ApprovalSharedInterfaceProps> = ({
             <AlertDialogAction 
               onClick={handleConfirmAction}
               disabled={isSubmitting}
-              className={confirmationType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}
+              className={confirmationType === 'approve' ? 'bg-green-600 hover:bg-green-700 font-open' : 'bg-amber-600 hover:bg-amber-700 font-open'}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <InlineSpinner className="mr-2 h-4 w-4" />
                   Processing...
                 </>
               ) : (
