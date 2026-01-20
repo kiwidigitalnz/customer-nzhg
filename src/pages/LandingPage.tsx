@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
@@ -84,13 +84,59 @@ const scaleInDelayed2 = {
 
 const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const autoPlayInterval = useRef<NodeJS.Timeout | null>(null);
 
-  const nextTestimonial = () => {
+  const nextTestimonial = useCallback(() => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+  }, []);
+
+  const prevTestimonial = useCallback(() => {
+    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  }, []);
+
+  // Auto-play functionality
+  useEffect(() => {
+    if (!isPaused) {
+      autoPlayInterval.current = setInterval(() => {
+        nextTestimonial();
+      }, 5000); // Change slide every 5 seconds
+    }
+
+    return () => {
+      if (autoPlayInterval.current) {
+        clearInterval(autoPlayInterval.current);
+      }
+    };
+  }, [isPaused, nextTestimonial]);
+
+  // Swipe gesture handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
   };
 
-  const prevTestimonial = () => {
-    setCurrentTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (Math.abs(diff) > minSwipeDistance) {
+      if (diff > 0) {
+        nextTestimonial();
+      } else {
+        prevTestimonial();
+      }
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
   };
 
   return (
@@ -395,7 +441,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             className="max-w-4xl mx-auto"
             {...scaleIn}
           >
-            <div className="relative rounded-3xl overflow-hidden bg-white/70 backdrop-blur-md border border-white/50 shadow-2xl">
+            <div 
+              className="relative rounded-3xl overflow-hidden bg-white/70 backdrop-blur-md border border-white/50 shadow-2xl cursor-grab active:cursor-grabbing"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <div className="absolute top-0 right-0 w-64 h-64 bg-honey-gold/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
               
               <AnimatePresence mode="wait">
