@@ -13,7 +13,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-amber-50/40 via-background to-muted/30">
         <main className="flex-grow">
           {children}
         </main>

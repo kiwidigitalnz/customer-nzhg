@@ -78,7 +78,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
+    <div className="container mx-auto px-4 py-8 pb-12 animate-fade-in">
       {isRateLimitReached && (
         <RateLimitWarning 
           onRetry={() => refetch(true)}
@@ -178,17 +178,17 @@ const Dashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-        <TabsList className="mb-5 bg-white/80 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-gray-100">
-          <TabsTrigger value="pending" className="rounded-lg px-4 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
+        <TabsList className="mb-5 bg-white/60 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-gray-200">
+          <TabsTrigger value="pending" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
             Pending ({specs.pending.length})
           </TabsTrigger>
-          <TabsTrigger value="approved" className="rounded-lg px-4 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="approved" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
             Approved ({specs.approved.length})
           </TabsTrigger>
-          <TabsTrigger value="changes" className="rounded-lg px-4 data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="changes" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
             Changes ({specs.changesRequested.length})
           </TabsTrigger>
-          <TabsTrigger value="all" className="rounded-lg px-4 data-[state=active]:bg-gray-700 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="all" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
             All ({specs.all.length})
           </TabsTrigger>
         </TabsList>
