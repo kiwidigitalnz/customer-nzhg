@@ -3,6 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { ArrowRight, CheckCircle, Beaker, FileCheck, LineChart, AlertTriangle, ArrowUpRight, Hexagon, Award, Leaf, Coffee } from 'lucide-react';
+import heroHoney from '@/assets/hero-honey.jpg';
+import honeycomb from '@/assets/honeycomb.jpg';
+import nzLandscape from '@/assets/nz-landscape.jpg';
+import honeyPour from '@/assets/honey-pour.jpg';
 
 interface LandingPageProps {
   podioAuthError?: string | null; // Make this prop optional
@@ -23,35 +27,43 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       )}
       
-      {/* Hero Section - Clean and Simple */}
-      <div className="min-h-[90vh] flex items-center bg-honey-light border-b border-honey-amber/20">
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-in">
-            <div className="flex justify-center">
+      {/* Hero Section - With Background Image */}
+      <div className="min-h-[90vh] flex items-center relative overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroHoney})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-honey-dark/90 via-honey-dark/70 to-transparent"></div>
+        </div>
+        
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <div className="max-w-3xl space-y-8 animate-fade-in">
+            <div className="flex">
               <img 
                 src="/nzhg-logo.png" 
                 alt="NZ Honey Group" 
-                className="h-24 mb-6"
+                className="h-20 mb-6 drop-shadow-lg"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
                 }}
               />
             </div>
-            <div className="melita-accent-bar mx-auto"></div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl hero-heading font-bold text-honey-dark leading-tight tracking-tight">
-              Leading New Zealand's <span className="text-gradient-primary">Honey</span> Packing Industry
+            <div className="melita-accent-bar"></div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl hero-heading font-bold text-white leading-tight tracking-tight">
+              Leading New Zealand's <span className="text-honey-gold">Honey</span> Packing Industry
             </h1>
-            <p className="text-xl text-honey-dark/80 font-open max-w-3xl mx-auto">
+            <p className="text-xl text-white/90 font-open max-w-2xl">
               Your gateway to streamlined product approvals, specifications, and quality management through our intuitive customer portal.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button asChild size="lg" className="melita-btn-primary">
                 <Link to="/login" className="gap-2">
                   Sign In <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="melita-btn-secondary">
+              <Button asChild variant="outline" size="lg" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
                 <a href="#features" className="gap-2">
                   Discover Features <ArrowUpRight className="h-5 w-5" />
                 </a>
@@ -61,7 +73,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Features Section - Melita Honey inspired */}
+      {/* Features Section - With Images */}
       <div id="features" className="bg-white py-20 relative">
         <div className="melita-container relative z-10">
           <div className="text-center mb-16 max-w-3xl mx-auto">
@@ -75,7 +87,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {/* Feature Card 1 */}
-            <div className="feature-card group">
+            <div className="feature-card group overflow-hidden">
+              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+                <img 
+                  src={honeycomb} 
+                  alt="Quality Honeycomb" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
               <div className="feature-card-icon">
                 <FileCheck className="h-6 w-6" />
               </div>
@@ -93,7 +112,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             </div>
             
             {/* Feature Card 2 */}
-            <div className="feature-card group">
+            <div className="feature-card group overflow-hidden">
+              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+                <img 
+                  src={nzLandscape} 
+                  alt="New Zealand Landscape" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
               <div className="feature-card-icon">
                 <Beaker className="h-6 w-6" />
               </div>
@@ -111,7 +137,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             </div>
             
             {/* Feature Card 3 */}
-            <div className="feature-card group">
+            <div className="feature-card group overflow-hidden">
+              <div className="h-48 -mx-6 -mt-6 mb-6 overflow-hidden">
+                <img 
+                  src={honeyPour} 
+                  alt="Premium Honey" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
               <div className="feature-card-icon">
                 <LineChart className="h-6 w-6" />
               </div>
@@ -131,9 +164,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Product Values Section - New Melita-inspired section */}
-      <div className="bg-honey-cream py-16">
-        <div className="melita-container">
+      {/* Product Values Section - With Background Image */}
+      <div className="relative py-20 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-fixed"
+          style={{ backgroundImage: `url(${nzLandscape})` }}
+        >
+          <div className="absolute inset-0 bg-honey-cream/95"></div>
+        </div>
+        
+        <div className="melita-container relative z-10">
           <div className="text-center mb-12 max-w-3xl mx-auto">
             <span className="inline-block px-4 py-2 rounded-full bg-honey-light text-honey-dark font-medium text-sm mb-4">OUR VALUES</span>
             <div className="melita-accent-bar mx-auto"></div>
@@ -144,7 +185,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-5xl mx-auto">
-            <div className="text-center">
+            <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Award className="h-8 w-8 text-honey-gold" />
               </div>
@@ -152,7 +193,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <p className="text-honey-dark/70 font-open">Premium honey products that meet international quality standards</p>
             </div>
             
-            <div className="text-center">
+            <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Leaf className="h-8 w-8 text-honey-gold" />
               </div>
@@ -160,7 +201,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <p className="text-honey-dark/70 font-open">Responsibly harvested honey that protects our bees and environment</p>
             </div>
             
-            <div className="text-center">
+            <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coffee className="h-8 w-8 text-honey-gold" />
               </div>
@@ -171,7 +212,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Testimonial Section - Smaller and more subtle */}
+      {/* Testimonial Section - With Image */}
       <div className="bg-white py-14">
         <div className="melita-container">
           <div className="flex flex-col items-center text-center mb-10">
@@ -181,18 +222,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             <p className="text-lg text-honey-dark/70 max-w-2xl font-open">Trusted by honey producers and exporters worldwide</p>
           </div>
           
-          {/* Testimonial Card - Made smaller and more subtle */}
+          {/* Testimonial Card */}
           <div className="max-w-3xl mx-auto testimonial-card">
             <div className="grid grid-cols-1 md:grid-cols-12">
               <div className="md:col-span-4 testimonial-image p-4 flex items-center justify-center">
                 <img 
-                  src="https://images.unsplash.com/photo-1556157382-97eda2f9671e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-                  alt="Honey Production Facility"
+                  src={honeyPour}
+                  alt="Premium Honey Production"
                   className="w-full h-full object-cover rounded-lg"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = 'https://placehold.co/600x800/D19E43/FFFFFF?text=Honey+Production';
-                  }}
                 />
               </div>
               <div className="md:col-span-8 p-6 md:p-8 flex flex-col justify-center">
@@ -217,17 +254,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* CTA Section - Melita Honey inspired */}
-      <div className="relative py-16 overflow-hidden bg-honey-gradient">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] bg-white/10 rounded-full mix-blend-multiply blur-3xl opacity-30"></div>
-          <div className="absolute -bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-white/10 rounded-full mix-blend-multiply blur-3xl opacity-30"></div>
+      {/* CTA Section - With Background Image */}
+      <div className="relative py-20 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${honeycomb})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-honey-gold/95 via-honey-amber/90 to-honey-gold/95"></div>
         </div>
         
         <div className="melita-container relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-3xl md:text-4xl font-playfair font-bold text-white mb-4 tracking-tight">Ready to Manage Your Products?</h2>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto mb-6 font-open">
+            <p className="text-lg text-white/90 max-w-2xl mx-auto mb-6 font-open">
               Sign in to access your personalized customer portal and start managing your honey product approvals today.
             </p>
             <Button asChild size="lg" className="bg-white hover:bg-honey-cream text-honey-dark font-medium text-lg px-8 py-5 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 rounded-lg">
