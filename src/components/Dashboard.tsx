@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 import { usePackingSpecs } from '../hooks/usePackingSpecs';
@@ -35,6 +36,47 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import RateLimitWarning from '../components/RateLimitWarning';
 import PackingSpecList from '../components/PackingSpecList';
 import { Badge } from '@/components/ui/badge';
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { 
+    opacity: 0, 
+    y: 20,
+    scale: 0.95
+  },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 100,
+      damping: 15
+    }
+  }
+};
+
+const headerVariants = {
+  hidden: { opacity: 0, y: -10 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.4
+    }
+  }
+};
 
 const Dashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -78,7 +120,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 pb-12 animate-fade-in">
+    <div className="container mx-auto px-4 py-8 pb-12">
       {isRateLimitReached && (
         <RateLimitWarning 
           onRetry={() => refetch(true)}
@@ -86,7 +128,12 @@ const Dashboard = () => {
         />
       )}
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <motion.div 
+        className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4"
+        variants={headerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-sm relative">
             {user?.logoUrl ? (
@@ -119,63 +166,89 @@ const Dashboard = () => {
         >
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card 
-          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
-          onClick={() => handleCardClick('pending')}
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          <CardHeader className="p-5 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-amber-200 flex items-center justify-center">
-                <PackageCheck className="h-5 w-5 text-amber-700" />
+          <Card 
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+            onClick={() => handleCardClick('pending')}
+          >
+            <CardHeader className="p-5 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-lg bg-amber-200 flex items-center justify-center">
+                  <PackageCheck className="h-5 w-5 text-amber-700" />
+                </div>
+                <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
               </div>
-              <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-900">Pending Approval</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Specs awaiting your review</p>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 pt-0">
+              <h3 className="font-semibold text-gray-900">Pending Approval</h3>
+              <p className="text-sm text-gray-600 mt-0.5">Specs awaiting your review</p>
+            </CardContent>
+          </Card>
+        </motion.div>
         
-        <Card 
-          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
-          onClick={() => handleCardClick('approved')}
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          <CardHeader className="p-5 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-emerald-200 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-emerald-700" />
+          <Card 
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
+            onClick={() => handleCardClick('approved')}
+          >
+            <CardHeader className="p-5 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-lg bg-emerald-200 flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-emerald-700" />
+                </div>
+                <span className="text-3xl font-bold text-emerald-600">{specs.approved.length}</span>
               </div>
-              <span className="text-3xl font-bold text-emerald-600">{specs.approved.length}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-900">Approved</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Specs you've approved</p>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 pt-0">
+              <h3 className="font-semibold text-gray-900">Approved</h3>
+              <p className="text-sm text-gray-600 mt-0.5">Specs you've approved</p>
+            </CardContent>
+          </Card>
+        </motion.div>
         
-        <Card 
-          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
-          onClick={() => handleCardClick('changes')}
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          <CardHeader className="p-5 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-rose-200 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5 text-rose-700" />
+          <Card 
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
+            onClick={() => handleCardClick('changes')}
+          >
+            <CardHeader className="p-5 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-lg bg-rose-200 flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-rose-700" />
+                </div>
+                <span className="text-3xl font-bold text-rose-600">{specs.changesRequested.length}</span>
               </div>
-              <span className="text-3xl font-bold text-rose-600">{specs.changesRequested.length}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-900">Changes Requested</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Specs with changes requested</p>
-          </CardContent>
-        </Card>
-      </div>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 pt-0">
+              <h3 className="font-semibold text-gray-900">Changes Requested</h3>
+              <p className="text-sm text-gray-600 mt-0.5">Specs with changes requested</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
         <TabsList className="mb-5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
