@@ -79,34 +79,31 @@ const LoginPage = () => {
               </Link>
             </motion.div>
             
-            {/* Logo */}
-            <motion.div 
-              className="flex justify-center mb-8"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <div className="relative">
-                <div className="absolute -inset-2 bg-gradient-to-r from-honey-gold/30 to-honey-amber/20 rounded-xl blur-lg"></div>
-                <img 
-                  src="/nzhg-logo.png" 
-                  alt="NZ Honey Group" 
-                  className="relative h-16 drop-shadow-[0_0_15px_rgba(209,158,67,0.3)]"
-                  style={{ filter: 'brightness(1.1)' }}
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
-                  }}
-                />
-              </div>
-            </motion.div>
-            
-            {/* Login Form */}
+            {/* Login Card with Logo inside */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 shadow-2xl"
             >
+              {/* Logo inside card */}
+              <div className="flex justify-center mb-8">
+                <div className="relative">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-honey-gold/30 to-honey-amber/20 rounded-xl blur-lg"></div>
+                  <img 
+                    src="/nzhg-logo.png" 
+                    alt="NZ Honey Group" 
+                    className="relative h-14 drop-shadow-[0_0_15px_rgba(209,158,67,0.3)]"
+                    style={{ filter: 'brightness(1.1)' }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Login Form */}
               <LoginForm />
             </motion.div>
           </div>
