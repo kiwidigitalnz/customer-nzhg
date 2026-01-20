@@ -121,58 +121,58 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card 
-          className={`bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl overflow-hidden ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400 border-amber-200' : ''}`}
           onClick={() => handleCardClick('pending')}
         >
-          <CardHeader className="pb-2 pt-5">
+          <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center">
                 <PackageCheck className="h-5 w-5 text-amber-600" />
               </div>
               <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
             </div>
           </CardHeader>
-          <CardContent className="pb-5">
-            <h3 className="font-semibold text-gray-900">Pending Approval</h3>
-            <p className="text-sm text-gray-500">Specs awaiting your review</p>
+          <CardContent className="px-5 pb-5 pt-0">
+            <h3 className="font-semibold text-gray-800">Pending Approval</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Specs awaiting your review</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl overflow-hidden ${activeTab === 'approved' ? 'ring-2 ring-green-400' : ''}`}
+          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400 border-green-200' : ''}`}
           onClick={() => handleCardClick('approved')}
         >
-          <CardHeader className="pb-2 pt-5">
+          <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center">
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <span className="text-3xl font-bold text-green-600">{specs.approved.length}</span>
             </div>
           </CardHeader>
-          <CardContent className="pb-5">
-            <h3 className="font-semibold text-gray-900">Approved</h3>
-            <p className="text-sm text-gray-500">Specs you've approved</p>
+          <CardContent className="px-5 pb-5 pt-0">
+            <h3 className="font-semibold text-gray-800">Approved</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Specs you've approved</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl overflow-hidden ${activeTab === 'changes' ? 'ring-2 ring-red-400' : ''}`}
+          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400 border-red-200' : ''}`}
           onClick={() => handleCardClick('changes')}
         >
-          <CardHeader className="pb-2 pt-5">
+          <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5 text-red-600" />
               </div>
               <span className="text-3xl font-bold text-red-600">{specs.changesRequested.length}</span>
             </div>
           </CardHeader>
-          <CardContent className="pb-5">
-            <h3 className="font-semibold text-gray-900">Changes Requested</h3>
-            <p className="text-sm text-gray-500">Specs with changes requested</p>
+          <CardContent className="px-5 pb-5 pt-0">
+            <h3 className="font-semibold text-gray-800">Changes Requested</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Specs with changes requested</p>
           </CardContent>
         </Card>
       </div>
