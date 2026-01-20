@@ -1,5 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import rmpLogo from '@/assets/logos/rmp-logo.png';
 import sqfLogo from '@/assets/logos/sqf-logo.png';
 import umfLogo from '@/assets/logos/umf-logo.png';
@@ -10,14 +16,46 @@ import nzMadeLogo from '@/assets/logos/nz-made-logo.png';
 import asurequalityLogo from '@/assets/logos/asurequality-logo.png';
 
 const certifications = [
-  { name: 'RMP Certified', logo: rmpLogo },
-  { name: 'SQF Certified', logo: sqfLogo },
-  { name: 'UMF Certified', logo: umfLogo },
-  { name: 'Halal Certified', logo: halalLogo },
-  { name: 'Organic Certified', logo: organicLogo },
-  { name: 'Kosher Certified', logo: kosherLogo },
-  { name: 'NZ Made', logo: nzMadeLogo },
-  { name: 'AsureQuality', logo: asurequalityLogo },
+  { 
+    name: 'RMP Certified', 
+    logo: rmpLogo,
+    description: 'Risk Management Programme – A mandatory food safety program under NZ law, verified by the Ministry for Primary Industries (MPI) for all honey processing and export operations.'
+  },
+  { 
+    name: 'SQF Certified', 
+    logo: sqfLogo,
+    description: 'Safe Quality Food – A globally recognized food safety and quality certification meeting rigorous international retail and supply chain standards.'
+  },
+  { 
+    name: 'UMF Certified', 
+    logo: umfLogo,
+    description: 'Unique Manuka Factor – The gold standard for Manuka honey, independently verifying potency (MGO), authenticity (Leptosperin), and freshness.'
+  },
+  { 
+    name: 'Halal Certified', 
+    logo: halalLogo,
+    description: 'Halal Certification – Ensures products are permissible under Islamic dietary laws, essential for export to Middle Eastern and Southeast Asian markets.'
+  },
+  { 
+    name: 'Organic Certified', 
+    logo: organicLogo,
+    description: 'BioGro Organic – Verified organic production without synthetic chemicals or antibiotics, following strict land management and beekeeping standards.'
+  },
+  { 
+    name: 'Kosher Certified', 
+    logo: kosherLogo,
+    description: 'Kosher Certification – Meets Jewish dietary requirements, verified by rabbinical authorities for international market access.'
+  },
+  { 
+    name: 'NZ Made', 
+    logo: nzMadeLogo,
+    description: 'Buy NZ Made – Proudly New Zealand made and packed, guaranteeing authentic origin from our pristine environment.'
+  },
+  { 
+    name: 'AsureQuality', 
+    logo: asurequalityLogo,
+    description: 'AsureQuality Certified – Independent NZ auditing and verification services ensuring food safety, traceability, and quality standards.'
+  },
 ];
 
 const containerVariants = {
@@ -66,36 +104,49 @@ const CertificationSection: React.FC = () => {
         </motion.div>
         
         {/* Certification Grid */}
-        <motion.div 
-          className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 md:gap-6 max-w-6xl mx-auto"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-        >
-          {certifications.map((cert, index) => (
-            <motion.div
-              key={index}
-              variants={itemVariants}
-              className="group"
-            >
-              <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-honey-light/50 hover:shadow-lg hover:border-honey-gold/30 transition-all duration-300 hover:-translate-y-1">
-                {/* Logo Container */}
-                <div className="aspect-square flex items-center justify-center p-2 mb-3">
-                  <img
-                    src={cert.logo}
-                    alt={cert.name}
-                    className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                {/* Label */}
-                <p className="text-center text-xs font-medium text-honey-dark/70 group-hover:text-honey-dark transition-colors leading-tight">
-                  {cert.name}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+        <TooltipProvider delayDuration={200}>
+          <motion.div 
+            className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 md:gap-6 max-w-6xl mx-auto"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
+            {certifications.map((cert, index) => (
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                className="group"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-honey-light/50 hover:shadow-lg hover:border-honey-gold/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                      {/* Logo Container */}
+                      <div className="aspect-square flex items-center justify-center p-2 mb-3">
+                        <img
+                          src={cert.logo}
+                          alt={cert.name}
+                          className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </div>
+                      {/* Label */}
+                      <p className="text-center text-xs font-medium text-honey-dark/70 group-hover:text-honey-dark transition-colors leading-tight">
+                        {cert.name}
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    side="bottom" 
+                    className="max-w-xs bg-honey-dark text-white border-honey-dark p-4 rounded-xl shadow-xl"
+                  >
+                    <p className="font-semibold text-honey-gold mb-1">{cert.name}</p>
+                    <p className="text-sm text-white/90 leading-relaxed">{cert.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </motion.div>
+            ))}
+          </motion.div>
+        </TooltipProvider>
       </div>
     </div>
   );
