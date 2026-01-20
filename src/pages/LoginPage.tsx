@@ -16,7 +16,7 @@ const LoginPage = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-honey-dark">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50">
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-md">
@@ -29,7 +29,7 @@ const LoginPage = () => {
           >
             <Link 
               to="/" 
-              className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 text-honey-dark/60 hover:text-honey-dark transition-colors text-sm font-medium"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Home
@@ -48,7 +48,7 @@ const LoginPage = () => {
       </div>
       
       {/* Footer */}
-      <footer className="py-4 text-center text-white/40 text-xs">
+      <footer className="py-4 text-center text-honey-dark/40 text-xs">
         <p>© {new Date().getFullYear()} NZ Honey Group Ltd. All rights reserved.</p>
       </footer>
     </div>
