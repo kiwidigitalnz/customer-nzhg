@@ -13,7 +13,7 @@ import qualityApproval from '@/assets/quality-approval.jpg';
 import progressTracking from '@/assets/progress-tracking.jpg';
 import testimonialPerson from '@/assets/testimonial-person.jpg';
 import BurgerMenu from '@/components/BurgerMenu';
-import CertificationTicker from '@/components/CertificationTicker';
+import CertificationSection from '@/components/CertificationTicker';
 
 interface LandingPageProps {
   podioAuthError?: string | null;
@@ -155,8 +155,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Certification Ticker */}
-      <CertificationTicker />
 
       {/* Features Section - Modern Glass Design */}
       <div id="features" className="relative py-24 overflow-hidden">
@@ -330,6 +328,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
           </motion.div>
         </div>
       </div>
+
+      {/* Certifications Section */}
+      <CertificationSection />
 
       {/* Testimonial Section - Modern Glass Design */}
       <div className="relative py-24 overflow-hidden">
