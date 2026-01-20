@@ -181,14 +181,14 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
             onClick={() => handleCardClick('pending')}
           >
             {/* Decorative gradient orb */}
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-amber-200/40 to-amber-400/20 rounded-full blur-2xl" />
-            <CardContent className="p-5 relative">
-              <div className="flex items-start justify-between">
-                <div className="space-y-3">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-amber-200/40 to-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-3 flex-shrink-0">
                   <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
                     <PackageCheck className="h-5 w-5 text-amber-600" />
                   </div>
@@ -197,8 +197,8 @@ const Dashboard = () => {
                     <p className="text-sm text-gray-500 font-open">Awaiting review</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
+                <div className="flex items-center justify-end pr-1">
+                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent font-raleway leading-none">
                     {specs.pending.length}
                   </span>
                 </div>
@@ -214,14 +214,14 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
             onClick={() => handleCardClick('approved')}
           >
             {/* Decorative gradient orb */}
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-emerald-200/40 to-emerald-400/20 rounded-full blur-2xl" />
-            <CardContent className="p-5 relative">
-              <div className="flex items-start justify-between">
-                <div className="space-y-3">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-emerald-200/40 to-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-3 flex-shrink-0">
                   <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
                     <CheckCircle className="h-5 w-5 text-emerald-600" />
                   </div>
@@ -230,8 +230,8 @@ const Dashboard = () => {
                     <p className="text-sm text-gray-500 font-open">Completed specs</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
+                <div className="flex items-center justify-end pr-1">
+                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent font-raleway leading-none">
                     {specs.approved.length}
                   </span>
                 </div>
@@ -247,14 +247,14 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl relative ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
             onClick={() => handleCardClick('changes')}
           >
             {/* Decorative gradient orb */}
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-rose-200/40 to-rose-400/20 rounded-full blur-2xl" />
-            <CardContent className="p-5 relative">
-              <div className="flex items-start justify-between">
-                <div className="space-y-3">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-rose-200/40 to-rose-400/20 rounded-full blur-2xl pointer-events-none" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-3 flex-shrink-0">
                   <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
                     <AlertCircle className="h-5 w-5 text-rose-600" />
                   </div>
@@ -263,8 +263,8 @@ const Dashboard = () => {
                     <p className="text-sm text-gray-500 font-open">Needs attention</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
+                <div className="flex items-center justify-end pr-1">
+                  <span className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent font-raleway leading-none">
                     {specs.changesRequested.length}
                   </span>
                 </div>
