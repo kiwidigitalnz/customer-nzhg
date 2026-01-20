@@ -222,63 +222,63 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {specs.map(spec => (
           <Card 
             key={spec.id} 
-            className="flex flex-col bg-white border-0 shadow-sm hover:shadow-lg transition-all duration-300 rounded-xl overflow-hidden group"
+            className="flex flex-col bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl group"
           >
-            <CardHeader className="pb-3 pt-5 px-5">
+            <CardHeader className="p-5 pb-3">
               <div className="flex justify-between items-start gap-3">
-                <CardTitle className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">
+                <CardTitle className="text-base font-semibold text-gray-800 leading-tight line-clamp-2">
                   {spec.title}
                 </CardTitle>
                 {getStatusBadge(spec.status)}
               </div>
             </CardHeader>
             
-            <CardContent className="flex-grow px-5 pb-4">
-              <div className="space-y-2.5">
+            <CardContent className="flex-grow px-5 pb-4 pt-0">
+              <div className="space-y-2">
                 {spec.details.honeyType && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Package className="h-4 w-4 mr-2.5 text-honey-gold" />
+                  <div className="flex items-center text-sm">
+                    <Package className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
                     <span className="text-gray-500">Honey Type:</span>
-                    <span className="ml-1.5 font-medium text-gray-700">{spec.details.honeyType}</span>
+                    <span className="ml-1 font-medium text-gray-700">{spec.details.honeyType}</span>
                   </div>
                 )}
                 {spec.details.umfMgo && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Info className="h-4 w-4 mr-2.5 text-honey-gold" />
+                  <div className="flex items-center text-sm">
+                    <Info className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
                     <span className="text-gray-500">UMF/MGO:</span>
-                    <span className="ml-1.5 font-medium text-gray-700">{spec.details.umfMgo}</span>
+                    <span className="ml-1 font-medium text-gray-700">{spec.details.umfMgo}</span>
                   </div>
                 )}
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 mr-2.5 text-honey-gold" />
+                <div className="flex items-center text-sm">
+                  <Calendar className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
                   <span className="text-gray-500">Created:</span>
-                  <span className="ml-1.5 font-medium text-gray-700">{formatDate(spec.createdAt)}</span>
+                  <span className="ml-1 font-medium text-gray-700">{formatDate(spec.createdAt)}</span>
                 </div>
                 
                 {spec.comments && spec.comments.length > 0 && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <MessageSquare className="h-4 w-4 mr-2.5 text-honey-gold" />
+                  <div className="flex items-center text-sm">
+                    <MessageSquare className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
                     <span className="text-gray-500">Comments:</span>
-                    <span className="ml-1.5 font-medium text-gray-700">{spec.comments.length}</span>
+                    <span className="ml-1 font-medium text-gray-700">{spec.comments.length}</span>
                   </div>
                 )}
               </div>
             </CardContent>
             
-            <div className="px-5 pb-5">
+            <CardFooter className="px-5 pb-5 pt-0">
               <Separator className="mb-4 bg-gray-100" />
               <Button 
                 variant="outline"
-                className="w-full h-10 border-gray-200 hover:border-honey-gold hover:bg-honey-gold/5 text-gray-700 hover:text-honey-dark rounded-lg transition-all"
+                className="w-full h-10 border-gray-200 hover:border-honey-gold hover:bg-honey-cream/50 text-gray-600 hover:text-honey-dark rounded-lg transition-all"
                 onClick={() => handleViewDetails(spec)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details
               </Button>
-            </div>
+            </CardFooter>
           </Card>
         ))}
       </div>
