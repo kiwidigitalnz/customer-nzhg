@@ -29,7 +29,7 @@ const LoginPage = () => {
           >
             <Link 
               to="/" 
-              className="inline-flex items-center gap-2 text-honey-dark/60 hover:text-honey-dark transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 text-honey-dark/60 hover:text-honey-dark transition-colors text-sm font-medium font-open"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Home
@@ -48,7 +48,7 @@ const LoginPage = () => {
       </div>
       
       {/* Footer */}
-      <footer className="py-4 text-center text-honey-dark/40 text-xs">
+      <footer className="py-4 text-center text-honey-dark/40 text-xs font-open">
         <p>© {new Date().getFullYear()} NZ Honey Group Ltd. All rights reserved.</p>
       </footer>
     </div>

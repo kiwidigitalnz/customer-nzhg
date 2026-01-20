@@ -89,8 +89,8 @@ const BurgerMenu: React.FC = () => {
                   />
                   <div className="h-8 w-px bg-honey-gold/30"></div>
                   <div>
-                    <p className="text-sm font-medium text-honey-dark">Customer Portal</p>
-                    <p className="text-xs text-honey-dark/60">v2.0</p>
+                    <p className="text-sm font-medium text-honey-dark font-raleway">Customer Portal</p>
+                    <p className="text-xs text-honey-dark/60 font-open">v2.0</p>
                   </div>
                 </div>
               </div>
@@ -103,15 +103,14 @@ const BurgerMenu: React.FC = () => {
                       <User className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium text-honey-dark">{user.name}</p>
-                      <p className="text-sm text-honey-dark/60">{user.email}</p>
+                      <p className="font-medium text-honey-dark font-raleway">{user.name}</p>
+                      <p className="text-sm text-honey-dark/60 font-open">{user.email}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Navigation Links */}
-              <nav className="flex-1 p-6 space-y-2">
+              <nav className="flex-1 p-6 space-y-2 font-open">
                 <button
                   onClick={() => handleNavigation('/')}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-honey-dark hover:bg-honey-light/50 transition-colors"

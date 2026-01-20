@@ -156,7 +156,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               transition={{ duration: 0.8, delay: 0.4 }}
             />
             <motion.h1 
-              className="text-4xl md:text-5xl lg:text-6xl hero-heading font-bold text-white leading-tight tracking-tight drop-shadow-lg"
+              className="text-4xl md:text-5xl lg:text-6xl font-raleway font-bold text-white leading-tight tracking-tight drop-shadow-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
@@ -209,7 +209,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <span className="w-2 h-2 rounded-full bg-honey-gold animate-pulse"></span>
               WHY CHOOSE US
             </span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark mb-6 tracking-tight">Premium Honey Management</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-raleway font-bold text-honey-dark mb-6 tracking-tight">Premium Honey Management</h2>
             <p className="text-lg text-honey-dark/70 font-open max-w-2xl mx-auto">
               Our portal brings together everything you need to manage your honey products with ease and precision
             </p>
@@ -236,7 +236,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
                   <FileCheck className="h-7 w-7 text-white" />
                 </div>
-                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Product Specifications</h3>
+                <h3 className="text-xl font-raleway font-bold mb-3 text-honey-dark">Product Specifications</h3>
                 <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
                   Access and review all your product specifications in one secure location. Download detailed reports and stay informed.
                 </p>
@@ -263,7 +263,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
                   <Beaker className="h-7 w-7 text-white" />
                 </div>
-                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Quality Approvals</h3>
+                <h3 className="text-xl font-raleway font-bold mb-3 text-honey-dark">Quality Approvals</h3>
                 <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
                   Approve honey specifications and packaging details with an intuitive interface. Provide feedback directly to our team.
                 </p>
@@ -290,7 +290,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center shadow-lg mb-4">
                   <LineChart className="h-7 w-7 text-white" />
                 </div>
-                <h3 className="text-xl font-playfair font-bold mb-3 text-honey-dark">Progress Tracking</h3>
+                <h3 className="text-xl font-raleway font-bold mb-3 text-honey-dark">Progress Tracking</h3>
                 <p className="text-honey-dark/70 font-open text-sm leading-relaxed mb-4">
                   Monitor the status of your honey products throughout the approval process with real-time updates and notifications.
                 </p>
@@ -337,7 +337,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Award className="h-8 w-8 text-honey-gold" />
               </div>
-              <h3 className="text-lg font-playfair font-semibold mb-2 text-honey-dark">Quality Certified</h3>
+              <h3 className="text-lg font-raleway font-semibold mb-2 text-honey-dark">Quality Certified</h3>
               <p className="text-honey-dark/70 font-open">Premium honey products that meet international quality standards</p>
             </motion.div>
             
@@ -348,7 +348,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Leaf className="h-8 w-8 text-honey-gold" />
               </div>
-              <h3 className="text-lg font-playfair font-semibold mb-2 text-honey-dark">Sustainably Sourced</h3>
+              <h3 className="text-lg font-raleway font-semibold mb-2 text-honey-dark">Sustainably Sourced</h3>
               <p className="text-honey-dark/70 font-open">Responsibly harvested honey that protects our bees and environment</p>
             </motion.div>
             
@@ -359,7 +359,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="w-16 h-16 bg-honey-light rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coffee className="h-8 w-8 text-honey-gold" />
               </div>
-              <h3 className="text-lg font-playfair font-semibold mb-2 text-honey-dark">Pure Taste</h3>
+              <h3 className="text-lg font-raleway font-semibold mb-2 text-honey-dark">Pure Taste</h3>
               <p className="text-honey-dark/70 font-open">Authentic flavors preserved through careful processing methods</p>
             </motion.div>
           </motion.div>
@@ -384,7 +384,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <span className="w-2 h-2 rounded-full bg-honey-gold animate-pulse"></span>
               TESTIMONIALS
             </span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark mb-4 tracking-tight">What Our Clients Say</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-raleway font-bold text-honey-dark mb-4 tracking-tight">What Our Clients Say</h2>
             <p className="text-lg text-honey-dark/70 max-w-2xl mx-auto font-open">Trusted by honey producers and exporters worldwide</p>
           </motion.div>
           
@@ -450,7 +450,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                         <span className="text-white font-bold text-lg">{testimonials[currentTestimonial].initials}</span>
                       </div>
                       <div>
-                        <p className="font-bold text-honey-dark font-playfair text-lg">{testimonials[currentTestimonial].name}</p>
+                        <p className="font-bold text-honey-dark font-raleway text-lg">{testimonials[currentTestimonial].name}</p>
                         <p className="text-honey-dark/60 font-open">{testimonials[currentTestimonial].role}</p>
                       </div>
                     </div>
@@ -509,7 +509,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         
         <div className="melita-container relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-playfair font-bold text-white mb-4 tracking-tight">Ready to Manage Your Products?</h2>
+            <h2 className="text-3xl md:text-4xl font-raleway font-bold text-white mb-4 tracking-tight">Ready to Manage Your Products?</h2>
             <p className="text-lg text-white/90 max-w-2xl mx-auto mb-6 font-open">
               Sign in to access your personalized customer portal and start managing your honey product approvals today.
             </p>
