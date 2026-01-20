@@ -181,20 +181,25 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
             onClick={() => handleCardClick('pending')}
           >
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-amber-200 flex items-center justify-center">
-                  <PackageCheck className="h-5 w-5 text-amber-700" />
+            <CardHeader className="p-5 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
+                  <PackageCheck className="h-6 w-6 text-amber-600" />
                 </div>
-                <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">Pending Approval</h3>
+                  <p className="text-sm text-gray-500">Awaiting review</p>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="px-5 pb-5 pt-0">
-              <h3 className="font-semibold text-gray-900">Pending Approval</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Specs awaiting your review</p>
+            <CardContent className="px-5 pb-5 pt-2">
+              <div className="flex items-baseline gap-1">
+                <span className="text-5xl font-bold tracking-tight text-amber-600">{specs.pending.length}</span>
+                <span className="text-lg font-medium text-gray-400">specs</span>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -206,20 +211,25 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
             onClick={() => handleCardClick('approved')}
           >
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-emerald-200 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-emerald-700" />
+            <CardHeader className="p-5 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
+                  <CheckCircle className="h-6 w-6 text-emerald-600" />
                 </div>
-                <span className="text-3xl font-bold text-emerald-600">{specs.approved.length}</span>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">Approved</h3>
+                  <p className="text-sm text-gray-500">Completed specs</p>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="px-5 pb-5 pt-0">
-              <h3 className="font-semibold text-gray-900">Approved</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Specs you've approved</p>
+            <CardContent className="px-5 pb-5 pt-2">
+              <div className="flex items-baseline gap-1">
+                <span className="text-5xl font-bold tracking-tight text-emerald-600">{specs.approved.length}</span>
+                <span className="text-lg font-medium text-gray-400">specs</span>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -231,20 +241,25 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
             onClick={() => handleCardClick('changes')}
           >
-            <CardHeader className="p-5 pb-3">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-rose-200 flex items-center justify-center">
-                  <AlertCircle className="h-5 w-5 text-rose-700" />
+            <CardHeader className="p-5 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
+                  <AlertCircle className="h-6 w-6 text-rose-600" />
                 </div>
-                <span className="text-3xl font-bold text-rose-600">{specs.changesRequested.length}</span>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">Changes Requested</h3>
+                  <p className="text-sm text-gray-500">Needs attention</p>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="px-5 pb-5 pt-0">
-              <h3 className="font-semibold text-gray-900">Changes Requested</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Specs with changes requested</p>
+            <CardContent className="px-5 pb-5 pt-2">
+              <div className="flex items-baseline gap-1">
+                <span className="text-5xl font-bold tracking-tight text-rose-600">{specs.changesRequested.length}</span>
+                <span className="text-lg font-medium text-gray-400">specs</span>
+              </div>
             </CardContent>
           </Card>
         </motion.div>

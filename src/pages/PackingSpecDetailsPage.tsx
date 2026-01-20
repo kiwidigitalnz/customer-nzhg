@@ -32,21 +32,18 @@ const PackingSpecDetailsPage = () => {
       setPodioError(true);
     }
     
-    // Simulate loading for better UX
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 300);
+    // Remove the artificial loading delay - let PackingSpecDetails handle its own loading state
+    setLoading(false);
     
     // Check if user has seen the guide before
     const hasSeenGuide = localStorage.getItem('packing_spec_guide_seen');
     if (!hasSeenGuide) {
-      // Wait for loading to complete before showing guide
-      setTimeout(() => {
+      // Wait a moment before showing guide
+      const guideTimer = setTimeout(() => {
         setShowGuide(true);
       }, 500);
+      return () => clearTimeout(guideTimer);
     }
-    
-    return () => clearTimeout(timer);
   }, []);
   
   // Function to handle navigating back to dashboard
@@ -63,16 +60,7 @@ const PackingSpecDetailsPage = () => {
   
   return (
     <MainLayout requireAuth>
-      {loading ? (
-        <div className="flex justify-center items-center h-[80vh]">
-          <LoadingSpinner 
-            size="lg" 
-            icon={<Package className="text-primary/70" />}
-            text="Loading specification details..."
-            subtext="This may take a moment"
-          />
-        </div>
-      ) : podioError ? (
+      {podioError ? (
         <div className="container mx-auto px-4 py-8">
           <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
