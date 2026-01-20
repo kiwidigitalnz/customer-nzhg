@@ -222,11 +222,11 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
         {specs.map(spec => (
           <Card 
             key={spec.id} 
-            className="flex flex-col bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 rounded-xl"
+            className="flex flex-col bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
           >
             <CardHeader className="p-5 pb-3">
               <div className="flex justify-between items-start gap-3">
