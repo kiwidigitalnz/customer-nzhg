@@ -76,9 +76,9 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
   };
   
   return (
-    <Alert variant="destructive" className="mb-6">
+    <Alert variant="destructive" className="mb-6 font-open">
       <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>API Rate Limit Reached</AlertTitle>
+      <AlertTitle className="font-raleway">API Rate Limit Reached</AlertTitle>
       <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           {usingCachedData ? (
@@ -100,7 +100,7 @@ const RateLimitWarning = ({ onRetry, usingCachedData }: RateLimitWarningProps) =
           size="sm" 
           onClick={handleRetry}
           disabled={isButtonDisabled}
-          className="whitespace-nowrap"
+          className="whitespace-nowrap font-open"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${isButtonDisabled ? 'animate-spin' : ''}`} />
           {isButtonDisabled ? `Wait ${formatTimeLeft()}` : "Try Again"}

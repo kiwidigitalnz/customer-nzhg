@@ -67,12 +67,12 @@ export const LoadingSpinner = ({
         )}
       </div>
       {text && (
-        <p className={cn("mt-4 text-muted-foreground", textSizes[size])}>
+        <p className={cn("mt-4 text-muted-foreground font-open", textSizes[size])}>
           {text}
         </p>
       )}
       {subtext && (
-        <p className={cn("text-muted-foreground/70 mt-2", size === "lg" ? "text-sm" : "text-xs")}>
+        <p className={cn("text-muted-foreground/70 mt-2 font-open", size === "lg" ? "text-sm" : "text-xs")}>
           {subtext}
         </p>
       )}
