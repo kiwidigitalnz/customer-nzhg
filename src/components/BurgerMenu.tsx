@@ -77,22 +77,15 @@ const BurgerMenu: React.FC = () => {
             >
               {/* Header */}
               <div className="p-6 pt-20 border-b border-honey-light">
-                <div className="flex items-center gap-3">
-                  <img 
-                    src="/nzhg-logo.png" 
-                    alt="NZ Honey Group" 
-                    className="h-10"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://placehold.co/120x40/D19E43/FFFFFF?text=NZHG';
-                    }}
-                  />
-                  <div className="h-8 w-px bg-honey-gold/30"></div>
-                  <div>
-                    <p className="text-sm font-medium text-honey-dark font-raleway">Customer Portal</p>
-                    <p className="text-xs text-honey-dark/60 font-open">v2.0</p>
-                  </div>
-                </div>
+                <img 
+                  src="/nzhg-logo.png" 
+                  alt="NZ Honey Group" 
+                  className="h-10"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = 'https://placehold.co/120x40/D19E43/FFFFFF?text=NZHG';
+                  }}
+                />
               </div>
 
               {/* User Info (if logged in) */}
