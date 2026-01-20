@@ -89,8 +89,8 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
     return (
       <div className="text-center py-12 bg-gray-100 rounded-xl border border-gray-200">
         <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900">No specifications found</h3>
-        <p className="text-gray-600">There are no packing specifications in this category.</p>
+        <h3 className="text-lg font-medium text-gray-900 font-raleway">No specifications found</h3>
+        <p className="text-gray-600 font-open">There are no packing specifications in this category.</p>
       </div>
     );
   }
@@ -230,14 +230,14 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
           >
             <CardHeader className="p-5 pb-3">
               <div className="flex justify-between items-start gap-3">
-                <CardTitle className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">
+                <CardTitle className="text-base font-semibold text-gray-900 leading-tight line-clamp-2 font-raleway">
                   {spec.title}
                 </CardTitle>
                 {getStatusBadge(spec.status)}
               </div>
             </CardHeader>
             
-            <CardContent className="flex-grow px-5 pb-4 pt-0">
+            <CardContent className="flex-grow px-5 pb-4 pt-0 font-open">
               <div className="space-y-2">
                 {spec.details.honeyType && (
                   <div className="flex items-center text-sm">
@@ -271,7 +271,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
             
             <CardFooter className="px-5 pb-5 pt-4">
               <Button 
-                className="w-full h-10 bg-amber-100 hover:bg-amber-500 text-amber-800 hover:text-white border border-amber-200 rounded-lg transition-all font-medium"
+                className="w-full h-10 bg-amber-100 hover:bg-amber-500 text-amber-800 hover:text-white border border-amber-200 rounded-lg transition-all font-medium font-open"
                 onClick={() => handleViewDetails(spec)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details
