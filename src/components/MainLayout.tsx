@@ -13,16 +13,16 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-amber-50/40 via-background to-muted/30">
+      <div className="flex flex-col min-h-screen bg-slate-50">
         <main className="flex-grow">
           {children}
         </main>
-        <footer className="py-4 bg-white/60 backdrop-blur-sm mt-auto">
+        <footer className="py-4 bg-white border-t border-gray-200 mt-auto">
           <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-xs text-gray-400 mb-1 sm:mb-0">
+            <p className="text-xs text-gray-500 mb-1 sm:mb-0">
               &copy; {currentYear} NZ Honey Group Ltd. All rights reserved.
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               Customer Portal v2.0
             </p>
           </div>
