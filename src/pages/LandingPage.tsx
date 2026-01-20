@@ -8,6 +8,9 @@ import heroHoney from '@/assets/hero-honey.jpg';
 import honeycomb from '@/assets/honeycomb.jpg';
 import nzLandscape from '@/assets/nz-landscape.jpg';
 import honeyPour from '@/assets/honey-pour.jpg';
+import productSpecs from '@/assets/product-specs.jpg';
+import qualityApproval from '@/assets/quality-approval.jpg';
+import progressTracking from '@/assets/progress-tracking.jpg';
 
 interface LandingPageProps {
   podioAuthError?: string | null;
@@ -100,7 +103,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                 />
               </div>
               <div className="hidden sm:block h-12 w-px bg-gradient-to-b from-transparent via-honey-gold/50 to-transparent"></div>
-              <span className="hidden sm:block text-white/80 font-open text-sm tracking-widest uppercase">Customer Portal</span>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-white/90 font-open text-sm tracking-widest uppercase">Customer Portal</span>
+                <span className="text-honey-gold/80 font-open text-xs tracking-wider">Version 2.0</span>
+              </div>
             </motion.div>
             <motion.div 
               className="w-20 h-1 bg-honey-gold rounded-full"
@@ -179,8 +185,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
               <div className="h-52 overflow-hidden">
                 <img 
-                  src={honeycomb} 
-                  alt="Quality Honeycomb" 
+                  src={productSpecs} 
+                  alt="Product Specifications" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
@@ -206,8 +212,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
               <div className="h-52 overflow-hidden">
                 <img 
-                  src={nzLandscape} 
-                  alt="New Zealand Landscape" 
+                  src={qualityApproval} 
+                  alt="Quality Approval Lab" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
@@ -233,8 +239,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/80 z-10 pointer-events-none"></div>
               <div className="h-52 overflow-hidden">
                 <img 
-                  src={honeyPour} 
-                  alt="Premium Honey" 
+                  src={progressTracking} 
+                  alt="Progress Tracking Dashboard" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
