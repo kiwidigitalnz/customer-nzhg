@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'; // Add this import for the cn utility
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, AlertTriangle, ArrowUp } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, CheckCircle2, AlertTriangle, ArrowUp, Package } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { SwipeableContainer } from '@/components/ui/swipeable-container';
@@ -533,8 +533,13 @@ const PackingSpecDetails = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-12 flex justify-center">
-        <LoadingSpinner size="lg" text="Loading specification details..." />
+      <div className="flex justify-center items-center h-[80vh]">
+        <LoadingSpinner 
+          size="lg" 
+          icon={<Package className="text-primary/70" />}
+          text="Loading specification details..."
+          subtext="This may take a moment"
+        />
       </div>
     );
   }
