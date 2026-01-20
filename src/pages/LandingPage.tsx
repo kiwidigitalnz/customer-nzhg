@@ -11,6 +11,8 @@ import honeyPour from '@/assets/honey-pour.jpg';
 import productSpecs from '@/assets/product-specs.jpg';
 import qualityApproval from '@/assets/quality-approval.jpg';
 import progressTracking from '@/assets/progress-tracking.jpg';
+import testimonialPerson from '@/assets/testimonial-person.jpg';
+import BurgerMenu from '@/components/BurgerMenu';
 
 interface LandingPageProps {
   podioAuthError?: string | null;
@@ -53,6 +55,7 @@ const scaleInDelayed2 = {
 const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
   return (
     <MainLayout>
+      <BurgerMenu />
       {/* Display error banner if there's a Podio auth error */}
       {podioAuthError && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
@@ -324,47 +327,70 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
         </div>
       </div>
 
-      {/* Testimonial Section - With Image */}
-      <div className="bg-white py-14">
-        <div className="melita-container">
+      {/* Testimonial Section - Modern Glass Design */}
+      <div className="relative py-24 overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-honey-cream/50 to-honey-light/30"></div>
+        <div className="absolute top-1/2 left-0 w-72 h-72 bg-honey-gold/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2"></div>
+        
+        <div className="melita-container relative z-10">
           <motion.div 
-            className="flex flex-col items-center text-center mb-10"
+            className="text-center mb-12"
             {...fadeInUp}
           >
-            <span className="inline-block px-4 py-2 rounded-full bg-honey-light text-honey-dark font-medium text-sm mb-4">TESTIMONIALS</span>
-            <div className="melita-accent-bar"></div>
-            <h2 className="text-3xl md:text-4xl font-playfair font-bold text-honey-dark mb-2 tracking-tight">What Our Clients Say</h2>
-            <p className="text-lg text-honey-dark/70 max-w-2xl font-open">Trusted by honey producers and exporters worldwide</p>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-honey-gold/10 border border-honey-gold/20 text-honey-dark font-medium text-sm mb-6">
+              <span className="w-2 h-2 rounded-full bg-honey-gold animate-pulse"></span>
+              TESTIMONIALS
+            </span>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark mb-4 tracking-tight">What Our Clients Say</h2>
+            <p className="text-lg text-honey-dark/70 max-w-2xl mx-auto font-open">Trusted by honey producers and exporters worldwide</p>
           </motion.div>
           
-          {/* Testimonial Card */}
+          {/* Testimonial Card - Modern Glass Design */}
           <motion.div 
-            className="max-w-3xl mx-auto testimonial-card"
+            className="max-w-4xl mx-auto"
             {...scaleIn}
           >
-            <div className="grid grid-cols-1 md:grid-cols-12">
-              <div className="md:col-span-4 testimonial-image p-4 flex items-center justify-center">
-                <img 
-                  src={honeyPour}
-                  alt="Premium Honey Production"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              </div>
-              <div className="md:col-span-8 p-6 md:p-8 flex flex-col justify-center">
-                <div className="mb-4">
+            <div className="relative rounded-3xl overflow-hidden bg-white/70 backdrop-blur-md border border-white/50 shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-honey-gold/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-12 relative z-10">
+                {/* Image Section */}
+                <div className="md:col-span-5 relative">
+                  <div className="aspect-square md:aspect-auto md:h-full overflow-hidden">
+                    <img 
+                      src={testimonialPerson}
+                      alt="Sarah Thompson - Export Manager"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-white/80 via-transparent to-transparent"></div>
+                  </div>
+                </div>
+                
+                {/* Content Section */}
+                <div className="md:col-span-7 p-8 md:p-10 flex flex-col justify-center">
                   {/* Star rating */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 mb-6">
                     {[...Array(5)].map((_, i) => (
-                      <svg key={i} width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg key={i} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 0L14.6942 8.2918H23.4127L16.3593 13.4164L19.0534 21.7082L12 16.5836L4.94658 21.7082L7.64074 13.4164L0.587322 8.2918H9.30583L12 0Z" fill="#D19E43" />
                       </svg>
                     ))}
                   </div>
-                </div>
-                <blockquote className="text-lg italic text-honey-dark/80 mb-4 font-open">"The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours."</blockquote>
-                <div>
-                  <p className="font-semibold text-honey-dark font-playfair">Sarah Thompson</p>
-                  <p className="text-honey-dark/70 font-open text-sm">Export Manager, Canterbury Honey Co.</p>
+                  
+                  <blockquote className="text-xl md:text-2xl text-honey-dark/80 mb-8 font-open leading-relaxed">
+                    "The customer portal has revolutionized how we manage our honey product approvals. It's intuitive, comprehensive, and has saved us countless hours."
+                  </blockquote>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-honey-gold to-honey-amber flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">ST</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-honey-dark font-playfair text-lg">Sarah Thompson</p>
+                      <p className="text-honey-dark/60 font-open">Export Manager, Canterbury Honey Co.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
