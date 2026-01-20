@@ -87,10 +87,10 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
   
   if (specs.length === 0) {
     return (
-      <div className="text-center py-12 bg-muted rounded-md">
-        <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium">No specifications found</h3>
-        <p className="text-muted-foreground">There are no packing specifications in this category.</p>
+      <div className="text-center py-12 bg-gray-100 rounded-xl border border-gray-200">
+        <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900">No specifications found</h3>
+        <p className="text-gray-600">There are no packing specifications in this category.</p>
       </div>
     );
   }
@@ -226,11 +226,11 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
         {specs.map(spec => (
           <Card 
             key={spec.id} 
-            className="flex flex-col bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
+            className="flex flex-col bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl"
           >
             <CardHeader className="p-5 pb-3">
               <div className="flex justify-between items-start gap-3">
-                <CardTitle className="text-base font-semibold text-gray-800 leading-tight line-clamp-2">
+                <CardTitle className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">
                   {spec.title}
                 </CardTitle>
                 {getStatusBadge(spec.status)}
@@ -241,29 +241,29 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
               <div className="space-y-2">
                 {spec.details.honeyType && (
                   <div className="flex items-center text-sm">
-                    <Package className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
-                    <span className="text-gray-500">Honey Type:</span>
-                    <span className="ml-1 font-medium text-gray-700">{spec.details.honeyType}</span>
+                    <Package className="h-4 w-4 mr-2 text-amber-600 flex-shrink-0" />
+                    <span className="text-gray-600">Honey Type:</span>
+                    <span className="ml-1 font-medium text-gray-800">{spec.details.honeyType}</span>
                   </div>
                 )}
                 {spec.details.umfMgo && (
                   <div className="flex items-center text-sm">
-                    <Info className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
-                    <span className="text-gray-500">UMF/MGO:</span>
-                    <span className="ml-1 font-medium text-gray-700">{spec.details.umfMgo}</span>
+                    <Info className="h-4 w-4 mr-2 text-amber-600 flex-shrink-0" />
+                    <span className="text-gray-600">UMF/MGO:</span>
+                    <span className="ml-1 font-medium text-gray-800">{spec.details.umfMgo}</span>
                   </div>
                 )}
                 <div className="flex items-center text-sm">
-                  <Calendar className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
-                  <span className="text-gray-500">Created:</span>
-                  <span className="ml-1 font-medium text-gray-700">{formatDate(spec.createdAt)}</span>
+                  <Calendar className="h-4 w-4 mr-2 text-amber-600 flex-shrink-0" />
+                  <span className="text-gray-600">Created:</span>
+                  <span className="ml-1 font-medium text-gray-800">{formatDate(spec.createdAt)}</span>
                 </div>
                 
                 {spec.comments && spec.comments.length > 0 && (
                   <div className="flex items-center text-sm">
-                    <MessageSquare className="h-4 w-4 mr-2 text-honey-gold flex-shrink-0" />
-                    <span className="text-gray-500">Comments:</span>
-                    <span className="ml-1 font-medium text-gray-700">{spec.comments.length}</span>
+                    <MessageSquare className="h-4 w-4 mr-2 text-amber-600 flex-shrink-0" />
+                    <span className="text-gray-600">Comments:</span>
+                    <span className="ml-1 font-medium text-gray-800">{spec.comments.length}</span>
                   </div>
                 )}
               </div>
@@ -271,7 +271,7 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
             
             <CardFooter className="px-5 pb-5 pt-4">
               <Button 
-                className="w-full h-10 bg-honey-cream hover:bg-honey-gold text-honey-dark hover:text-white rounded-lg transition-all font-medium"
+                className="w-full h-10 bg-amber-100 hover:bg-amber-500 text-amber-800 hover:text-white border border-amber-200 rounded-lg transition-all font-medium"
                 onClick={() => handleViewDetails(spec)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details

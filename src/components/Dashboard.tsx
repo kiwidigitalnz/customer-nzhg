@@ -102,12 +102,12 @@ const Dashboard = () => {
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground/90">Welcome, {user?.name}</h1>
-            <p className="text-muted-foreground mt-1">
+        <div>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.name}</h1>
+            <p className="text-gray-600 mt-1">
               Manage your packing specifications
               {user?.email && (
-                <span className="ml-2 text-xs text-muted-foreground/80">({user.email})</span>
+                <span className="ml-2 text-xs text-gray-500">({user.email})</span>
               )}
             </p>
           </div>
@@ -123,72 +123,72 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card 
-          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
           onClick={() => handleCardClick('pending')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                <PackageCheck className="h-5 w-5 text-amber-600" />
+              <div className="h-10 w-10 rounded-lg bg-amber-200 flex items-center justify-center">
+                <PackageCheck className="h-5 w-5 text-amber-700" />
               </div>
               <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-foreground">Pending Approval</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">Specs awaiting your review</p>
+            <h3 className="font-semibold text-gray-900">Pending Approval</h3>
+            <p className="text-sm text-gray-600 mt-0.5">Specs awaiting your review</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400' : ''}`}
+          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
           onClick={() => handleCardClick('approved')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+              <div className="h-10 w-10 rounded-lg bg-emerald-200 flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-emerald-700" />
               </div>
-              <span className="text-3xl font-bold text-green-600">{specs.approved.length}</span>
+              <span className="text-3xl font-bold text-emerald-600">{specs.approved.length}</span>
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-foreground">Approved</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">Specs you've approved</p>
+            <h3 className="font-semibold text-gray-900">Approved</h3>
+            <p className="text-sm text-gray-600 mt-0.5">Specs you've approved</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400' : ''}`}
+          className={`bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
           onClick={() => handleCardClick('changes')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5 text-red-600" />
+              <div className="h-10 w-10 rounded-lg bg-rose-200 flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-rose-700" />
               </div>
-              <span className="text-3xl font-bold text-red-600">{specs.changesRequested.length}</span>
+              <span className="text-3xl font-bold text-rose-600">{specs.changesRequested.length}</span>
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-foreground">Changes Requested</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">Specs with changes requested</p>
+            <h3 className="font-semibold text-gray-900">Changes Requested</h3>
+            <p className="text-sm text-gray-600 mt-0.5">Specs with changes requested</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
-        <TabsList className="mb-5 bg-white/60 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-gray-200">
-          <TabsTrigger value="pending" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
+        <TabsList className="mb-5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
+          <TabsTrigger value="pending" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
             Pending ({specs.pending.length})
           </TabsTrigger>
-          <TabsTrigger value="approved" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="approved" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
             Approved ({specs.approved.length})
           </TabsTrigger>
-          <TabsTrigger value="changes" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="changes" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
             Changes ({specs.changesRequested.length})
           </TabsTrigger>
-          <TabsTrigger value="all" className="rounded-lg px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger value="all" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
             All ({specs.all.length})
           </TabsTrigger>
         </TabsList>
