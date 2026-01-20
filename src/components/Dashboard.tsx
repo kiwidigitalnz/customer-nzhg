@@ -123,7 +123,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card 
-          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
           onClick={() => handleCardClick('pending')}
         >
           <CardHeader className="p-5 pb-3">
@@ -135,13 +135,13 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-800">Pending Approval</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Specs awaiting your review</p>
+            <h3 className="font-semibold text-foreground">Pending Approval</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Specs awaiting your review</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400' : ''}`}
+          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400' : ''}`}
           onClick={() => handleCardClick('approved')}
         >
           <CardHeader className="p-5 pb-3">
@@ -153,13 +153,13 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-800">Approved</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Specs you've approved</p>
+            <h3 className="font-semibold text-foreground">Approved</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Specs you've approved</p>
           </CardContent>
         </Card>
         
         <Card 
-          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400' : ''}`}
+          className={`bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400' : ''}`}
           onClick={() => handleCardClick('changes')}
         >
           <CardHeader className="p-5 pb-3">
@@ -171,8 +171,8 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <h3 className="font-semibold text-gray-800">Changes Requested</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Specs with changes requested</p>
+            <h3 className="font-semibold text-foreground">Changes Requested</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Specs with changes requested</p>
           </CardContent>
         </Card>
       </div>
