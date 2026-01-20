@@ -145,7 +145,7 @@ const Dashboard = () => {
                 }}
               />
             ) : null}
-            <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
+            <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold font-raleway">
               {user?.name ? getCompanyInitials(user.name) : <Building />}
             </AvatarFallback>
           </Avatar>
@@ -162,7 +162,7 @@ const Dashboard = () => {
         <Button 
           variant="outline" 
           onClick={logout}
-          className="transition-all hover:-translate-y-1 hover:shadow-md"
+          className="transition-all hover:-translate-y-1 hover:shadow-md font-open"
         >
           <LogOut className="mr-2 h-4 w-4" /> Logout
         </Button>
@@ -274,18 +274,18 @@ const Dashboard = () => {
         </motion.div>
       </motion.div>
 
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full font-open">
         <TabsList className="mb-5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
-          <TabsTrigger value="pending" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
+          <TabsTrigger value="pending" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all font-open">
             Pending ({specs.pending.length})
           </TabsTrigger>
-          <TabsTrigger value="approved" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
+          <TabsTrigger value="approved" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all font-open">
             Approved ({specs.approved.length})
           </TabsTrigger>
-          <TabsTrigger value="changes" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
+          <TabsTrigger value="changes" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all font-open">
             Changes ({specs.changesRequested.length})
           </TabsTrigger>
-          <TabsTrigger value="all" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all">
+          <TabsTrigger value="all" className="rounded-lg px-4 text-gray-600 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=active]:font-semibold transition-all font-open">
             All ({specs.all.length})
           </TabsTrigger>
         </TabsList>
