@@ -368,7 +368,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
                       alt="Sarah Thompson - Export Manager"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-white/80 via-transparent to-transparent"></div>
                   </div>
                 </div>
                 
