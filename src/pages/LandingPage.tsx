@@ -81,22 +81,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <motion.div 
-              className="flex"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-2xl">
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-honey-gold/40 to-honey-amber/30 rounded-lg blur-lg"></div>
                 <img 
                   src="/nzhg-logo.png" 
                   alt="NZ Honey Group" 
-                  className="h-16 md:h-20"
+                  className="relative h-14 md:h-18 lg:h-20 drop-shadow-[0_0_15px_rgba(209,158,67,0.4)]"
+                  style={{ filter: 'brightness(1.1) contrast(1.05)' }}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
                   }}
                 />
               </div>
+              <div className="hidden sm:block h-12 w-px bg-gradient-to-b from-transparent via-honey-gold/50 to-transparent"></div>
+              <span className="hidden sm:block text-white/80 font-open text-sm tracking-widest uppercase">Customer Portal</span>
             </motion.div>
             <motion.div 
               className="w-20 h-1 bg-honey-gold rounded-full"
