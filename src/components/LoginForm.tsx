@@ -254,7 +254,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden font-open">
       {/* Logo Header */}
       <div className="bg-gradient-to-br from-honey-cream to-white px-8 pt-10 pb-8 border-b border-honey-light/30">
         <div className="flex justify-center">
@@ -274,7 +274,7 @@ const LoginForm = () => {
       {/* Form Section */}
       <div className="px-8 py-8">
         <div className="text-center mb-6">
-          <h1 className="text-xl font-semibold text-honey-dark mb-1">
+          <h1 className="text-xl font-semibold text-honey-dark mb-1 font-raleway">
             Customer Portal
           </h1>
           <p className="text-honey-dark/50 text-sm">

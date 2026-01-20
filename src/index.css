@@ -115,11 +115,11 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-playfair font-bold;
+    @apply font-raleway font-bold;
   }
   
   .hero-heading {
-    @apply font-playfair;
+    @apply font-raleway;
   }
 
   /* Improve touch target accessibility for mobile */
@@ -405,7 +405,7 @@
 }
 
 .melita-heading {
-  @apply text-3xl md:text-4xl lg:text-5xl font-playfair font-bold text-honey-dark leading-tight;
+  @apply text-3xl md:text-4xl lg:text-5xl font-raleway font-bold text-honey-dark leading-tight;
 }
 
 .melita-subheading {
