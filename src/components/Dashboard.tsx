@@ -121,14 +121,14 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card 
-          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400 border-amber-200' : ''}`}
+          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
           onClick={() => handleCardClick('pending')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
                 <PackageCheck className="h-5 w-5 text-amber-600" />
               </div>
               <span className="text-3xl font-bold text-amber-600">{specs.pending.length}</span>
@@ -141,12 +141,12 @@ const Dashboard = () => {
         </Card>
         
         <Card 
-          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400 border-green-200' : ''}`}
+          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'approved' ? 'ring-2 ring-green-400' : ''}`}
           onClick={() => handleCardClick('approved')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <span className="text-3xl font-bold text-green-600">{specs.approved.length}</span>
@@ -159,12 +159,12 @@ const Dashboard = () => {
         </Card>
         
         <Card 
-          className={`bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400 border-red-200' : ''}`}
+          className={`bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer rounded-xl ${activeTab === 'changes' ? 'ring-2 ring-red-400' : ''}`}
           onClick={() => handleCardClick('changes')}
         >
           <CardHeader className="p-5 pb-3">
             <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5 text-red-600" />
               </div>
               <span className="text-3xl font-bold text-red-600">{specs.changesRequested.length}</span>
