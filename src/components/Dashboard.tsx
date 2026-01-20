@@ -181,24 +181,27 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'pending' ? 'ring-2 ring-amber-400' : ''}`}
             onClick={() => handleCardClick('pending')}
           >
-            <CardHeader className="p-5 pb-2">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
-                  <PackageCheck className="h-6 w-6 text-amber-600" />
+            {/* Decorative gradient orb */}
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-amber-200/40 to-amber-400/20 rounded-full blur-2xl" />
+            <CardContent className="p-5 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center shadow-sm">
+                    <PackageCheck className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Pending</h3>
+                    <p className="text-sm text-gray-500">Awaiting review</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Pending Approval</h3>
-                  <p className="text-sm text-gray-500">Awaiting review</p>
+                <div className="text-right">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm">
+                    {specs.pending.length}
+                  </span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-5 pb-5 pt-2">
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight text-amber-600">{specs.pending.length}</span>
-                <span className="text-lg font-medium text-gray-400">specs</span>
               </div>
             </CardContent>
           </Card>
@@ -211,24 +214,27 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'approved' ? 'ring-2 ring-emerald-400' : ''}`}
             onClick={() => handleCardClick('approved')}
           >
-            <CardHeader className="p-5 pb-2">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
-                  <CheckCircle className="h-6 w-6 text-emerald-600" />
+            {/* Decorative gradient orb */}
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-emerald-200/40 to-emerald-400/20 rounded-full blur-2xl" />
+            <CardContent className="p-5 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center shadow-sm">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Approved</h3>
+                    <p className="text-sm text-gray-500">Completed specs</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Approved</h3>
-                  <p className="text-sm text-gray-500">Completed specs</p>
+                <div className="text-right">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent drop-shadow-sm">
+                    {specs.approved.length}
+                  </span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-5 pb-5 pt-2">
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight text-emerald-600">{specs.approved.length}</span>
-                <span className="text-lg font-medium text-gray-400">specs</span>
               </div>
             </CardContent>
           </Card>
@@ -241,24 +247,27 @@ const Dashboard = () => {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
+            className={`h-full bg-white border border-gray-100 ring-1 ring-gray-100 shadow-lg cursor-pointer rounded-xl overflow-hidden relative ${activeTab === 'changes' ? 'ring-2 ring-rose-400' : ''}`}
             onClick={() => handleCardClick('changes')}
           >
-            <CardHeader className="p-5 pb-2">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
-                  <AlertCircle className="h-6 w-6 text-rose-600" />
+            {/* Decorative gradient orb */}
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-rose-200/40 to-rose-400/20 rounded-full blur-2xl" />
+            <CardContent className="p-5 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
+                    <AlertCircle className="h-5 w-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Changes</h3>
+                    <p className="text-sm text-gray-500">Needs attention</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Changes Requested</h3>
-                  <p className="text-sm text-gray-500">Needs attention</p>
+                <div className="text-right">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent drop-shadow-sm">
+                    {specs.changesRequested.length}
+                  </span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-5 pb-5 pt-2">
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight text-rose-600">{specs.changesRequested.length}</span>
-                <span className="text-lg font-medium text-gray-400">specs</span>
               </div>
             </CardContent>
           </Card>
