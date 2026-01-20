@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
+
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { updatePackingSpecStatus } from '../services/podioApi';
@@ -222,11 +222,11 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {specs.map(spec => (
           <Card 
             key={spec.id} 
-            className="flex flex-col bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl group"
+            className="flex flex-col bg-white border-0 shadow-md hover:shadow-lg transition-all duration-300 rounded-xl"
           >
             <CardHeader className="p-5 pb-3">
               <div className="flex justify-between items-start gap-3">
@@ -269,11 +269,9 @@ const PackingSpecList = ({ specs, onUpdate, readOnly = false }: PackingSpecListP
               </div>
             </CardContent>
             
-            <CardFooter className="px-5 pb-5 pt-0">
-              <Separator className="mb-4 bg-gray-100" />
+            <CardFooter className="px-5 pb-5 pt-4">
               <Button 
-                variant="outline"
-                className="w-full h-10 border-gray-200 hover:border-honey-gold hover:bg-honey-cream/50 text-gray-600 hover:text-honey-dark rounded-lg transition-all"
+                className="w-full h-10 bg-honey-cream hover:bg-honey-gold text-honey-dark hover:text-white rounded-lg transition-all font-medium"
                 onClick={() => handleViewDetails(spec)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" /> View Details
