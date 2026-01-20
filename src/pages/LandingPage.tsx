@@ -513,11 +513,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ podioAuthError }) => {
             <p className="text-lg text-white/90 max-w-2xl mx-auto mb-6 font-open">
               Sign in to access your personalized customer portal and start managing your honey product approvals today.
             </p>
-            <Button asChild size="lg" className="bg-white hover:bg-honey-cream text-honey-dark font-medium text-lg px-8 py-5 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 rounded-lg">
-              <Link to="/login" className="gap-2">
-                Access Customer Portal <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button asChild size="lg" className="bg-white hover:bg-honey-cream text-honey-dark font-medium text-lg px-8 py-5 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 rounded-lg">
+                <Link to="/login" className="gap-2">
+                  Access Customer Portal <ArrowRight className="h-5 w-5" />
+                </Link>
+              </Button>
+              <a 
+                href="mailto:support@nzhg.com"
+                className="inline-flex items-center gap-2 text-white/90 hover:text-white font-medium transition-colors"
+              >
+                <span className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <ArrowRight className="h-5 w-5 rotate-45" />
+                </span>
+                support@nzhg.com
+              </a>
+            </div>
           </div>
         </div>
       </motion.div>
