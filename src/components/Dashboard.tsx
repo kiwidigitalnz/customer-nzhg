@@ -150,8 +150,8 @@ const Dashboard = () => {
             </AvatarFallback>
           </Avatar>
         <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.name}</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 font-raleway">Welcome, {user?.name}</h1>
+            <p className="text-gray-600 mt-1 font-open">
               Manage your packing specifications
               {user?.email && (
                 <span className="ml-2 text-xs text-gray-500">({user.email})</span>
@@ -193,12 +193,12 @@ const Dashboard = () => {
                     <PackageCheck className="h-5 w-5 text-amber-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Pending</h3>
-                    <p className="text-sm text-gray-500">Awaiting review</p>
+                    <h3 className="font-semibold text-gray-900 font-raleway">Pending</h3>
+                    <p className="text-sm text-gray-500 font-open">Awaiting review</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-amber-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
                     {specs.pending.length}
                   </span>
                 </div>
@@ -226,12 +226,12 @@ const Dashboard = () => {
                     <CheckCircle className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Approved</h3>
-                    <p className="text-sm text-gray-500">Completed specs</p>
+                    <h3 className="font-semibold text-gray-900 font-raleway">Approved</h3>
+                    <p className="text-sm text-gray-500 font-open">Completed specs</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent drop-shadow-sm">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-emerald-500 to-emerald-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
                     {specs.approved.length}
                   </span>
                 </div>
@@ -259,12 +259,12 @@ const Dashboard = () => {
                     <AlertCircle className="h-5 w-5 text-rose-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Changes</h3>
-                    <p className="text-sm text-gray-500">Needs attention</p>
+                    <h3 className="font-semibold text-gray-900 font-raleway">Changes</h3>
+                    <p className="text-sm text-gray-500 font-open">Needs attention</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent drop-shadow-sm">
+                  <span className="text-6xl font-black tracking-tighter bg-gradient-to-br from-rose-500 to-rose-600 bg-clip-text text-transparent drop-shadow-sm font-raleway">
                     {specs.changesRequested.length}
                   </span>
                 </div>

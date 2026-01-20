@@ -99,6 +99,7 @@ const config = {
         open: ["Open Sans", "sans-serif"],
         inter: ["Inter", "sans-serif"],
         manrope: ["Manrope", "sans-serif"],
+        raleway: ["Raleway", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
