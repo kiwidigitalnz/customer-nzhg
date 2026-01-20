@@ -256,15 +256,16 @@ const LoginForm = () => {
   return (
     <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
       {/* Logo Header */}
-      <div className="bg-gradient-to-br from-honey-cream to-white px-8 pt-8 pb-6 border-b border-honey-light/30">
+      <div className="bg-gradient-to-br from-honey-cream to-white px-8 pt-10 pb-8 border-b border-honey-light/30">
         <div className="flex justify-center">
           <img 
             src="/nzhg-logo.png" 
             alt="NZ Honey Group" 
-            className="h-12"
+            className="h-16"
+            style={{ filter: 'contrast(1.1) saturate(1.1)' }}
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = 'https://placehold.co/200x48/D19E43/FFFFFF?text=NZ+Honey+Group';
+              e.currentTarget.src = 'https://placehold.co/240x64/D19E43/FFFFFF?text=NZ+Honey+Group';
             }}
           />
         </div>
