@@ -68,7 +68,7 @@ const LoginPage = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="mb-6"
+              className="mb-8"
             >
               <Link 
                 to="/" 
@@ -79,31 +79,32 @@ const LoginPage = () => {
               </Link>
             </motion.div>
             
-            {/* Login Card with Logo inside */}
+            {/* Logo - prominently displayed above card */}
+            <motion.div 
+              className="flex justify-center mb-6"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <img 
+                src="/nzhg-logo.png" 
+                alt="NZ Honey Group" 
+                className="h-16 drop-shadow-[0_0_20px_rgba(209,158,67,0.5)]"
+                style={{ filter: 'brightness(1.2) contrast(1.1)' }}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
+                }}
+              />
+            </motion.div>
+            
+            {/* Login Card - clean light background */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 shadow-2xl"
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-white rounded-2xl p-8 shadow-2xl shadow-black/20"
             >
-              {/* Logo inside card */}
-              <div className="flex justify-center mb-8">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-honey-gold/30 to-honey-amber/20 rounded-xl blur-lg"></div>
-                  <img 
-                    src="/nzhg-logo.png" 
-                    alt="NZ Honey Group" 
-                    className="relative h-14 drop-shadow-[0_0_15px_rgba(209,158,67,0.3)]"
-                    style={{ filter: 'brightness(1.1)' }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://placehold.co/240x80/D19E43/FFFFFF?text=NZ+Honey+Group';
-                    }}
-                  />
-                </div>
-              </div>
-              
-              {/* Login Form */}
               <LoginForm />
             </motion.div>
           </div>
