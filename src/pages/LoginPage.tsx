@@ -5,14 +5,12 @@ import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
-import heroHoney from '@/assets/hero-honey.jpg';
 import BurgerMenu from '@/components/BurgerMenu';
 
 const LoginPage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard');
@@ -22,18 +20,46 @@ const LoginPage = () => {
   return (
     <MainLayout>
       <BurgerMenu />
-      <div className="min-h-[90vh] flex items-center justify-center relative overflow-hidden">
-        {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroHoney})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-honey-dark/90 via-honey-dark/80 to-honey-dark/70"></div>
+      <div className="min-h-[90vh] flex items-center justify-center relative overflow-hidden bg-honey-dark">
+        {/* Abstract gradient background */}
+        <div className="absolute inset-0">
+          {/* Primary gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-honey-dark via-honey-dark to-honey-amber/20"></div>
+          
+          {/* Animated orbs */}
+          <motion.div 
+            className="absolute top-1/4 -left-20 w-96 h-96 bg-honey-gold/30 rounded-full blur-3xl"
+            animate={{ 
+              x: [0, 30, 0],
+              y: [0, -20, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div 
+            className="absolute -bottom-20 right-0 w-[500px] h-[500px] bg-honey-amber/25 rounded-full blur-3xl"
+            animate={{ 
+              x: [0, -40, 0],
+              y: [0, 30, 0],
+              scale: [1, 1.15, 1]
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-honey-gold/15 rounded-full blur-3xl"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.15, 0.25, 0.15]
+            }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          
+          {/* Subtle mesh overlay */}
+          <div className="absolute inset-0 opacity-30" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, hsl(var(--honey-gold) / 0.1) 0%, transparent 50%),
+                             radial-gradient(circle at 75% 75%, hsl(var(--honey-amber) / 0.1) 0%, transparent 50%)`
+          }}></div>
         </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-honey-gold/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-honey-amber/15 rounded-full blur-3xl"></div>
         
         <div className="container mx-auto px-4 py-12 relative z-10">
           <div className="max-w-md mx-auto">
